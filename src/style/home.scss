@@ -1,0 +1,36 @@
+.home {
+    position: relative;
+    margin: 0px auto;
+    overflow: auto;
+    .md-list {
+        &.md-theme-default {
+            background-color:  transparent !important;
+            .md-list-item {
+                background-color: #ffffffb8 !important;
+                border-radius: 3px;
+                margin-bottom: 8px;
+            }
+        }
+    }
+    .smaller-table {
+        .md-table-content {
+            max-width: 100%;
+            .md-table-cell-container {
+                padding: 2px !important;
+            }
+        }
+    }
+}
+
+@media screen and (max-width: 1440px){
+    .home{
+        margin: 0px;
+    }
+}
+
+@media screen and (max-width: 1200px){
+    .home{
+        margin: 10px;
+    }
+}
+

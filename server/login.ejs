@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Login</title>
+    <style>
+      @keyframes collpse {
+        from {
+          height: 0px;
+        }
+        to {
+          height: 350px;
+        }
+      }
+      #login {
+        margin: 220px auto;
+        width: 680px;
+        text-align: center;
+      }
+
+      #login form {
+        position: relative;
+        padding: 00px 30px 00px;
+        background-color: rgba(27,17,5,0.7);
+        border: 2px outset #ecebea;
+        color: #ceccc9;
+        box-shadow: 2px 3px 3px #000;
+        overflow: hidden;
+        animation-name: collpse;
+        animation-fill-mode: forwards;
+        animation-duration: 1s;
+        animation-delay: 0s;
+        height: 0px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="login">
+      
+      <form name="form" method="post" action="./login" id="login-form">
+        
+        <input type="hidden" name="action" value="login">
+        <table>
+          <tbody>
+            <tr>
+              <td class="title">
+                <label for="rcmloginuser">工號</label>
+              </td>
+              <td class="input">
+                <input name="usercode" id="loginuser" required="required" size="40" type="text" placeholder="ex: R001"/>
+              </td>
+            </tr>
+          <tr>
+            <td class="title">
+              <label for="rcmloginpwd">密碼</label>
+            </td>
+            <td class="input">
+              <input name="pwd" id="loginpwd" required="required" size="40" type="password" placeholder=""/>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2"><label>記住密碼: </label><input type="checkbox" id="check-save" /></td>
+          </tr>
+          <tr>
+            <td class="message" colspan="2">
+              <p id="error-msg"><%= msg %></p>
+              <p class="tips" id="tips"></p>
+            </td>
+          </tr>
+        </tbody>
+        </table>
+        
+        <p class="formbuttons">
+          <input type="submit" id="loginsubmit" class="button mainaction" value="登錄" />
+        </p>
+      </form>
+
+    </div>
+    <script>
+      var dom_check = document.getElementById('check-save');
+      var dom_loginuser = document.getElementById('loginuser');
+      var login_form = document.getElementById('login-form');
+      var dom_pwd = document.getElementById('loginpwd');
+      dom_loginuser.addEventListener('change', (evt) => {
+        var target = evt.target;
+        var val = target.value;
+        if (/[^(A-Z0-9)]/.test(val)) {
+          val = val.replace(/[^(A-Z0-9)]/i, '');
+          target.value = val.toUpperCase();
+        }
+      });
+      if (document.getElementById('error-msg').innerText.length <= 1) {
+        document.getElementById('tips').innerText = 'Tips: 第一次登入請隨意輸入密碼，接著會進入密碼設定';
+      }
+      var localSaved = window.localStorage.getItem('__rv__login');
+      if (localSaved && localSaved.length > 2) {
+        localSaved = JSON.parse(localSaved);
+        if (localSaved.save) {
+          dom_loginuser.value = localSaved.user;
+          dom_pwd.value = localSaved.pwd;
+          dom_check.checked = true;
+        }
+      }
+
+      login_form.addEventListener('submit', (evt) => {
+        var user = dom_loginuser.value;
+        var pwd = dom_pwd.value;
+        var save = !!dom_check.checked;
+        window.localStorage.setItem('__rv__login', JSON.stringify({user, pwd, save}));
+        // evt.preventDefault();
+      });
+    </script>
+  </body>
+</html>
