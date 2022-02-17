@@ -2,6 +2,7 @@
 const {
   Model
 } = require('sequelize');
+
 module.exports = (sequelize, DataTypes) => {
   class User extends Model {
     /**
@@ -11,18 +12,51 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      models.Country.hasMany(User, {
+        foreignKey: 'countryId',
+      });
+      User.hasOne(User, {
+        foreignKey: 'loyalUerId',
+      });
+      models.Occupation.hasOne(User, {
+        foreignKey: 'occupationId',
+      });
+      models.Map.hasOne(User, {
+        foreignKey: 'mapTargetId',
+      });
+      models.Map.hasOne(User, {
+        foreignKey: 'mapNowId',
+      });
+      models.Map.hasOne(User, {
+        foreignKey: 'mapNextId',
+      });
     }
   };
   User.init({
-    code: DataTypes.STRING,
-    firstName: DataTypes.STRING,
-    lastName: DataTypes.STRING,
-    name: DataTypes.STRING,
+    nameZh: DataTypes.STRING,
+    nameEn: DataTypes.STRING,
     nickname: DataTypes.STRING,
-    status: DataTypes.INTEGER,
+    code: DataTypes.STRING,
+    pwd: DataTypes.STRING,
+    countryId: DataTypes.INTEGER,
+    loyalUerId: DataTypes.INTEGER,
+    loyalty: DataTypes.INTEGER,
+    contribution: DataTypes.INTEGER,
+    occupationId: DataTypes.INTEGER,
+    money: DataTypes.INTEGER,
+    actPoint: DataTypes.INTEGER,
+    actPointMax: DataTypes.INTEGER,
+    mapTargetId: DataTypes.INTEGER,
+    mapNowId: DataTypes.INTEGER,
+    mapNextId: DataTypes.INTEGER,
+    mapPathIds: DataTypes.TEXT,
+    destoryByCountryIds: DataTypes.TEXT,
+    soldier: DataTypes.INTEGER,
+    captiveDate: DataTypes.DATE,
   }, {
     sequelize,
     modelName: 'User',
   });
+  
   return User;
 };

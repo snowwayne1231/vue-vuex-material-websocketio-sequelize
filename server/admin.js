@@ -14,8 +14,28 @@ const adminBro = new AdminBro({
   databases: [db],
   rootPath: '/admin',
   branding: {
-    companyName: 'Company Of Template',
+    companyName: 'Company Of Welfare',
   },
+  resources: [
+    {
+      resource: db.User,
+      options: {
+        properties: {
+          nickname: {isTitle: true},
+        },
+        listProperties: ['id', 'nickname', 'code', 'nameEn', 'countryId', 'actPoint', 'money'],
+        filterProperties: ['id', 'code', 'nickname', 'nameEn', 'countryId'],
+      },
+    },
+    {
+      resource: db.Map,
+      options: {
+        properties: {
+          position: {isTitle: true},
+        },
+      },
+    },
+  ],
 });
 
 
