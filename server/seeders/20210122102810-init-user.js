@@ -448,8 +448,8 @@ const dataset = [
         "nameZh": "陳孟伶",
         "department": "值班客服一組",
         "code": "R178",
-        "loyalName": "",
-        "countryName": "",
+        "loyalName": "趙強森",
+        "countryName": "琥",
     },
     {
         "nickname": "于凱琳",
