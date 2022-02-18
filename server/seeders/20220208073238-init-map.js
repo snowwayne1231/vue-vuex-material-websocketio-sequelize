@@ -1,69 +1,212 @@
-'use strict';
-const Xsize = 40;
-const Ysize = 40;
-
-
-
-
-
-const allowdWalkPositions = [
-  [1,3,5,7],
-  [1,3,5,7],
-]
-
-
-function getAllowedByPosition(x, y) {
-  let yline = allowdWalkPositions[y];
-  if (yline) {
-    let idx = yline.indexOf(x);
-    if (idx >= 0) {
-      return true
-    }
-  }
-  return false;
-}
+"use strict";
+const db = require('../models');
+const column = ["id", "name", "city", "x", "y", "route"];
+const dataset = [
+  [ 1,"西涼",1,213,592, "天水渡口" ],
+  [ 2,"天水",1,378,804, "天水渡口,漢中道,長安關" ],
+  [ 3,"天水渡口",2,273,760, "天水" ],
+  [ 4,"漢中",1,512,1022, "漢中道,梓潼道,長安西渡口,漢中谷" ],
+  [ 5,"漢中道",2,441,934, "天水,漢中" ],
+  [ 6,"漢中谷",2,735,1174, "漢中,上庸" ],
+  [ 7,"梓潼",1,213,1098, "梓潼道,成都峰" ],
+  [ 8,"梓潼道",2,373,1046, "梓潼,漢中" ],
+  [ 9,"成都",1,331,1344, "成都峰,雲南谷,江洲西道" ],
+  [ 10,"成都峰",2,283,1277, "成都,梓潼" ],
+  [ 11,"江洲",1,525,1535, "江洲東道,江洲西道,江洲谷,江洲坡" ],
+  [ 12,"江洲東道",2,548,1364, "江洲,梓潼" ],
+  [ 13,"江洲西道",2,470,1407, "江洲,成都" ],
+  [ 14,"江洲谷",2,686,1508, "江洲,永安" ],
+  [ 15,"江洲坡",2,606,1627, "江洲,雲南陵" ],
+  [ 16,"雲南",1,348,1916, "雲南谷,雲南陵" ],
+  [ 17,"雲南谷",2,319,1588, "雲南,成都" ],
+  [ 18,"雲南陵",2,541,1803, "雲南,江洲坡" ],
+  [ 19,"永安",1,783,1484, "江洲谷,永安東境,上庸坡,江夏峰" ],
+  [ 20,"永安東境",2,872,1564, "永安,長沙西渡口" ],
+  [ 21,"上庸",1,875,1182, "上庸坡,漢中谷,襄陽谷" ],
+  [ 22,"上庸坡",2,863,1318, "上庸,永安" ],
+  [ 23,"長安",1,978,881, "長安關,長安西渡口,長安林,長安東渡口" ],
+  [ 24,"長安關",2,758,737, "長安,天水" ],
+  [ 25,"長安西渡口",2,942,933, "長安,漢中" ],
+  [ 26,"長安林",2,1097,844, "長安,洛陽西渡口" ],
+  [ 27,"長安東渡口",2,1098,922, "長安,宛城西境" ],
+  [ 28,"洛陽",1,1328,771, "洛陽北境,洛陽西渡口,洛陽南渡口,虎牢關" ],
+  [ 123,"虎牢關",1,1328,771, "洛陽,陳留" ],
+  [ 29,"洛陽北境",2,1408,682, "洛陽,晉陽" ],
+  [ 30,"洛陽西渡口",2,1294,840, "洛陽,長安林" ],
+  [ 31,"洛陽南渡口",2,1365,878, "洛陽,宛" ],
+  [ 32,"宛",1,1271,1013, "宛城西境,宛城東境,新野上渡口" ],
+  [ 33,"宛城西境",2,1170,956, "宛,長安東渡口" ],
+  [ 34,"宛城東境",2,1425,1011, "宛,許昌" ],
+  [ 35,"襄陽",1,1141,1196, "襄陽谷,襄陽湖,新野下渡口,汝南上渡口" ],
+  [ 36,"襄陽谷",2,1063,1160, "襄陽,上庸" ],
+  [ 37,"襄陽湖",2,1192,1293, "襄陽,江夏" ],
+  [ 38,"新野",1,1441,1185, "新野上渡口,新野下渡口,新野東境,譙城西境" ],
+  [ 39,"新野上渡口",2,1398,1157, "新野,宛" ],
+  [ 40,"新野下渡口",2,1328,1211, "新野,襄陽" ],
+  [ 41,"新野東境",2,1580,1218, "新野,汝南" ],
+  [ 42,"江夏",1,1298,1332, "襄陽湖,江夏峰,長沙東渡口,江夏渡口,汝南下渡口" ],
+  [ 43,"江夏峰",2,1142,1356, "江夏,永安" ],
+  [ 44,"江夏渡口",2,1427,1406, "江夏,桂陽" ],
+  [ 45,"長沙",1,1334,1555, "長沙西渡口,長沙谷,桂陽陵,長沙東渡口" ],
+  [ 46,"長沙東渡口",2,1389,1474, "長沙,江夏" ],
+  [ 47,"長沙西渡口",2,1097,1547, "長沙,永安東境" ],
+  [ 48,"長沙谷",2,1323,1667, "長沙,武陵" ],
+  [ 49,"武陵",1,1270,1754, "武陵關,長沙谷" ],
+  [ 50,"武陵關",2,1435,1823, "武陵,零陵" ],
+  [ 51,"零陵",1,1545,1806, "零陵坡,武陵關" ],
+  [ 52,"零陵坡",2,1618,1741, "零陵,桂陽" ],
+  [ 53,"桂陽",1,1579,1601, "桂陽陵,零陵坡,鄱陽西境" ],
+  [ 54,"桂陽陵",2,1496,1627, "桂陽,長沙" ],
+  [ 55,"鄱陽",1,1861,1451, "鄱陽西境,鄱陽渡口,鄱陽東境,鄱陽南境" ],
+  [ 56,"鄱陽西境",2,1678,1555, "鄱陽,桂陽" ],
+  [ 57,"鄱陽渡口",2,1833,1396, "鄱陽,汝南" ],
+  [ 58,"鄱陽東境",2,1926,1388, "鄱陽,建業西境" ],
+  [ 59,"鄱陽南境",2,2011,1535, "鄱陽,會稽南境" ],
+  [ 60,"汝南",1,1581,1296, "汝南上渡口,汝南下渡口,鄱陽渡口,廬江西境,新野東境" ],
+  [ 61,"汝南上渡口",2,1362,1280, "汝南,襄陽" ],
+  [ 62,"汝南下渡口",2,1418,1337, "汝南,江夏" ],
+  [ 63,"譙",1,1587,1075, "譙城西境,譙南渡口,譙北渡口,許昌南境" ],
+  [ 64,"譙城西境",2,1496,1127, "譙,新野" ],
+  [ 65,"譙北渡口",2,1848,1020, "譙,徐洲" ],
+  [ 66,"譙南渡口",2,1730,1116, "譙,壽春" ],
+  [ 67,"許昌",1,1519,917, "宛城東境,許昌南境,陳留西境" ],
+  [ 68,"許昌南境",2,1574,1016, "許昌,譙" ],
+  [ 69,"晉陽",1,1396,534, "晉陽關,晉陽北境,洛陽北境" ],
+  [ 70,"晉陽關",2,1525,633, "晉陽,鄴" ],
+  [ 71,"晉陽北境",2,1424,395, "晉陽,代縣西境" ],
+  [ 72,"代縣",1,1627,290, "代縣南境,代縣西境,北平關" ],
+  [ 73,"代縣南境",2,1711,374, "代縣,南皮" ],
+  [ 74,"代縣西境",2,1530,314, "代縣,晉陽北境" ],
+  [ 75,"鄴",1,1611,618, "晉陽關,鄴西渡口,鄴東渡口,平原西境,南皮陵" ],
+  [ 122,"鄴東渡口",2,1783,710, "鄴,濮陽" ],
+  [ 76,"鄴西渡口",2,1583,757, "鄴,陳留" ],
+  [ 77,"陳留",1,1794,842, "鄴西渡口,虎牢關,陳留西境,陳留東境,濮陽西境" ],
+  [ 78,"陳留西境",2,1672,918, "陳留,許昌" ],
+  [ 79,"陳留東境",2,1920,847, "陳留,徐洲北境" ],
+  [ 80,"徐洲",1,1937,941, "徐洲北境,譙北渡口,徐洲南渡口,下邳西境,徐洲東渡口" ],
+  [ 81,"徐洲北境",2,1915,900, "徐洲,陳留東境" ],
+  [ 82,"徐洲東渡口",2,2030,908, "徐洲,濮陽" ],
+  [ 83,"徐洲南渡口",2,2020,1021, "徐洲,壽春" ],
+  [ 84,"壽春",1,1982,1096, "徐洲南渡口,譙南渡口,壽春西境,壽春渡口,下邳西渡口" ],
+  [ 85,"壽春渡口",2,2115,1154, "壽春,建業" ],
+  [ 86,"壽春西境",2,1939,1177, "壽春,廬江" ],
+  [ 87,"廬江",1,1909,1233, "壽春西境,廬江西境,鄱陽渡口,廬江渡口" ],
+  [ 88,"廬江西境",2,1775,1260, "廬江,汝南" ],
+  [ 89,"廬江渡口",2,2028,1210, "廬江,建業" ],
+  [ 90,"建業",1,2140,1200, "壽春渡口,廬江渡口,建業西境,建業渡口,建業東境" ],
+  [ 91,"建業東境",2,2249,1220, "建業,吳" ],
+  [ 92,"建業西境",2,1999,1332, "建業,鄱陽東境" ],
+  [ 93,"建業渡口",2,2154,1346, "建業,會稽西境" ],
+  [ 94,"會稽",1,2352,1384, "會稽西境,吳城渡口" ],
+  [ 95,"會稽西境",2,2220,1437, "會稽,建業渡口,會稽南境" ],
+  [ 96,"會稽南境",2,2186,1542, "會稽西境,鄱陽南境" ],
+  [ 97,"吳",1,2350,1231, "建業東境,吳城渡口,下邳東渡口" ],
+  [ 98,"吳城渡口",2,2424,1297, "吳,會稽" ],
+  [ 99,"下邳",1,2212,965, "下邳西境,下邳西渡口,下邳東渡口,北海下渡口" ],
+  [ 100,"下邳西渡口",2,2200,1087, "下邳,壽春" ],
+  [ 101,"下邳西境",2,2130,951, "下邳,徐洲" ],
+  [ 102,"下邳東渡口",2,2423,1198, "下邳,吳" ],
+  [ 103,"北海",1,2163,679, "北海下渡口,北海上渡口,南皮渡口,濮陽東境" ],
+  [ 104,"北海上渡口",2,2348,632, "北海,襄平渡口" ],
+  [ 105,"北海下渡口",2,2200,839, "北海,下邳" ],
+  [ 106,"濮陽",1,1950,712, "鄴東渡口,濮陽西境,徐洲東渡口,濮陽東境" ],
+  [ 107,"濮陽東境",2,2067,719, "濮陽,北海" ],
+  [ 108,"濮陽西境",2,1876,777, "濮陽,陳留" ],
+  [ 109,"平原",1,1839,617, "平原西境,南皮坪" ],
+  [ 110,"平原西境",2,1759,641, "平原,鄴" ],
+  [ 111,"南皮",1,1817,460, "南皮陵,南皮坪,南皮渡口,北平南境,代縣南境" ],
+  [ 112,"南皮渡口",2,1944,562, "南皮,北海" ],
+  [ 113,"南皮坪",2,1849,548, "南皮,平原" ],
+  [ 114,"南皮陵",2,1707,541, "南皮,鄴" ],
+  [ 115,"北平",1,1978,206, "北平關,北平南境,北平山" ],
+  [ 116,"北平南境",2,1950,379, "北平,南皮" ],
+  [ 117,"北平關",2,1924,278, "北平,代縣" ],
+  [ 118,"北平山",2,2299,260, "北平,襄平谷" ],
+  [ 119,"襄平",1,2674,134, "襄平谷,襄平渡口" ],
+  [ 120,"襄平渡口",2,2525,328, "襄平,北海上渡口" ],
+  [ 121,"襄平谷",2,2510,158, "襄平,北平" ]
+];
 
 
 module.exports = {
-  async up (queryInterface, Sequelize) {
-    let insertData = [];
+  up: async (queryInterface, Sequelize) => {
+    const insertMapData = [];
+    const insertCityData = [];
+    const createdAt = new Date();
+    const updatedAt = new Date();
     const template = {
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: createdAt,
+      updatedAt: createdAt,
+      name: "",
       ownCountryId: 0,
-      isAllowedWalk: false,
+      isAllowedWalk: true,
       state: 1,
       adventureId: 0,
       cityId: 0,
-      route: '',
-      position: [0, 0],
+      route: "",
+      position: "[0, 0]",
     };
 
-    const maps = await queryInterface.rawSelect('Maps', {}, ['id']);
+    const maps = await queryInterface.rawSelect("Maps", {}, ["id"]);
     if (maps) { return false; }
-    
 
-    for (var y = 0; y < Ysize; y++) {
-      for (var x = 0; x < Xsize; x++) {
-        let loc = {...template};
-        loc.position = [x, y];
-        loc.isAllowedWalk = getAllowedByPosition(x, y);
-        insertData.push(loc);
+    const id_idx = column.indexOf("id");
+    const name_idx = column.indexOf("name");
+    const city_idx = column.indexOf("city");
+    const x_idx = column.indexOf("x");
+    const y_idx = column.indexOf("y");
+    const route_idx = column.indexOf("route");
+    const hash_id_map = {};
+    const hash_name_map = {};
+    const hash_city_name_id_map = {};
+    let city_id = 0;
+    const next_dataset = dataset.map(data => {
+      let id = data[id_idx];
+      let name = data[name_idx];
+      let city = data[city_idx];
+      let x = data[x_idx];
+      let y = data[y_idx];
+      let route = data[route_idx];
+      let _next_data = {id, name, city, x, y, route};
+      hash_id_map[id] = _next_data;
+      hash_name_map[name] = _next_data;
+      if (city==1) {
+        city_id += 1;
+        let _city_next_data = {
+          id: city_id,
+          name: name,
+          addResource: 10,
+          timeBeAttacked: "",
+          jsonConstruction: "{}",
+          createdAt: createdAt,
+          updatedAt: createdAt,
+        };
+        insertCityData.push(_city_next_data);
+        hash_city_name_id_map[name] = _city_next_data;
       }
-    }
-
-    await queryInterface.bulkInsert('Maps', insertData);
-
-    const maps = await queryInterface.rawSelect('Maps', {plain: false}, ['id', 'isAllowedWalk', 'position', 'route']);
-    const _hash = {};
-    maps.map(m => {
-      _hash[m.id] = m;
+      
+      return _next_data;
     });
-    
-    return queryInterface.bulkInsert('Maps', insertData);
+
+    await queryInterface.bulkInsert("Cities", insertCityData);
+
+    for (let i = 0; i < next_dataset.length; i+=1) {
+      let data = next_dataset[i];
+      if (hash_city_name_id_map[data.name]) {
+        let city_id = hash_city_name_id_map[data.name].id;
+        // data.cityId = await db.City.findByPk(city_id);
+        data.cityId = city_id;
+      }
+      data.route = data.route.split(",").map(e => { return hash_name_map[e.trim()].id; }).join(',');
+      data.position = `[${data.x}, ${data.y}]`;
+      await db.Map.create({...template, ...data}, {include: [db.City]});
+    }
+    // await queryInterface.bulkInsert("Maps", insertMapData);
   },
 
-  async down (queryInterface, Sequelize) {
-    await queryInterface.bulkDelete('Maps', null, {truncate: true, cascade: true, restartIdentity: true});
+  down: async (queryInterface, Sequelize) => {
+    await queryInterface.bulkDelete("Maps", null, {truncate: true, cascade: true, restartIdentity: true});
+    await queryInterface.bulkDelete("Cities", null, {truncate: true, cascade: true, restartIdentity: true});
   }
 };
+

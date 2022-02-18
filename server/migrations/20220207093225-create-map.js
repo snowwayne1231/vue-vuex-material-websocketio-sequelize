@@ -8,9 +8,21 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
+      name: {
+        type: Sequelize.STRING,
+        defaultValue: '',
+      },
       position: {
         type: Sequelize.STRING,
         defaultValue: '[0, 0]',
+      },
+      x: {
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
+      },
+      y: {
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
       },
       route: {
         type: Sequelize.STRING,

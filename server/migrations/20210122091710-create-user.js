@@ -8,8 +8,6 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-
-
       nameZh: {
         type: Sequelize.STRING,
         defaultValue: '',
@@ -34,7 +32,7 @@ module.exports = {
         type: Sequelize.INTEGER,
         defaultValue: 0,
       },
-      loyalUerId: {
+      loyalUserId: {
         type: Sequelize.INTEGER,
         defaultValue: 0,
       },
@@ -47,6 +45,10 @@ module.exports = {
         defaultValue: 0,
       },
       occupationId: {
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
+      },
+      role: {
         type: Sequelize.INTEGER,
         defaultValue: 0,
       },

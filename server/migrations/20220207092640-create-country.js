@@ -14,6 +14,10 @@ module.exports = {
       sign: {
         type: Sequelize.STRING(8),
       },
+      emperorId: {
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
+      },
       money: {
         type: Sequelize.DOUBLE,
         defaultValue: 0,

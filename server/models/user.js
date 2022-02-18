@@ -16,7 +16,7 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'countryId',
       });
       User.hasOne(User, {
-        foreignKey: 'loyalUerId',
+        foreignKey: 'loyalUserId',
       });
       models.Occupation.hasOne(User, {
         foreignKey: 'occupationId',
@@ -39,10 +39,11 @@ module.exports = (sequelize, DataTypes) => {
     code: DataTypes.STRING,
     pwd: DataTypes.STRING,
     countryId: DataTypes.INTEGER,
-    loyalUerId: DataTypes.INTEGER,
+    loyalUserId: DataTypes.INTEGER,
     loyalty: DataTypes.INTEGER,
     contribution: DataTypes.INTEGER,
     occupationId: DataTypes.INTEGER,
+    role: DataTypes.INTEGER,        // 1 = 君主, 2 = 武將, 3 = 浪人, 4 = 俘虜
     money: DataTypes.INTEGER,
     actPoint: DataTypes.INTEGER,
     actPointMax: DataTypes.INTEGER,

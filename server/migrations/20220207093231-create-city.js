@@ -25,6 +25,7 @@ module.exports = {
       },
       timeBeAttacked: {
         type: Sequelize.STRING,
+        default: '',
       },
       jsonConstruction: {
         type: Sequelize.TEXT,

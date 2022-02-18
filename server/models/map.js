@@ -23,7 +23,10 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   Map.init({
+    name: DataTypes.STRING,
     position: DataTypes.STRING,
+    x: DataTypes.INTEGER,
+    y: DataTypes.INTEGER,
     route: DataTypes.STRING,
     cityId: DataTypes.INTEGER,
     adventureId: DataTypes.INTEGER,

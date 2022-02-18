@@ -14,12 +14,16 @@ module.exports = (sequelize, DataTypes) => {
       models.City.hasOne(Country, {
         foreignKey: 'originCityId',
       });
+      models.User.hasOne(Country, {
+        foreignKey: 'emperorId',
+      });
     }
   }
   Country.init({
     name: DataTypes.STRING,
     sign: DataTypes.STRING,
     money: DataTypes.DOUBLE,
+    emperorId: DataTypes.INTEGER,
     peopleMax: DataTypes.INTEGER,
     color: DataTypes.STRING,
     originCityId: DataTypes.INTEGER,
