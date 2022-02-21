@@ -1,17 +1,16 @@
 const express = require('express');
 const ex_session = require('express-session');
 const bodyParser = require('body-parser');
+const fs =require('fs');
 
 const app = express();
 const http = require('http').createServer(app);
 const path = require('path');
-// const io = require("socket.io")(http, {cors: {origin: '*'}});
 const md5 =require("md5");
 const { Op } = require("sequelize");
 
 const adminbro = require('./admin');
 const models = require('./models');
-
 const ws = require('./ws');
 
 
@@ -32,6 +31,7 @@ if (argvv.length > 0) {
 // setting http service
 if (port == 81) {
     adminbro.useAdminRouterDev(app);
+    app.use(express.static(path.join(__dirname, '..', '/'), {maxAge: 1000*5}));
 } else {
     adminbro.useAdminRouter(app);
 }
@@ -71,7 +71,10 @@ http.listen(port, () => {
 
 
 // render and handle the uri
-const _index = path.join(__dirname, '..', 'dist', 'index.ejs');
+var _index = path.join(__dirname, '..', 'dist', 'index.ejs');
+if (!fs.existsSync(_index)) {
+    _index = path.join(__dirname, '..', 'index.ejs');
+}
 const _login = path.join(__dirname, 'login.ejs');
 
 function renderURI(req, res, uris) {
@@ -90,13 +93,11 @@ function renderURI(req, res, uris) {
     }
 
     if (uris.length < 2) {
-        // console.log('userinfo');
-        // console.log(userinfo);
         if (userinfo && userinfo.id) {
             // res.sendFile(_html);
             res.render(_index, {userinfo});
         } else {
-            res.render(_login, {msg: ''});
+            res.render(_login, {msg: '', register: false});
         }
     } else {
         res.status(404).send('Not Found.');
@@ -108,18 +109,33 @@ function renderURI(req, res, uris) {
 function handlePOST(req, res, uris) {
     const ifLocal = req.headers.host.match(/127.0.0.1/i);
     const _body = req.body;
-    // console.log('handlePOST req: ', req.body);
+    // console.log('[Service][handlePOST] req body: ', req.body);
     if (uris[0] == 'login') {
         const code = _body.code.trim();
         const pwd = md5(_body.pwd.trim());
+        const isRegister = _body.pwdre && _body.pwdre.length > 0;
+        const loginTimestamp = new Date().getTime();
+
         models.User.findOne({
+            attributes: ['id', 'nickname', 'pwd', 'code'],
             where: { code: code }
         }).then(user => {
             const user_data = user.toJSON();
             // console.log(user_data)
-            if (user_data.pwd == pwd || ifLocal) {
+            if (isRegister) {
+                const isConfirmed = _body.pwd && _body.pwd == _body.pwdre;
+                if (isConfirmed) {
+                    user.pwd = pwd;
+                    return user.save().then(e => {
+                        res.redirect('/');
+                    });
+                } else {
+                    res.render(_login, {msg: 'Password has difference.', register: true});
+                }
+            } else if (user_data.pwd == '') {
+                res.render(_login, {msg: '', register: true});
+            } else if (user_data.pwd == pwd || ifLocal) {
                 // 登錄
-                const loginTimestamp = new Date().getTime();
                 req.session.userinfo = {
                     ...user_data,
                     loginTimestamp,
@@ -128,11 +144,11 @@ function handlePOST(req, res, uris) {
                 res.redirect('/');
             } else {
                 // 登錄失敗
-                res.render(_login, {msg: 'Login Failed, Password Wrong.'});
+                res.render(_login, {msg: 'Login Failed, Password Wrong.', register: false});
             }
         }).catch(e => {
-            res.render(_login, {msg: 'Login Failed, Code Wrong.'});
-        })
+            res.render(_login, {msg: 'Login Failed, Not Exist Code.', register: false});
+        });
     } else {
         res.status(404).send('Wrong Parameter.');
     }

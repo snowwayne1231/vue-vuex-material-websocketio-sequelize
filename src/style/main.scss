@@ -1,5 +1,7 @@
-@import './home';
+@import './keyframes';
 @import './common';
+@import './home';
+
 
 
 #app {
@@ -13,43 +15,28 @@
   height: 100vh;
   overflow: hidden;
   font-family: "Avenir", Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
 
-  .loading-mask {
-    position: absolute;
-    top: 0px;
-    left: 0px;
-    height: 0px;
-    width: 100%;
-    overflow: hidden;
-  }
+  .app-frame {
+    position: relative;
+    display: flex;
+    overflow: auto;
+    box-sizing: border-box;
 
-  .md-icon {
-    position: absolute;
-    // display: none;
-    font-size: 60px !important;
-    line-height: 60px !important;
-    height: 60px;
-    width: 60px;
-    color: #fff;
-    animation-name: toggledisplay;
-    animation-timing-function: linear;
-    animation-duration: 2s;
-    animation-iteration-count: infinite;
-    animation-delay: 0s;
-
-    &:first-child {
-      animation-delay: 1s;
+    &.middle {
+      height: 100%;
     }
   }
-}
 
+  .menu {
+    flex: 1;
+    min-width: 120px;
+    height: 100%;
+    box-sizing: border-box;
+  }
 
-@keyframes toggledisplay{
-  0% {opacity: 0;}
-  50% {opacity: 0.7;}
-  100% {opacity: 1;}
+  .main-router-view {
+    flex: 9;
+  }
 }

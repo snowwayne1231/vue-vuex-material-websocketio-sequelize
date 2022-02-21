@@ -19,3 +19,13 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" scoped>
+.helper {
+  position: absolute;
+  cursor: help;
+  width: 24px;
+  height: 24px;
+  margin: -12px;
+}
+</style>

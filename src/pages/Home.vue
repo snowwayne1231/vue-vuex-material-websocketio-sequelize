@@ -1,6 +1,6 @@
 <template>
-  <div class="home bg-img">
-    <md-card class="home-card">
+  <div class="home">
+    <md-card>
       <md-card-header>
         <md-card-header-text>
           <div class="md-title">
@@ -12,14 +12,16 @@
         </md-card-header-text>
       </md-card-header>
       <md-card-content>
-      
+        Some Content..
+        <Helper title="qqq" />
       </md-card-content>
     </md-card>
   </div>
 </template>
 
 <script>
-// import { mapState } from 'vuex'
+import { mapState } from 'vuex';
+import Helper from '@/components/panels/Helper';
 
 export default {
   name: 'Home',
@@ -27,6 +29,9 @@ export default {
     return {
       
     }
+  },
+  components:{
+    Helper,
   },
   mounted() {
     

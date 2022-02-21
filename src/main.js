@@ -17,6 +17,11 @@ Vue.use(VueMaterial);
 Vue.use(vueCookie);
 
 Vue.config.productionTip = false;
+const isLocal = location.hostname.match(/localhost|127.0.0.1/i);
+const wcl = window.console.log;
+window.clog = (...args) => {
+  return isLocal ? wcl(...args) : null;
+};
 
 
 /* eslint-disable no-new */

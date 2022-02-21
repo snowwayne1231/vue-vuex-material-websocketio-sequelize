@@ -1,53 +1,64 @@
 <template>
   <div id="app">
-    <div class="logo">
-      <!-- <img src="/static/imgs/logo_small.png" alt="" /> -->
+    <div class="top app-frame">
+      <div class="title"></div>
     </div>
-    <div class="title">
-      <div class="top">TITLE</div>
-    </div>
-    <md-list class="menu" router-link>
-      <div class="meun-wrapper">
-        <md-list-item v-for="(m, m_i) in menu" :to="m.url" :key="m_i">
-          <div class="md-list-item-text">
-            <div class="main">{{ m.name_en }}</div>
-            <div class="sub">{{ m.name }}</div>
-          </div>
-        </md-list-item>
-        <md-list-item><div class="md-list-item-text" @click="onClickLogout" :style="{cursor: 'pointer'}"><div class="main">SIGN OUT</div><div class="sub">離開</div></div></md-list-item>
+    <div class="middle app-frame">
+      <md-list class="menu" router-link>
+        <div class="meun-wrapper">
+          <md-list-item v-for="(m, m_i) in menu" :to="m.url" :key="m_i">
+            <div class="md-list-item-text" v-on="m.onclick ? {click: m.onclick} : null">
+              <div class="main">{{ m.name_en }}</div>
+              <div class="sub">{{ m.name }}</div>
+            </div>
+          </md-list-item>
+        </div>
+      </md-list>
+      <div class="main-router-view">
+        <router-view />
       </div>
-    </md-list>
-    <router-view />
+    </div>
   </div>
 </template>
 
 <script>
 import { mapState } from 'vuex';
-import { ACT_GET_PEOPLE_DATA } from './store/enum';
+import { ACT_GET_USERS_INFO } from '@/enum';
+
 export default {
   name: 'App',
-  data() {
-    return {
-      menu: [
+  computed: {
+    ...mapState(['user', 'global']),
+    menu() {
+      return [
         { name: '大廳', name_en: 'HALL', url: '/' },
         { name: '臥室', name_en: 'ROOM', url: '/room' },
-        // { name: '離開', name_en: 'SIGN OUT', url: '/logout' },
+        { name: '離開', name_en: 'SIGN OUT', url: '/logout', onclick: this.onClickLogout },
       ]
-    }
-  },
-  computed: {
-    ...mapState(['user']),
+    },
   },
   mounted() {
-    
+    clog('Main App $this: ', this);
+    this.checkConnection();
   },
   updated() {
     
   },
   methods: {
-    onClickLogout() {
+    onClickLogout(evt) {
+      evt.stopPropagation();
+      evt.preventDefault();
       window.location.href = '/logout';
     },
+    checkConnection() {
+      if (this.user.connected) {
+        this.$store.dispatch('wsEmitAuthorize', this.$cookies.get('_logintimestamp_'));
+        this.$store.dispatch('wsEmitMessage', {act: ACT_GET_USERS_INFO});
+      } else {
+        if (window.apptimer) { window.clearTimeout(window.apptimer); }
+        window.apptimer = window.setTimeout(this.checkConnection, 3000);
+      }
+    }
   },
 }
 </script>

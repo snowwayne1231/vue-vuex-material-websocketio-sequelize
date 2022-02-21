@@ -10,21 +10,30 @@
           height: 0px;
         }
         to {
-          height: 350px;
+          height: 280px;
         }
       }
+      body {
+        background-image: url(/static/imgs/login_bg.jpg);
+        background-origin: content-box;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-position: top center;
+        background-color: #3e477e;
+      }
       #login {
-        margin: 220px auto;
+        margin: 24vh auto;
         width: 680px;
         text-align: center;
       }
 
       #login form {
         position: relative;
-        padding: 00px 30px 00px;
-        background-color: rgba(27,17,5,0.7);
+        padding: 40px;
+        background-color: rgba(25,5,70,0.6);
         border: 2px outset #ecebea;
-        color: #ceccc9;
+        color: #feffb8;
+        font-size: 18px;
         box-shadow: 2px 3px 3px #000;
         overflow: hidden;
         animation-name: collpse;
@@ -32,6 +41,26 @@
         animation-duration: 1s;
         animation-delay: 0s;
         height: 0px;
+      }
+      #login table {
+        text-align: center;
+        margin: 0 auto;
+      }
+      #login .button {
+        padding: 10px 40px;
+        font-size: 20px;
+        cursor: pointer;
+        color: #feffb8;
+        border: 2px outset #feffb8;
+        background-color: #3e477e;
+        border-radius: 12px;
+      }
+      #error-msg {
+        color: red;
+      }
+      .message {
+        font-weight: bold;
+        font-style: italic;
       }
     </style>
   </head>
@@ -41,34 +70,53 @@
       <form name="form" method="post" action="./login" id="login-form">
         
         <input type="hidden" name="action" value="login">
+        
         <table>
           <tbody>
+            <% if (register) { %>
+              <tr>
+                <td class="title" colspan="2">
+                  <label style="font-size: 1.5em;">設定密碼</label>
+                </td>
+              </tr>
+            <% } %>
             <tr>
               <td class="title">
                 <label for="rcmloginuser">工號</label>
               </td>
               <td class="input">
-                <input name="usercode" id="loginuser" required="required" size="40" type="text" placeholder="ex: R001"/>
+                <input name="code" id="loginuser" required="required" size="40" type="text" placeholder="ex: R001"/>
               </td>
             </tr>
-          <tr>
-            <td class="title">
-              <label for="rcmloginpwd">密碼</label>
-            </td>
-            <td class="input">
-              <input name="pwd" id="loginpwd" required="required" size="40" type="password" placeholder=""/>
-            </td>
-          </tr>
-          <tr>
-            <td colspan="2"><label>記住密碼: </label><input type="checkbox" id="check-save" /></td>
-          </tr>
-          <tr>
-            <td class="message" colspan="2">
-              <p id="error-msg"><%= msg %></p>
-              <p class="tips" id="tips"></p>
-            </td>
-          </tr>
-        </tbody>
+            <tr>
+              <td class="title">
+                <label for="rcmloginpwd">密碼</label>
+              </td>
+              <td class="input">
+                <input name="pwd" id="loginpwd" required="required" size="40" type="password" placeholder=""/>
+              </td>
+            </tr>
+            <% if (register) { %>
+              <tr>
+                <td class="title">
+                  <label>重複密碼</label>
+                </td>
+                <td class="input">
+                  <input name="pwdre" id="loginpwd_re" required="required" size="40" type="password" placeholder=""/>
+                </td>
+              </tr>
+            <% } else { %>
+              <tr>
+                <td colspan="2"><label>記住密碼: </label><input type="checkbox" id="check-save" /></td>
+              </tr>
+            <% } %>
+            <tr>
+              <td class="message" colspan="2">
+                <p id="error-msg"><%= msg %></p>
+                <p class="tips" id="tips"></p>
+              </td>
+            </tr>
+          </tbody>
         </table>
         
         <p class="formbuttons">
@@ -82,19 +130,17 @@
       var dom_loginuser = document.getElementById('loginuser');
       var login_form = document.getElementById('login-form');
       var dom_pwd = document.getElementById('loginpwd');
-      dom_loginuser.addEventListener('change', (evt) => {
-        var target = evt.target;
-        var val = target.value;
-        if (/[^(A-Z0-9)]/.test(val)) {
-          val = val.replace(/[^(A-Z0-9)]/i, '');
-          target.value = val.toUpperCase();
-        }
-      });
-      if (document.getElementById('error-msg').innerText.length <= 1) {
+      var dom_pwd_re = document.getElementById('loginpwd_re');
+      var dom_loginsubmit = document.getElementById('loginsubmit');
+      var dom_error_msg = document.getElementById('error-msg');
+      var isRegister = <%= register %>;
+
+      if (dom_error_msg && dom_error_msg.innerText.length <= 1 && !isRegister) {
         document.getElementById('tips').innerText = 'Tips: 第一次登入請隨意輸入密碼，接著會進入密碼設定';
       }
+
       var localSaved = window.localStorage.getItem('__rv__login');
-      if (localSaved && localSaved.length > 2) {
+      if (localSaved && localSaved.length > 2 && dom_check) {
         localSaved = JSON.parse(localSaved);
         if (localSaved.save) {
           dom_loginuser.value = localSaved.user;
@@ -109,6 +155,15 @@
         var save = !!dom_check.checked;
         window.localStorage.setItem('__rv__login', JSON.stringify({user, pwd, save}));
         // evt.preventDefault();
+      });
+
+      dom_loginuser.addEventListener('change', (evt) => {
+        var target = evt.target;
+        var val = target.value;
+        if (/[^(A-Z0-9)]/.test(val)) {
+          val = val.replace(/[^(A-Z0-9)]/i, '');
+          target.value = val.toUpperCase();
+        }
       });
     </script>
   </body>
