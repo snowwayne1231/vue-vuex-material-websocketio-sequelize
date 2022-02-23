@@ -23,7 +23,7 @@
 
 <script>
 import { mapState } from 'vuex';
-import { ACT_GET_USERS_INFO } from '@/enum';
+import { ACT_GET_GLOBAL_DATA } from '@/enum';
 
 export default {
   name: 'App',
@@ -38,7 +38,7 @@ export default {
     },
   },
   mounted() {
-    clog('Main App $this: ', this);
+    clog('Main App mounted $this: ', this);
     this.checkConnection();
   },
   updated() {
@@ -52,11 +52,33 @@ export default {
     },
     checkConnection() {
       if (this.user.connected) {
-        this.$store.dispatch('wsEmitAuthorize', this.$cookies.get('_logintimestamp_'));
-        this.$store.dispatch('wsEmitMessage', {act: ACT_GET_USERS_INFO});
+        // 同域用 login time stamp 確認登入狀態即可
+        const _logintimestamp = this.$cookies.get('_logintimestamp_');
+        // 已經登入過 有token
+        const token = window.localStorage.getItem('_token_');
+        var payload;
+        
+        if (_logintimestamp) {
+          payload = _logintimestamp;
+        } else if (token && false) {
+          payload = {token};
+        } else {
+          // 不同域 提交 code and pwd 嘗試登入
+          // let code = window.prompt('輸入工號: ');
+          // let pwd = window.prompt('密碼: ');
+          /*
+              Just for test and demo
+          */
+          let code = 'R001';
+          let pwd = 123;
+          payload = {code, pwd};
+        }
+        
+        this.$store.dispatch('wsEmitAuthorize', payload);
+        
       } else {
         if (window.apptimer) { window.clearTimeout(window.apptimer); }
-        window.apptimer = window.setTimeout(this.checkConnection, 3000);
+        window.apptimer = window.setTimeout(this.checkConnection, 1000);
       }
     }
   },

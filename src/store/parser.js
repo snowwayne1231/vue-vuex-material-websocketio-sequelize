@@ -33,7 +33,22 @@ function arrayBufferToJSON(buffer) {
     return result;
 }
 
+function parseArraiesToObjects(values, keys) {
+    const res = [];
+    if (values.length > 0 && keys.length > 0 && values[0].length == keys.length) {
+        values.forEach(val => {
+            let _ = {};
+            keys.forEach((key, idx) => {
+                _[key] = val[idx];
+            });
+            res.push(_);
+        });
+    }
+    return res;
+}
+
 
 module.exports = {
     arrayBufferToJSON,
+    parseArraiesToObjects,
 }

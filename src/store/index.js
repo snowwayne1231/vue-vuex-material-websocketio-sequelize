@@ -3,7 +3,8 @@ import Vuex from 'vuex';
 import socketio from 'socket.io-client';
 import createSocketIoPlugin from 'vuex-socketio';
 import enums from '@/enum';
-import { arrayBufferToJSON } from './parser';
+import { arrayBufferToJSON, parseArraiesToObjects } from './parser';
+import axios from 'axios';
 
 console.log('process.env: ', process.env);
 const wsLocation = process.env.WS_LOCATION;
@@ -12,7 +13,6 @@ const socketPlugin = createSocketIoPlugin(socket, {
     onPrefix: 'wsOn',
     emitPrefix: 'wsEmit',
 });
-
 
 Vue.use(Vuex);
 
@@ -49,21 +49,40 @@ const moduleUser = {
         wsOnDisconnect: (state) => {
             state.connected = false;
         },
-        wsOnMessage: (state, message) => {
-            let parsed_msg = arrayBufferToJSON(message);
-            clog('Socket On Message Parsed: ', parsed_msg);
-            if (message.redirect) {
-                window.location.href = message.redirect;
+        wsOnAuthorize: (state, message) => {
+            let parsedMsg = arrayBufferToJSON(message);    // byte array 轉回 json
+            clog('Socket On Authorize Parsed: ', parsedMsg);
+            if (parsedMsg.redirect) {
+                window.location.href = parsedMsg.redirect;
                 return;
             }
-            const payload = message.payload;
-            
-            switch (message.act) {
+            if (parsedMsg.token) {
+                window.localStorage.setItem('_token_', parsedMsg.token);
+            }
+            if (parsedMsg.register) {
+                /*
+                    Just for test and demo
+                */
+                axios.post(wsLocation + 'login', {code: 'R001', pwd: 123, pwdre: 123}).then(e => {
+                    const status = e.status; // 200 = 成功  202 = 註冊失敗  203 = 登入失敗
+                    console.log(e);
+                    if (status == 200) {
+                        location.href = '/';
+                    }
+                });
+            }
+
+            const payload = parsedMsg.payload;
+
+            switch (parsedMsg.act) {
+                case enums.FAILED: {
+                    window.localStorage.removeItem('_token_');
+                    return window.alert(parsedMsg.reason);
+                }
                 case enums.AUTHORIZE: {
-                    Object.keys(payload).map(key => {
+                    return Object.keys(payload).map(key => {
                         state[key] = payload[key];
                     });
-                    return false;
                 }
                 default:
             }
@@ -83,11 +102,26 @@ const moduleUser = {
 const globalData = {
     state: {
         users: [],
+        maps: [],
+        cities: [],
+        countries: [],
     },
     mutations: {
         wsOnMessage: (state, message) => {
-            const payload = message.payload;
+            let parsedMsg = arrayBufferToJSON(message);    // byte array 轉回 json
+            clog('Socket On Message Parsed: ', parsedMsg);
             
+            const payload = parsedMsg.payload;
+            
+            switch (parsedMsg.act) {
+                case enums.ACT_GET_GLOBAL_DATA: {
+                    state.users = parseArraiesToObjects(payload.users, enums.UserGlobalAttributes);
+                    state.maps = parseArraiesToObjects(payload.maps, enums.MapsGlobalAttributes);
+                    state.cities = parseArraiesToObjects(payload.cities, enums.CityGlobalAttributes);
+                    state.countries = parseArraiesToObjects(payload.countries, enums.CountryGlobalAttributes);
+                }
+                default:
+            }
         },
     },
     getters: {
