@@ -8,12 +8,18 @@ const { asyncLogin } = require('./handler');
 const { makeToken, getDateByToekn } = require('./websocketctl/authorization');
 
 const ROOM_CHATTING_BAR = 'roomchattingbar';
-const memo_ctl = {websocket: null, userMap: {}, maps: [], mapIdMap: {}, cityMap: {}, countryMap: {}};
+const memo_ctl = {websocket: null, userMap: {}, mapIdMap: {}, cityMap: {}, countryMap: {}};
 // const clientArraies = {};
 
 
 
-
+function onDisconnect(socket) {
+    socket.on('disconnect', (msg) => {
+        var userinfo = socket.request.session.userinfo;
+        if (!userinfo) { return; }
+        console.log('disconnected: ', userinfo ? userinfo.nickname : 'unknown');
+    });
+}
 
 
 function onMessage(socket) {
@@ -30,29 +36,16 @@ function onMessage(socket) {
 
 
     function subSwitchOnMessage(act, payload, userinfo) {
-        const ugAttributes = enums.UserGlobalAttributes;
+        
         switch (act) {
             case enums.ACT_GET_GLOBAL_USERS_INFO: {
+                const ugAttributes = enums.UserGlobalAttributes;
                 let users = Object.values(memo_ctl.userMap).map(user => {
                     let _ = [];
                     ugAttributes.map(col => { _.push(user[col]); });
                     return _;
                 });
                 return subEmit(act, {users});
-            }
-            case enums.ACT_GET_GLOBAL_DATA: {
-                const mapAttributes = enums.MapsGlobalAttributes;
-                const cityAttributes = enums.CityGlobalAttributes;
-                const countryAttributes = enums.CountryGlobalAttributes;
-                let users = flatMap(memo_ctl.userMap, ugAttributes);
-                let maps = memo_ctl.maps.map(m => {
-                    let _ = [];
-                    mapAttributes.map(col => { _.push(m[col]) });
-                    return _;
-                });
-                let cities = flatMap(memo_ctl.cityMap, cityAttributes);
-                let countries = flatMap(memo_ctl.countryMap, countryAttributes);
-                return subEmit(act, {users, maps, cities, countries});
             }
             
             default:
@@ -64,44 +57,32 @@ function onMessage(socket) {
     function subEmit(act, payload) {
         emitSocketByte(socket, enums.MESSAGE, {act, payload});
     }
-
-    function flatMap(obj, col) {
-        return Object.values(obj).map(e => {
-            let _ = [];
-            col.map(c => { _.push(e[c]) });
-            return _;
-        });
-    }
 }
 
 
+function emitSocketByte(socket, frame, data) {
+    var buf = Buffer.from(JSON.stringify(data), 'utf-8');
+    socket.emit(frame, buf);
+    return socket;
+}
 
 
-
-function onDisconnect(socket) {
-    socket.on('disconnect', (msg) => {
-        var userinfo = socket.request.session.userinfo;
-        if (!userinfo) { return; }
-        console.log('disconnected: ', userinfo ? userinfo.nickname : 'unknown');
+function flatMap(obj, col) {
+    return Object.values(obj).map(e => {
+        let _ = [];
+        col.map(c => { _.push(e[c]) });
+        return _;
     });
 }
 
 
-
-
-
-function broadcastChatRoom(obj) {
-    return memo_ctl.websocket.to(ROOM_CHATTING_BAR).emit('MESSAGE', obj);
+function emitGlobalGneralArraies(socket) {
+    let users = flatMap(memo_ctl.userMap, enums.UserGlobalAttributes);
+    let maps = flatMap(memo_ctl.mapIdMap, enums.MapsGlobalAttributes);
+    let cities = flatMap(memo_ctl.cityMap, enums.CityGlobalAttributes);
+    let countries = flatMap(memo_ctl.countryMap, enums.CountryGlobalAttributes);
+    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries}});
 }
-
-function broadcast(obj) {
-    return memo_ctl.websocket.emit('MESSAGE', obj);
-}
-
-
-
-
-
 
 
 function refreshBasicData(callback) {
@@ -142,7 +123,6 @@ function refreshBasicData(callback) {
 }
 
 
-
 function parseJson(obj, keys = []) {
     keys.forEach(key => {
         let _loc = obj[key];
@@ -155,11 +135,17 @@ function parseJson(obj, keys = []) {
 
 
 
-function emitSocketByte(socket, frame, data) {
-    var buf = Buffer.from(JSON.stringify(data), 'utf-8');
-    socket.emit(frame, buf);
-    return socket;
+// function broadcastChatRoom(obj) {
+//     return memo_ctl.websocket.to(ROOM_CHATTING_BAR).emit('MESSAGE', obj);
+// }
+
+function broadcast(obj) {
+    return memo_ctl.websocket.emit('MESSAGE', obj);
 }
+
+
+
+
 
 
 module.exports = {
@@ -192,6 +178,7 @@ module.exports = {
                     loginTimestamp,
                 };
                 onMessage(socket);
+                emitGlobalGneralArraies(socket);
                 console.log(`A user [${fullUserInfo.nickname}] loaded socket connection.`);
             }
             return fullUserInfo;

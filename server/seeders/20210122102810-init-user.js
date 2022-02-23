@@ -18,7 +18,7 @@ const dataset = [
         "department": "運維中心",
         "code": "R001",
         "loyalName": "",
-        "countryName": "好煩",
+        "countryName": "覓",
     },
     {
         "nickname": "全彼得",
@@ -54,7 +54,7 @@ const dataset = [
         "department": "客戶服務部",
         "code": "R009",
         "loyalName": "施琲琲",
-        "countryName": "好煩",
+        "countryName": "覓",
     },
     {
         "nickname": "何噠噠",
@@ -63,7 +63,7 @@ const dataset = [
         "department": "值班技術四組",
         "code": "R011",
         "loyalName": "施琲琲",
-        "countryName": "好煩",
+        "countryName": "覓",
     },
     {
         "nickname": "焦婕西",
@@ -135,7 +135,7 @@ const dataset = [
         "department": "值班客服一組",
         "code": "R022",
         "loyalName": "",
-        "countryName": "好煩",
+        "countryName": "覓",
     },
     {
         "nickname": "林欣欣",
@@ -261,7 +261,7 @@ const dataset = [
         "department": "系統管理組",
         "code": "R052",
         "loyalName": "施琲琲",
-        "countryName": "好煩",
+        "countryName": "覓",
     },
     {
         "nickname": "吳玫",
@@ -666,7 +666,7 @@ const dataset = [
         "department": "值班客服二組",
         "code": "R297",
         "loyalName": "",
-        "countryName": "好煩",
+        "countryName": "覓",
     },
     {
         "nickname": "葉尚恩",
@@ -693,7 +693,7 @@ const dataset = [
         "department": "值班客服二組",
         "code": "R306",
         "loyalName": "施琲琲",
-        "countryName": "好煩",
+        "countryName": "覓",
     },
     {
         "nickname": "謝小白",
@@ -711,7 +711,7 @@ const dataset = [
         "department": "值班客服二組",
         "code": "R313",
         "loyalName": "",
-        "countryName": "好煩",
+        "countryName": "覓",
     },
     {
         "nickname": "楊薇薇",
@@ -720,7 +720,7 @@ const dataset = [
         "department": "值班客服一組",
         "code": "R312",
         "loyalName": "",
-        "countryName": "好煩",
+        "countryName": "覓",
     },
     {
         "nickname": "高湯米",
@@ -729,7 +729,7 @@ const dataset = [
         "department": "總務行政處",
         "code": "R323",
         "loyalName": "",
-        "countryName": "好煩",
+        "countryName": "覓",
     },
     {
         "nickname": "楊斯坦",
@@ -765,7 +765,7 @@ const dataset = [
         "department": "值班客服一組",
         "code": "R335",
         "loyalName": "施琲琲",
-        "countryName": "好煩",
+        "countryName": "覓",
     },
     {
         "nickname": "盧瑞秋",
@@ -882,7 +882,7 @@ const dataset = [
         "department": "風險管理處",
         "code": "R366",
         "loyalName": "施琲琲",
-        "countryName": "好煩",
+        "countryName": "覓",
     },
     {
         "nickname": "葉魏詩",
@@ -891,7 +891,7 @@ const dataset = [
         "department": "風險管理處",
         "code": "R368",
         "loyalName": "施琲琲",
-        "countryName": "好煩",
+        "countryName": "覓",
     },
     {
         "nickname": "陳大衛",
@@ -900,7 +900,7 @@ const dataset = [
         "department": "風險管理處",
         "code": "R369",
         "loyalName": "施琲琲",
-        "countryName": "好煩",
+        "countryName": "覓",
     },
     {
         "nickname": "林愛文",
@@ -914,7 +914,7 @@ const dataset = [
 ];
 
 const hash_countries = {
-    "好煩" : 1,
+    "覓" : 1,
     "風" : 2,
     "空幹" : 3,
     "音悅" : 4,
