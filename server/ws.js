@@ -1,12 +1,15 @@
 
 const socketIO = require("socket.io");
 const { Op } = require("sequelize");
-const fs = require('fs');
+// const fs = require('fs');
 const models = require('./models');
 const enums = require('../src/enum');
+const { asyncLogin } = require('./handler');
+const { makeToken, getDateByToekn } = require('./websocketctl/authorization');
 
 const ROOM_CHATTING_BAR = 'roomchattingbar';
-const memo_ctl = {websocket: null, userMap: {}};
+const memo_ctl = {websocket: null, userMap: {}, maps: [], mapIdMap: {}, cityMap: {}, countryMap: {}};
+// const clientArraies = {};
 
 
 
@@ -23,20 +26,51 @@ function onMessage(socket) {
         return switched && switched.catch(err => console.log(err));
     });
 
+    return true;
+
 
     function subSwitchOnMessage(act, payload, userinfo) {
+        const ugAttributes = enums.UserGlobalAttributes;
         switch (act) {
-            case enums.ACT_GET_USERS_INFO: {
-                let userGlobalAttributes = ['id', 'code', 'nickname', 'countryId', 'loyalty', 'contribution', 'occupationId', 'role', 'mapNowId', 'soldier', 'captiveDate'];
-                let users = [];
-                return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_USERS_INFO, payload: {users}});
-                
+            case enums.ACT_GET_GLOBAL_USERS_INFO: {
+                let users = Object.values(memo_ctl.userMap).map(user => {
+                    let _ = [];
+                    ugAttributes.map(col => { _.push(user[col]); });
+                    return _;
+                });
+                return subEmit(act, {users});
+            }
+            case enums.ACT_GET_GLOBAL_DATA: {
+                const mapAttributes = enums.MapsGlobalAttributes;
+                const cityAttributes = enums.CityGlobalAttributes;
+                const countryAttributes = enums.CountryGlobalAttributes;
+                let users = flatMap(memo_ctl.userMap, ugAttributes);
+                let maps = memo_ctl.maps.map(m => {
+                    let _ = [];
+                    mapAttributes.map(col => { _.push(m[col]) });
+                    return _;
+                });
+                let cities = flatMap(memo_ctl.cityMap, cityAttributes);
+                let countries = flatMap(memo_ctl.countryMap, countryAttributes);
+                return subEmit(act, {users, maps, cities, countries});
             }
             
             default:
                 console.log("Not Found Act: ", act);
         }
         return null;
+    }
+
+    function subEmit(act, payload) {
+        emitSocketByte(socket, enums.MESSAGE, {act, payload});
+    }
+
+    function flatMap(obj, col) {
+        return Object.values(obj).map(e => {
+            let _ = [];
+            col.map(c => { _.push(e[c]) });
+            return _;
+        });
     }
 }
 
@@ -50,15 +84,6 @@ function onDisconnect(socket) {
         if (!userinfo) { return; }
         console.log('disconnected: ', userinfo ? userinfo.nickname : 'unknown');
     });
-}
-
-
-
-
-
-function bindSockets(socket) {
-    onMessage(socket);
-    onDisconnect(socket);
 }
 
 
@@ -86,9 +111,29 @@ function refreshBasicData(callback) {
             let _user = user.toJSON();
             _user = parseJson(_user, ['mapPathIds', 'destoryByCountryIds']);
             memo_ctl.userMap[user.id] = _user;
+            
         });
     });
-    promises.push(promise1);
+    const promise2 = models.Map.findAll({attributes: {exclude: ['adventureId', 'createdAt', 'updatedAt']}}).then(maps => {
+        memo_ctl.maps = maps.map(m => {
+            let _m = m.toJSON();
+            memo_ctl.mapIdMap[_m.id] = _m;
+            return _m;
+        });
+    });
+    const promise3 = models.City.findAll({attributes: {exclude: ['createdAt', 'updatedAt']}}).then(cities => {
+        cities.map(city => {
+            let _city = city.toJSON();
+            memo_ctl.cityMap[_city.id] = _city;
+        });
+    });
+    const promise4 = models.Country.findAll({attributes: {exclude: ['createdAt', 'updatedAt']}}).then(countries => {
+        countries.map(country => {
+            let _country = country.toJSON();
+            memo_ctl.countryMap[_country.id] = _country;
+        });
+    });
+    promises.push(promise1, promise2, promise3, promise4);
     var _all = Promise.all(promises);
     if (callback) {
         _all.then(callback);
@@ -112,8 +157,8 @@ function parseJson(obj, keys = []) {
 
 function emitSocketByte(socket, frame, data) {
     var buf = Buffer.from(JSON.stringify(data), 'utf-8');
-    console.log('JSON.stringify(data) length: ', JSON.stringify(data).length);
     socket.emit(frame, buf);
+    return socket;
 }
 
 
@@ -130,28 +175,70 @@ module.exports = {
         });
     },
     onConnect: function(socket) {
-        const session = socket.request.session;
+        const request = socket.request;
+        const session = request.session;
         const userInfo = session.userinfo || {};
+        const loginTimestamp = userInfo.loginTimestamp;
+        const address = socket.handshake.address;
+        var authorized = false;
+        var binded = false;
+        const loadGun = (userId) => {
+            let fullUserInfo = memo_ctl.userMap[userId];
+            authorized = true;
+            if (binded == false) {
+                binded = true;
+                session.userinfo = {
+                    ...fullUserInfo,
+                    loginTimestamp,
+                };
+                onMessage(socket);
+                console.log(`A user [${fullUserInfo.nickname}] loaded socket connection.`);
+            }
+            return fullUserInfo;
+        }
         
-        console.log('A user socket connected: ', userInfo.nickname);
+        console.log(`A user [${userInfo.nickname}] has socket connected. address [${address}]`);
 
         socket.on(enums.AUTHORIZE, (msg) => {
-            if (parseInt(msg) == userInfo.loginTimestamp) {
-                let fullUserInfo = memo_ctl.userMap[userInfo.id];
-                return socket.emit('MESSAGE', {act: enums.AUTHORIZE, payload: fullUserInfo});
-            } else if (socket.request.headers.host.match(/127.0.0.1|localhost/i)) {
-                return models.User.findOne({where: {code: 'R307'}, attributes: {exclude: ['pwd', 'createdAt']}}).then(user => {
-                    let _userInfo = user.toJSON();
-                    _userInfo = parseJson(_userInfo, ['mapPathIds', 'destoryByCountryIds']);
-                    session.userinfo = _userInfo;
-                    // socket.emit('MESSAGE', {act: enums.AUTHORIZE, payload: _userInfo});
-                    emitSocketByte(socket, 'MESSAGE', {act: enums.AUTHORIZE, payload: _userInfo})
-                });
-            } else {
-                socket.emit('MESSAGE', {act: 'failed', redirect: '/logout'});
+            let reason = '';
+            switch (typeof msg) {
+                case 'number': {
+                    if (parseInt(msg) == loginTimestamp) {
+                        return emitSocketByte(socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: loadGun(userInfo.id)});
+                    }
+                    reason = 'loginstamp wrong.';
+                }
+                case 'object': {
+                    console.log('[AUTHORIZE] msg: ', msg);
+                    try {
+                        if (msg.token) {
+                            let userdata = getDateByToekn[msg.token];
+                            if (userdata && userdata.id && userdata.address == address) {
+                                return emitSocketByte(socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: loadGun(userdata.id)});
+                            }
+                            reason = 'token wrong.';
+                        } else if (msg.code) {
+                            return asyncLogin(msg.code, msg.pwd).then(e => {
+                                if (e.done) {
+                                    let fullUserInfo = loadGun(e.data.id);
+                                    let token = makeToken(fullUserInfo.id, fullUserInfo.code, e.data.loginTimestamp, address);
+                                    return emitSocketByte(socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: fullUserInfo, token});
+                                } else {
+                                    register = !!e.register;
+                                    reason = register ? 'Not setting yet.' : e.msg;
+                                    return emitSocketByte(socket, enums.AUTHORIZE, {act: enums.FAILED, reason, register});
+                                }
+                            });
+                        }
+                    } catch (err) {
+                        console.log(err);
+                    }
+                }
+                default:
+                    return emitSocketByte(socket, enums.AUTHORIZE, {act: enums.FAILED, reason, redirect: authorized ? 'logout' : ''});
             }
         });
 
-        bindSockets(socket);
+        onDisconnect(socket);
     }
 }

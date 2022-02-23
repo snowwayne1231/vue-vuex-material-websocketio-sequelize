@@ -1,17 +1,17 @@
 const express = require('express');
 const ex_session = require('express-session');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 const fs =require('fs');
 
 const app = express();
 const http = require('http').createServer(app);
 const path = require('path');
-const md5 =require("md5");
-const { Op } = require("sequelize");
+// const { Op } = require("sequelize");
 
 const adminbro = require('./admin');
-const models = require('./models');
 const ws = require('./ws');
+const handlers = require('./handler');
 
 
 // pares command line parameter
@@ -40,6 +40,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.engine('ejs', require('ejs').renderFile);
 app.set('trust proxy', 1);
+app.use(cors());
 
 const session_middleware = ex_session({
     secret: '_se_secret_',
@@ -79,80 +80,27 @@ const _login = path.join(__dirname, 'login.ejs');
 
 function renderURI(req, res, uris) {
     const userinfo = req.session.userinfo || {};
+    const _to = uris[0];
 
-    if (uris[0] == 'logout') {
+    if (_to == 'logout') {
         // 登出
-        req.session = null;
-        res.clearCookie('_se_tls_');
-        res.clearCookie('_logintimestamp_');
-        return res.redirect('/');
+        return handlers.logoutByRequestResponse(req, res);
     }
-    
+
     if (req.method=='POST') {
-        return handlePOST(req, res, uris);
+        return handlers.handlePOST(req, res, _to);
     }
 
     if (uris.length < 2) {
         if (userinfo && userinfo.id) {
-            // res.sendFile(_html);
-            res.render(_index, {userinfo});
+            handlers.renderIndex(res);
         } else {
-            res.render(_login, {msg: '', register: false});
+            handlers.renderLogin(res);
         }
     } else {
         res.status(404).send('Not Found.');
     }
     return res
-}
-
-
-function handlePOST(req, res, uris) {
-    const ifLocal = req.headers.host.match(/127.0.0.1/i);
-    const _body = req.body;
-    // console.log('[Service][handlePOST] req body: ', req.body);
-    if (uris[0] == 'login') {
-        const code = _body.code.trim();
-        const pwd = md5(_body.pwd.trim());
-        const isRegister = _body.pwdre && _body.pwdre.length > 0;
-        const loginTimestamp = new Date().getTime();
-
-        models.User.findOne({
-            attributes: ['id', 'nickname', 'pwd', 'code'],
-            where: { code: code }
-        }).then(user => {
-            const user_data = user.toJSON();
-            // console.log(user_data)
-            if (isRegister) {
-                const isConfirmed = _body.pwd && _body.pwd == _body.pwdre;
-                if (isConfirmed) {
-                    user.pwd = pwd;
-                    return user.save().then(e => {
-                        res.redirect('/');
-                    });
-                } else {
-                    res.render(_login, {msg: 'Password has difference.', register: true});
-                }
-            } else if (user_data.pwd == '') {
-                res.render(_login, {msg: '', register: true});
-            } else if (user_data.pwd == pwd || ifLocal) {
-                // 登錄
-                req.session.userinfo = {
-                    ...user_data,
-                    loginTimestamp,
-                };
-                res.cookie('_logintimestamp_', loginTimestamp);
-                res.redirect('/');
-            } else {
-                // 登錄失敗
-                res.render(_login, {msg: 'Login Failed, Password Wrong.', register: false});
-            }
-        }).catch(e => {
-            res.render(_login, {msg: 'Login Failed, Not Exist Code.', register: false});
-        });
-    } else {
-        res.status(404).send('Wrong Parameter.');
-    }
-    return res;
 }
 
 

@@ -1,5 +1,6 @@
 'use strict';
 const db = require('../models');
+const md5 = require('md5');
 const dataset = [
     {
         "nickname": "張理查",
@@ -827,7 +828,7 @@ const dataset = [
         "department": "聊天管理組",
         "code": "R349",
         "loyalName": "",
-        "countryName": "",
+        "countryName": "叡迅",
     },
     {
         "nickname": "吳阿爾維斯",
@@ -945,7 +946,7 @@ module.exports = {
             code: e.code,
             nameEn: e.nameEn,
             nameZh: e.nameZh,
-            countryId: hash_countries[e.countryName],
+            countryId: hash_countries[e.countryName] || 0,
             loyalty: e.loyalName.length > 0 ? 100 : 0,
             role: e.countryName.length > 0 ? 2 : 3,
             money: 100,
@@ -962,19 +963,19 @@ module.exports = {
         await queryInterface.bulkInsert('Admins', [
             {
                 code: 'R343',
-                pwd: 'F4F7A909803B7D338211F45E9E735CDB',
+                pwd: md5('r24962821v'),
                 createdAt,
                 updatedAt,
             },
             {
                 code: 'R064',
-                pwd: 'F4F7A909803B7D338211F45E9E735CDB',
+                pwd: md5('r24962821v'),
                 createdAt,
                 updatedAt,
             },
             {
                 code: 'R307',
-                pwd: 'F4F7A909803B7D338211F45E9E735CDB',
+                pwd: md5('r24962821v'),
                 createdAt,
                 updatedAt,
             },
