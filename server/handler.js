@@ -74,6 +74,9 @@ module.exports = {
                 const isRegister = _body.pwdre && String(_body.pwdre).length > 0;
                 const pwdre = isRegister ? String(_body.pwdre).trim() : '';
 
+                console.log('code: ', code);
+                console.log(_body);
+
                 if (isRegister) {
                     return this.asyncRegister(code, pwd, pwdre).then(payload => {
                         if (payload.done) {

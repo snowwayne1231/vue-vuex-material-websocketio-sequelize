@@ -26,18 +26,6 @@ if (argvv.length > 0) {
     });
 }
 //
-
-
-// setting http service
-if (port == 81) {
-    adminbro.useAdminRouterDev(app);
-    app.use(express.static(path.join(__dirname, '..', '/'), {maxAge: 1000*5}));
-} else {
-    adminbro.useAdminRouter(app);
-}
-
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
 app.engine('ejs', require('ejs').renderFile);
 app.set('trust proxy', 1);
 app.use(cors());
@@ -50,6 +38,16 @@ const session_middleware = ex_session({
     saveUninitialized: true,
 });
 app.use(session_middleware);
+// setting http service
+if (port == 81) {
+    adminbro.useAdminRouterDev(app);
+    app.use(express.static(path.join(__dirname, '..', '/'), {maxAge: 1000*5}));
+} else {
+    adminbro.useAdminRouter(app);
+}
+
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, '..', 'dist'), {maxAge: 1000*60*60*24}));
 app.use((req, res) => {
     const _ary = req.url.split(/[\/\\]+/g).filter(e=>e.length > 0);
@@ -58,8 +56,6 @@ app.use((req, res) => {
     }
     return renderURI(req, res, _ary);
 });
-//
-
 ws.buildWsConnection(http, session_middleware);
 
 

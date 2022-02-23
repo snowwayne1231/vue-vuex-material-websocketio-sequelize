@@ -153,11 +153,11 @@ module.exports = {
         const io = socketIO(http_serv, {cors: {origin: '*'}});
         const onConn = this.onConnect;
         memo_ctl.websocket = io;
+        memo_ctl.websocket.use(function(socket, next) {
+            middleware(socket.request, socket.request.res || {}, next);
+        });
         refreshBasicData().then(() => {
             memo_ctl.websocket.on('connection', onConn);
-            memo_ctl.websocket.use(function(socket, next) {
-                middleware(socket.request, socket.request.res || {}, next);
-            });
         });
     },
     onConnect: function(socket) {
@@ -189,6 +189,11 @@ module.exports = {
         socket.on(enums.AUTHORIZE, (msg) => {
             let reason = '';
             switch (typeof msg) {
+                case 'string': {
+                    if (!msg.match(/^\d+$/)) {
+                        break;
+                    }
+                }
                 case 'number': {
                     if (parseInt(msg) == loginTimestamp) {
                         return emitSocketByte(socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: loadGun(userInfo.id)});
