@@ -2,7 +2,7 @@
 const db = require('../models');
 const column = ["id", "name", "sign", "peopleMax", "color", "cityName", "emperorName"];
 const dataset = [
-  [ 1, '好煩', '好煩', 15, '#ffffff,#000000', '漢中', '施琲琲' ],
+  [ 1, '覓', '覓', 15, '#ffffff,#000000', '漢中', '施琲琲' ],
   [ 2, '風', '風', 15, '#9207ff,#ffffff', '汝南', '李維克' ],
   [ 3, '空幹', '空幹', 15, '#000000,#ffffff', '鄴', '許維克' ],
   [ 4, '音悅', '音悅', 10, '#0048ff,#ffffff', '梓潼', '黃杰夫' ],
