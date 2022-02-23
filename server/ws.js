@@ -7,7 +7,6 @@ const enums = require('../src/enum');
 const { asyncLogin } = require('./handler');
 const { makeToken, getDateByToekn } = require('./websocketctl/authorization');
 
-const ROOM_CHATTING_BAR = 'roomchattingbar';
 const memo_ctl = {websocket: null, userMap: {}, mapIdMap: {}, cityMap: {}, countryMap: {}};
 // const clientArraies = {};
 
@@ -92,19 +91,18 @@ function refreshBasicData(callback) {
             let _user = user.toJSON();
             _user = parseJson(_user, ['mapPathIds', 'destoryByCountryIds']);
             memo_ctl.userMap[user.id] = _user;
-            
         });
     });
     const promise2 = models.Map.findAll({attributes: {exclude: ['adventureId', 'createdAt', 'updatedAt']}}).then(maps => {
-        memo_ctl.maps = maps.map(m => {
+        maps.map(m => {
             let _m = m.toJSON();
             memo_ctl.mapIdMap[_m.id] = _m;
-            return _m;
         });
     });
     const promise3 = models.City.findAll({attributes: {exclude: ['createdAt', 'updatedAt']}}).then(cities => {
         cities.map(city => {
             let _city = city.toJSON();
+            _city = parseJson(_city, ['jsonConstruction']);
             memo_ctl.cityMap[_city.id] = _city;
         });
     });
@@ -135,13 +133,12 @@ function parseJson(obj, keys = []) {
 
 
 
-// function broadcastChatRoom(obj) {
-//     return memo_ctl.websocket.to(ROOM_CHATTING_BAR).emit('MESSAGE', obj);
-// }
-
 function broadcast(obj) {
     return memo_ctl.websocket.emit('MESSAGE', obj);
 }
+
+
+
 
 
 
@@ -204,7 +201,7 @@ module.exports = {
                     console.log('[AUTHORIZE] msg: ', msg);
                     try {
                         if (msg.token) {
-                            let userdata = getDateByToekn[msg.token];
+                            let userdata = getDateByToekn(msg.token);
                             if (userdata && userdata.id && userdata.address == address) {
                                 return emitSocketByte(socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: loadGun(userdata.id)});
                             }
@@ -214,6 +211,7 @@ module.exports = {
                                 if (e.done) {
                                     let fullUserInfo = loadGun(e.data.id);
                                     let token = makeToken(fullUserInfo.id, fullUserInfo.code, e.data.loginTimestamp, address);
+                                    console.log('makeToken token: ', token)
                                     return emitSocketByte(socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: fullUserInfo, token});
                                 } else {
                                     register = !!e.register;

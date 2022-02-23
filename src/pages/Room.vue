@@ -14,7 +14,7 @@
       <md-card-content>
         <div class="map" @mousedown="onMouseDown($event)" @mousemove="onMouseMove($event)" @mouseup="onMouseUp()" @mouseleave="onMouseUp()">
           <div class="render" :style="{ transform: `translate(${viewX}px, ${viewY}px)` }">
-            <li v-for="(p, idx) in mapData" :key="idx" class="point" :style="{left: `${p.x}px`, top: `${p.y}px`}">
+            <li v-for="(p, idx) in mapData" :key="idx" class="point" :style="{left: `${p.x}px`, top: `${p.y}px`}" @click="onClickPoint(p)">
               <span>🏠{{p.name}}</span>
               <!-- <Man 
                 name="first-man"
@@ -54,14 +54,13 @@ export default {
     Man,
   },
   mounted() {
-    
+    this._mouse_dataset = {};
   },
   methods: {
     onClickMan() {
       this.localVoteBoolean = !this.localVoteBoolean;
     },
     onMouseDown(evt) {
-      console.log(evt);
       var x = evt.clientX;
       var y = evt.clientY;
       this._mouse_dataset = {start: {x,y}, go: true, origin: {x: this.viewX, y: this.viewY}};
@@ -83,6 +82,10 @@ export default {
         this.viewX = moveX;
         this.viewY = moveY;
       }
+    },
+    onClickPoint(evt) {
+      console.log('onClickPoint evt: ', evt);
+      this.$store.dispatch('actMove', ['wwe', evt]);
     },
   },
 }

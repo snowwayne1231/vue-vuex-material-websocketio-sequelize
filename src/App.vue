@@ -60,20 +60,20 @@ export default {
         
         if (_logintimestamp) {
           payload = _logintimestamp;
-        } else if (token && false) {
+        } else if (token) {
           payload = {token};
         } else {
           // 不同域 提交 code and pwd 嘗試登入
-          // let code = window.prompt('輸入工號: ');
-          // let pwd = window.prompt('密碼: ');
+          let code = window.prompt('輸入工號: ');
+          let pwd = window.prompt('密碼: ');
           /*
               Just for test and demo
           */
-          let code = 'R001';
-          let pwd = 123;
+          // let code = 'R001';
+          // let pwd = 123;
           payload = {code, pwd};
         }
-        
+
         this.$store.dispatch('wsEmitAuthorize', payload);
         
       } else {

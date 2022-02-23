@@ -38,6 +38,7 @@ const userInitState = {
     destoryByCountryIds: [],
     soldier: 0,
     captiveDate: 0,
+    connected: false,
 };
 
 const moduleUser = {
@@ -89,8 +90,6 @@ const moduleUser = {
         },
     },
     actions: {
-        wsEmitMessage: (context, message) => {
-        },
         wsEmitAuthorize: (context, message) => {
         },
     },
@@ -119,9 +118,22 @@ const globalData = {
                     state.maps = parseArraiesToObjects(payload.maps, enums.MapsGlobalAttributes);
                     state.cities = parseArraiesToObjects(payload.cities, enums.CityGlobalAttributes);
                     state.countries = parseArraiesToObjects(payload.countries, enums.CountryGlobalAttributes);
-                }
+                    
+                } break;
+                case enums.ACT_GET_GLOBAL_CHANGE_DATA: {
+
+                } break;
                 default:
             }
+        },
+    },
+    actions: {
+        wsEmitMessage: ({dispatch, commit}, message) => {
+
+        },
+        actMove: ({dispatch}, message) => {
+            console.log('actMove: ', message);
+            dispatch('wsEmitMessage', {act: 'qq', payload: 'wewe'});
         },
     },
     getters: {
