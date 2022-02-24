@@ -14,13 +14,13 @@
       <md-card-content>
         <div class="map" @mousedown="onMouseDown($event)" @mousemove="onMouseMove($event)" @mouseup="onMouseUp()" @mouseleave="onMouseUp()">
           <div class="render" :style="{ transform: `translate(${viewX}px, ${viewY}px)` }">
-            <li v-for="(p, idx) in mapData" :key="idx" class="point" :style="{left: `${p.x}px`, top: `${p.y}px`}" @click="onClickPoint(p)">
-              <span>🏠{{p.name}}</span>
-              <!-- <Man 
-                name="first-man"
+            <li v-for="(p, idx) in mapData" :key="p.id+idx" class="point" :style="{left: `${p.x}px`, top: `${p.y}px`}" @click="onClickPoint(p)">
+              <span :class="{light: showLights.includes(p.id), now: showNow==p.id}">🏠{{p.name}}  {{showLights.includes(p.id)}}</span>
+              <Man
+                v-if="showNow==p.id"
+                name="帥哥"
                 :voted="localVoteBoolean"
-                @click="onClickMan"
-              /> -->
+              />
             </li>
           </div>
         </div>
@@ -33,21 +33,28 @@
 <script>
 import { mapState } from 'vuex'
 import Man from '@/components/interactive/Man';
+import mapAlgorithm from '@/helper/mapAlgorithm';
 
 export default {
   name: 'Room',
   data() {
     return {
-      localVoteBoolean: false,
       viewX: 0,
       viewY: 0,
+      showLights: [],
     }
   },
   computed: {
-    ...mapState(['global']),
+    ...mapState(['global', 'user']),
     mapData(self) {
       let mpas = self.global.maps;
       return mpas;
+    },
+    localVoteBoolean(self) {
+      return self.showLights.length == 0;
+    },
+    showNow(self) {
+      return self.user.mapNowId;
     },
   },
   components: {
@@ -57,9 +64,6 @@ export default {
     this._mouse_dataset = {};
   },
   methods: {
-    onClickMan() {
-      this.localVoteBoolean = !this.localVoteBoolean;
-    },
     onMouseDown(evt) {
       var x = evt.clientX;
       var y = evt.clientY;
@@ -83,9 +87,17 @@ export default {
         this.viewY = moveY;
       }
     },
-    onClickPoint(evt) {
-      console.log('onClickPoint evt: ', evt);
-      this.$store.dispatch('actMove', ['wwe', evt]);
+    onClickPoint(dataset) {
+      if (this.showLights.includes(dataset.id)) {
+        let yes = window.confirm('確定移動這此嗎?');
+        if (yes) {
+          this.showLights = [];
+          return this.$store.dispatch('actMove', dataset.id);
+        }
+      } else if (dataset.id == this.showNow) {
+        const routes = mapAlgorithm.getAllowedPosition(dataset.id, 3);
+        this.showLights = routes.all;
+      }
     },
   },
 }
@@ -109,5 +121,17 @@ export default {
 .point {
   list-style: none;
   position: absolute;
+  cursor: pointer;
+}
+.light {
+  color: blue;
+}
+.now {
+  color: red;
+}
+.map .man {
+  position: absolute;
+  top: -44px;
+  left: 20px;
 }
 </style>

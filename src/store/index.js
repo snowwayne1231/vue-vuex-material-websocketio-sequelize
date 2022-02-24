@@ -2,9 +2,12 @@ import Vue from 'vue';
 import Vuex from 'vuex';
 import socketio from 'socket.io-client';
 import createSocketIoPlugin from 'vuex-socketio';
+
 import enums from '@/enum';
+import mapAlgorithm from '@/helper/mapAlgorithm';
 import { arrayBufferToJSON, parseArraiesToObjects } from './parser';
-import axios from 'axios';
+import cusActions from './action';
+
 
 console.log('process.env: ', process.env);
 const wsLocation = process.env.WS_LOCATION;
@@ -61,16 +64,7 @@ const moduleUser = {
                 window.localStorage.setItem('_token_', parsedMsg.token);
             }
             if (parsedMsg.register) {
-                /*
-                    Just for test and demo
-                */
-                axios.post(wsLocation + 'login', {code: 'R001', pwd: 123, pwdre: 123}).then(e => {
-                    const status = e.status; // 200 = 成功  202 = 註冊失敗  203 = 登入失敗
-                    console.log(e);
-                    if (status == 200) {
-                        location.href = '/';
-                    }
-                });
+                
             }
 
             const payload = parsedMsg.payload;
@@ -118,10 +112,24 @@ const globalData = {
                     state.maps = parseArraiesToObjects(payload.maps, enums.MapsGlobalAttributes);
                     state.cities = parseArraiesToObjects(payload.cities, enums.CityGlobalAttributes);
                     state.countries = parseArraiesToObjects(payload.countries, enums.CountryGlobalAttributes);
-                    
+                    mapAlgorithm.setData(state.maps);
                 } break;
                 case enums.ACT_GET_GLOBAL_CHANGE_DATA: {
-
+                    let dataset = payload.dataset;
+                    Array.isArray(dataset) && dataset.map(_ => {
+                        let pointer = _.depth.reduce((p, d) => {
+                            if (typeof d == 'string') {
+                                return p[d];
+                            } else if (typeof d == 'number' && p.length > 0) {
+                                for (let i = 0; i < p.length; i++) {
+                                    if (p[i].id == d) { return p[i]; }
+                                }
+                            }
+                            return {};
+                        }, state);
+                        console.log('pointer: ', pointer);
+                        pointer[_.key] = _.value;
+                    });
                 } break;
                 default:
             }
@@ -129,12 +137,8 @@ const globalData = {
     },
     actions: {
         wsEmitMessage: ({dispatch, commit}, message) => {
-
         },
-        actMove: ({dispatch}, message) => {
-            console.log('actMove: ', message);
-            dispatch('wsEmitMessage', {act: 'qq', payload: 'wewe'});
-        },
+        ...cusActions,
     },
     getters: {
         

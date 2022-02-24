@@ -4,6 +4,7 @@
 1. Docker
 2. Nodejs 14+
 3. Git
+4. Python 2+
 
 ## Setting
 config path = server/config/config.json

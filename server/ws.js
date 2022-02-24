@@ -4,8 +4,10 @@ const { Op } = require("sequelize");
 // const fs = require('fs');
 const models = require('./models');
 const enums = require('../src/enum');
+const algorithms = require('./websocketctl/algorithm');
 const { asyncLogin } = require('./handler');
 const { makeToken, getDateByToekn } = require('./websocketctl/authorization');
+
 
 const memo_ctl = {websocket: null, userMap: {}, mapIdMap: {}, cityMap: {}, countryMap: {}};
 // const clientArraies = {};
@@ -44,7 +46,26 @@ function onMessage(socket) {
                     ugAttributes.map(col => { _.push(user[col]); });
                     return _;
                 });
-                return subEmit(act, {users});
+                return subEmitMessage(act, {users});
+            }
+            case enums.ACT_MOVE: {
+                const targetId = payload;
+                const nowId = userinfo.mapNowId;
+                const dis = algorithms.getMapDistance(nowId, targetId);
+                if (dis <= userinfo.actPoint) {
+                    console.log('userinfo.actPoint enough. ', userinfo.actPoint, dis);
+                    return updateUserInfo(userinfo, {mapNowId: targetId}, socket).then(() => {
+                        emitGlobalChanges({
+                            dataset: [
+                                { depth: ['users', userinfo.id], key: 'mapNowId', value: targetId },
+                            ],
+                        });
+                    });
+                    
+                    
+                } else {
+                    return subEmitMessage(enums.ALERT, {msg: 'Not enough act point.', act});
+                }
             }
             
             default:
@@ -53,7 +74,7 @@ function onMessage(socket) {
         return null;
     }
 
-    function subEmit(act, payload) {
+    function subEmitMessage(act, payload) {
         emitSocketByte(socket, enums.MESSAGE, {act, payload});
     }
 }
@@ -63,6 +84,12 @@ function emitSocketByte(socket, frame, data) {
     var buf = Buffer.from(JSON.stringify(data), 'utf-8');
     socket.emit(frame, buf);
     return socket;
+}
+
+
+function broadcastSocketByte(frame, data) {
+    var buf = Buffer.from(JSON.stringify(data), 'utf-8');
+    return memo_ctl.websocket.emit(frame, buf);
 }
 
 
@@ -84,6 +111,11 @@ function emitGlobalGneralArraies(socket) {
 }
 
 
+function emitGlobalChanges(changes = []) {
+    return broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_CHANGE_DATA, payload: changes});
+}
+
+
 function refreshBasicData(callback) {
     const promises = [];
     const promise1 = models.User.findAll({attributes: {exclude: ['pwd', 'createdAt']}}).then((users) => {
@@ -94,10 +126,12 @@ function refreshBasicData(callback) {
         });
     });
     const promise2 = models.Map.findAll({attributes: {exclude: ['adventureId', 'createdAt', 'updatedAt']}}).then(maps => {
-        maps.map(m => {
+        const _maps = maps.map(m => {
             let _m = m.toJSON();
             memo_ctl.mapIdMap[_m.id] = _m;
+            return _m;
         });
+        algorithms.setMapData(_maps);
     });
     const promise3 = models.City.findAll({attributes: {exclude: ['createdAt', 'updatedAt']}}).then(cities => {
         cities.map(city => {
@@ -132,13 +166,20 @@ function parseJson(obj, keys = []) {
 }
 
 
-
-function broadcast(obj) {
-    return memo_ctl.websocket.emit('MESSAGE', obj);
+async function updateUserInfo(userinfo, update, socket=null) {
+    let id = userinfo.id;
+    await models.User.update(update, {where: { id }});
+    Object.keys(update).map(key => {
+        let val = update[key];
+        userinfo[key] = val;
+        if (memo_ctl.userMap[id] && memo_ctl.userMap[id][key]) {
+            memo_ctl.userMap[id][key] = val;
+        }
+    });
+    if (socket) {
+        emitSocketByte(socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: update});
+    }
 }
-
-
-
 
 
 
@@ -185,6 +226,12 @@ module.exports = {
 
         socket.on(enums.AUTHORIZE, (msg) => {
             let reason = '';
+            /*
+                for locally test...
+            */
+            if (address == '::ffff:127.0.0.1') {
+                return emitSocketByte(socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: loadGun(2)});
+            }
             switch (typeof msg) {
                 case 'string': {
                     if (!msg.match(/^\d+$/)) {
