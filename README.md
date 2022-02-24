@@ -10,9 +10,9 @@ config path = server/config/config.json
 
 1. Change those db setting to you own.
 ``` Shell
-"username": "postgres",
-"password": "db_password",
-"database": "db_container",
+"username": "youruser",
+"password": "yourpassword",
+"database": "yourdatabase",
 "host": "127.0.0.1",
 "dialect": "postgres"
 ```
@@ -25,8 +25,10 @@ docker ps
 docker exec -it [ID] bash
 
 psql -h 127.0.0.1 -p 5432 -U postgres
-CREATE DATABASE welfare2021;
-\q 
+CREATE DATABASE yourdatabase;
+CREATE USER youruser WITH ENCRYPTED PASSWORD 'yourpassword';
+GRANT ALL PRIVILEGES ON DATABASE yourdatabase TO youruser;
+\q
 exit
 ```
 
@@ -39,24 +41,27 @@ npm install
 4. Init sequelize
 ``` Shell
 npx sequelize-cli db:migrate
-npx sequelize-cli db:migrate:undo:all
-
 npx sequelize-cli db:seed:all
-npx sequelize-cli db:seed:undo:all
 ```
 
 
 ## Development:
 
+1. run both 2 script below for develop env
 ``` Shell
 npm run watch-service
 npm run dev
 ```
 
+2. if you want to clear or reset data
+``` Shell
+npx sequelize-cli db:migrate:undo:all
+npx sequelize-cli db:seed:undo:all
+```
+
 
 ## Build Setup:
 ``` Shell
-
 npm run build
 npm run service
 ```
