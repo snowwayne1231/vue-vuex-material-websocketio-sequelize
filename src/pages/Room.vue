@@ -21,6 +21,9 @@
                 name="帥哥"
                 :voted="localVoteBoolean"
               />
+              <div class="list-people">
+                <i v-for="(user) in usersByMapId(p.id)" :key="user.id">{{user.nickname}},</i>
+              </div>
             </li>
           </div>
         </div>
@@ -69,6 +72,9 @@ export default {
     this._mouse_dataset = {};
   },
   methods: {
+    usersByMapId(mapId) {
+      return this.global.users.filter(u => u.mapNowId == mapId);
+    },
     onMouseDown(evt) {
       var x = evt.clientX;
       var y = evt.clientY;
@@ -195,5 +201,9 @@ export default {
   width: 100%;
   height: 60px;
   background: rgba(0,0,0,0.2);
+}
+.list-people {
+  white-space: normal;
+  width: 100px;
 }
 </style>

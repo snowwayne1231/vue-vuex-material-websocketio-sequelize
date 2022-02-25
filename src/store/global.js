@@ -36,8 +36,7 @@ const global = {
               }
               return {}
             }, state)
-            console.log('pointer: ', pointer)
-            console.log('update: ', _.update)
+            console.log('pointer: ', pointer, 'update: ', _.update)
             Object.keys(_.update).map(key => {
               const value = _.update[key];
               if (pointer[key]) { pointer[key] = value }
