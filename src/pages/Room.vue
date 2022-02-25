@@ -24,7 +24,12 @@
             </li>
           </div>
         </div>
-        
+        <div class="nav">
+          <button @click="onClickIncreaseSoldier">徵兵</button>
+          <button @click="onClickSearchWild">探索</button>
+          <button @click="onClickLeaveCountry">下野</button>
+          <button @click="onClickEnterCountry">入仕</button>
+        </div>
       </md-card-content>
     </md-card>
   </div>
@@ -33,7 +38,7 @@
 <script>
 import { mapState } from 'vuex'
 import Man from '@/components/interactive/Man';
-import mapAlgorithm from '@/helper/mapAlgorithm';
+import mapAlgorithm from '@/unit/mapAlgorithm';
 
 export default {
   name: 'Room',
@@ -99,6 +104,55 @@ export default {
         this.showLights = routes.all;
       }
     },
+    onClickIncreaseSoldier() {
+      const chekcs = this.getCheck([
+        this.checkActPoint,
+        this.checkIsOnCity,
+      ]);
+      if (chekcs) {
+        this.$store.dispatch('actIncreaseSoldier');
+      }
+    },
+    onClickSearchWild() {
+      const chekcs = this.getCheck([
+        this.checkActPoint,
+        this.checkInWild,
+      ]);
+      if (chekcs) {
+        this.$store.dispatch('actSearchWild');
+      }
+    },
+    onClickLeaveCountry() {
+      const chekcs = this.getCheck([
+        this.checkActPoint,
+        this.checkIsInCountry,
+      ]);
+      if (chekcs) {
+        this.$store.dispatch('actLeaveCountry');
+      }
+    },
+    onClickEnterCountry() {
+      return this.$store.dispatch('actEnterCountry');
+    },
+    getCheck(ary = []) {
+      return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});
+    },
+    checkActPoint(atleast = 1) {
+      return this.user.actPoint >= atleast ? '' : '行動點數不足';
+    },
+    checkIsOnCity() {
+      const mapNowId = this.user.mapNowId;
+      const thisMap = this.global.maps.find(e => e.id == mapNowId);
+      return thisMap && thisMap.cityId > 0 && this.user.countryId == thisMap.ownCountryId ? '' : '不在此城池';
+    },
+    checkInWild() {
+      const mapNowId = this.user.mapNowId;
+      const thisMap = this.global.maps.find(e => e.id == mapNowId);
+      return thisMap && thisMap.cityId == 0 ? '' : '不在野區';
+    },
+    checkIsInCountry() {
+      return this.user.countryId > 0 ? '' : '無所屬國家';
+    },
   },
 }
 </script>
@@ -133,5 +187,13 @@ export default {
   position: absolute;
   top: -44px;
   left: 20px;
+}
+.nav {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: 60px;
+  background: rgba(0,0,0,0.2);
 }
 </style>

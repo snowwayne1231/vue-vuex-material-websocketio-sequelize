@@ -40,3 +40,14 @@
     flex: 9;
   }
 }
+
+.md-card-content {
+  position: relative;
+}
+
+button {
+  cursor: pointer;
+  min-width: 60px;
+  min-height: 26px;
+  font-size: 18px;
+}

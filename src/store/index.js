@@ -4,9 +4,9 @@ import socketio from 'socket.io-client';
 import createSocketIoPlugin from 'vuex-socketio';
 
 import enums from '@/enum';
-import mapAlgorithm from '@/helper/mapAlgorithm';
-import { arrayBufferToJSON, parseArraiesToObjects } from './parser';
+import { arrayBufferToJSON } from './parser';
 import cusActions from './action';
+import global from './global';
 
 
 console.log('process.env: ', process.env);
@@ -92,64 +92,10 @@ const moduleUser = {
     },
 }
 
-const globalData = {
-    state: {
-        users: [],
-        maps: [],
-        cities: [],
-        countries: [],
-    },
-    mutations: {
-        wsOnMessage: (state, message) => {
-            let parsedMsg = arrayBufferToJSON(message);    // byte array 轉回 json
-            clog('Socket On Message Parsed: ', parsedMsg);
-            
-            const payload = parsedMsg.payload;
-            
-            switch (parsedMsg.act) {
-                case enums.ACT_GET_GLOBAL_DATA: {
-                    state.users = parseArraiesToObjects(payload.users, enums.UserGlobalAttributes);
-                    state.maps = parseArraiesToObjects(payload.maps, enums.MapsGlobalAttributes);
-                    state.cities = parseArraiesToObjects(payload.cities, enums.CityGlobalAttributes);
-                    state.countries = parseArraiesToObjects(payload.countries, enums.CountryGlobalAttributes);
-                    mapAlgorithm.setData(state.maps);
-                } break;
-                case enums.ACT_GET_GLOBAL_CHANGE_DATA: {
-                    let dataset = payload.dataset;
-                    Array.isArray(dataset) && dataset.map(_ => {
-                        let pointer = _.depth.reduce((p, d) => {
-                            if (typeof d == 'string') {
-                                return p[d];
-                            } else if (typeof d == 'number' && p.length > 0) {
-                                for (let i = 0; i < p.length; i++) {
-                                    if (p[i].id == d) { return p[i]; }
-                                }
-                            }
-                            return {};
-                        }, state);
-                        console.log('pointer: ', pointer);
-                        pointer[_.key] = _.value;
-                    });
-                } break;
-                default:
-            }
-        },
-    },
-    actions: {
-        wsEmitMessage: ({dispatch, commit}, message) => {
-        },
-        ...cusActions,
-    },
-    getters: {
-        
-    }
-};
-
-
 export default new Vuex.Store({
     modules: {
       'user': moduleUser,
-      'global': globalData,
+      global,
     },
     plugins: [socketPlugin]
 });

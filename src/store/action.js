@@ -20,5 +20,17 @@ module.exports = {
     actMove: ({dispatch}, args) => {
         dispatch('wsEmitMessage', {act: enums.ACT_MOVE, payload: args});
     },
+    actIncreaseSoldier: ({dispatch}) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_INCREASE_SOLDIER});
+    },
+    actSearchWild: ({dispatch}) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_SEARCH_WILD});
+    },
+    actLeaveCountry: ({dispatch}) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_LEAVE_COUNTRY});
+    },
+    actEnterCountry: ({dispatch}) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_ENTER_COUNTRY});
+    },
     register,
 }
