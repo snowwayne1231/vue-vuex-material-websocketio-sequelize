@@ -78,11 +78,11 @@ module.exports = {
       },
       mapPathIds: {
         type: Sequelize.TEXT,
-        defaultValue: '{}',
+        defaultValue: '[]',
       },
       destoryByCountryIds: {
         type: Sequelize.TEXT,
-        defaultValue: '{}',
+        defaultValue: '[]',
       },
       soldier: {
         type: Sequelize.INTEGER,

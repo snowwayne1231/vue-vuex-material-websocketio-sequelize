@@ -1,5 +1,17 @@
 "use strict";
 const db = require('../models');
+const countryDataset = [
+  { name: '風', mainCity: '汝南', otherCity: ['廬江', '新野']},
+  { name: '覓', mainCity: '漢中', otherCity: ['上庸', '天水']},
+  { name: '空幹', mainCity: '鄴', otherCity: ['平原', '晉陽']},
+  { name: '音悅', mainCity: '梓潼', otherCity: ['成都']},
+  { name: '鬆露', mainCity: '北平', otherCity: ['南皮', '代縣']},
+  { name: '影', mainCity: '武陵', otherCity: []},
+  { name: '琥', mainCity: '鄱陽', otherCity: ['桂陽', '零陵']},
+  { name: '叡迅', mainCity: '雲南', otherCity: ['江洲', '永安']},
+];
+
+const userLocations = [];
 
 
 module.exports = {
@@ -10,11 +22,6 @@ module.exports = {
     const hash_map_id_map = {};
     const hash_map_cityid_map = {};
     const hash_map_country = {};
-
-    const user_template = {
-      mapNowId: 0,
-      role: 0,
-    }
 
     const users = await db.User.findAll();
     users.map(user => {
@@ -47,6 +54,26 @@ module.exports = {
         await ins.save();
       }
     }
+
+
+    for (let i = 0; i < countryDataset.length; i++) {
+      const data = countryDataset[i];
+      const country = data.name;
+      const mainCity = data.mainCity;
+      const otherCity = data.otherCity;
+      const countryInstance = countries.find(e => e.name == country);
+      const countryId = countryInstance.id;
+      const mapInstance = maps.find(m => m.name == mainCity);
+      mapInstance.ownCountryId = countryId;
+      await mapInstance.save();
+      for (let x = 0; x < otherCity.length; x++) {
+        const city = otherCity[x];
+        const mapIns = maps.find(m => m.name == city);
+        mapIns.ownCountryId = countryId;
+        await mapIns.save();
+      }
+    }
+
   },
 
   down: async (queryInterface, Sequelize) => {
