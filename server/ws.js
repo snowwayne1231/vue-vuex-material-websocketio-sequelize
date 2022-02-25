@@ -52,15 +52,16 @@ function onMessage(socket) {
                 const targetId = payload;
                 const nowId = userinfo.mapNowId;
                 const dis = algorithms.getMapDistance(nowId, targetId);
-                if (dis <= userinfo.actPoint) {
-                    return updateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - dis}, socket);
+                const targetMap = memo_ctl.mapIdMap[targetId];
+                if (dis <= userinfo.actPoint && targetMap && (userinfo.countryId == 0 || targetMap.ownCountryId == userinfo.countryId)) {
+                    return updateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - dis}, act, socket);
                 } else {
-                    return subEmitMessage(enums.ALERT, {msg: 'Not enough act point.', act});
+                    return subEmitMessage(enums.ALERT, {msg: 'Failed.', act});
                 }
             }
             case enums.ACT_LEAVE_COUNTRY: {
                 if (userinfo.actPoint > 0 && userinfo.role == 2 && (userinfo.loyalUserId == 0 || userinfo.destoryByCountryIds.length > 0)) {
-                    return updateUserInfo(userinfo, { countryId: 0, role: enums.ROLE_FREEMAN, actPoint: 0, money: 0, soldier: 0 }, socket)
+                    return updateUserInfo(userinfo, { countryId: 0, role: enums.ROLE_FREEMAN, actPoint: 0, money: 0, soldier: 0 }, act, socket)
                 } else {
                     return subEmitMessage(enums.ALERT, {msg: 'Failed.', act});
                 }
@@ -71,11 +72,11 @@ function onMessage(socket) {
                 if (thisMap && userinfo.actPoint > 0) {
                     const thisCountryId = thisMap.ownCountryId;
                     const dbci = userinfo.destoryByCountryIds;
-                    console.log('thisCountryId : ', thisCountryId)
-                    console.log('dbci : ', dbci)
-                    if (thisCountryId && thisCountryId > 0 && memo_ctl.countryMap[thisCountryId] && dbci.includes && !dbci.includes(thisCountryId)) {
-                        const ratio = Math.round(Math.random() * 10) / 10;
-                        return updateUserInfo(userinfo, { countryId: ratio >= 0.5 ? thisCountryId: 0, role: enums.ROLE_GENERMAN, actPoint: 0 }, socket)
+                    console.log('thisCountryId : ', thisCountryId, 'dbci: ', dbci)
+                    // dbci 先不用
+                    const ratio = Math.round(Math.random() * 10) / 10;
+                    if (thisCountryId && thisCountryId > 0 && memo_ctl.countryMap[thisCountryId] && ratio > 0.5) {
+                        return updateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 0 }, act, socket)
                     }
                 }
                 return subEmitMessage(enums.ALERT, {msg: 'Failed.', act});
@@ -83,18 +84,18 @@ function onMessage(socket) {
             case enums.ACT_SEARCH_WILD: {
                 const mapId = userinfo.mapNowId;
                 const thisMap = memo_ctl.mapIdMap[mapId];
-                if (userinfo.actPoint > 0 && thisMap && thisMap.type === enums.TYPE_WILD) {
+                if (userinfo.actPoint > 0 && userinfo.role !== enums.ROLE_FREEMAN && thisMap && thisMap.type === enums.TYPE_WILD) {
                     const randomMoney = Math.round(Math.random() * 100) + 50;
-                    return updateUserInfo(userinfo, { money: userinfo.money + randomMoney, actPoint: userinfo.actPoint-1,  }, socket);
+                    return updateUserInfo(userinfo, { money: userinfo.money + randomMoney, actPoint: userinfo.actPoint-1,  }, act, socket);
                 }
                 return subEmitMessage(enums.ALERT, {msg: 'Failed.', act});
             }
             case enums.ACT_INCREASE_SOLDIER: {
                 const mapId = userinfo.mapNowId;
                 const thisMap = memo_ctl.mapIdMap[mapId];
-                if (userinfo.actPoint > 0 && thisMap && thisMap.type === enums.TYPE_CITY) {
+                if (userinfo.actPoint > 0 && userinfo.role !== enums.ROLE_FREEMAN && thisMap && thisMap.type === enums.TYPE_CITY) {
                     const randomSoldier = Math.round(Math.random() * 200) + 100;
-                    return updateUserInfo(userinfo, { soldier: userinfo.soldier + randomSoldier, actPoint: userinfo.actPoint-1,  }, socket);
+                    return updateUserInfo(userinfo, { soldier: userinfo.soldier + randomSoldier, actPoint: userinfo.actPoint-1,  }, act, socket);
                 }
                 return subEmitMessage(enums.ALERT, {msg: 'Failed.', act});
             }
@@ -213,7 +214,7 @@ function parseJson(obj, keys = []) {
 }
 
 
-async function updateUserInfo(userinfo, update, socket=null) {
+async function updateUserInfo(userinfo, update, act, socket=null) {
     const id = userinfo.id;
     const updatedKeys = Object.keys(update);
     const userGlobalAttrs = enums.UserGlobalAttributes;
@@ -226,10 +227,11 @@ async function updateUserInfo(userinfo, update, socket=null) {
         }
     });
     if (socket) {
-        emitSocketByte(socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: update});
+        emitSocketByte(socket, enums.AUTHORIZE, {act, payload: update});
     }
     if (updatedKeys.some(key => { return userGlobalAttrs.includes(key) })) {
         emitGlobalChanges({
+            act,
             dataset: [
                 { depth: ['users', userinfo.id], update },
             ],
