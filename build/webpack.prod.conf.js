@@ -61,7 +61,7 @@ const webpackConfig = merge(baseWebpackConfig, {
     // you can customize output by editing /index.html
     // see https://github.com/ampedandwired/html-webpack-plugin
     new HtmlWebpackPlugin({
-      filename: 'index.ejs',
+      filename: 's.ejs',
       template: 'index.ejs',
       inject: true,
       minify: {

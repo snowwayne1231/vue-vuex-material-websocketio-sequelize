@@ -66,14 +66,6 @@ http.listen(port, () => {
 //
 
 
-
-// render and handle the uri
-var _index = path.join(__dirname, '..', 'dist', 'index.ejs');
-if (!fs.existsSync(_index)) {
-    _index = path.join(__dirname, '..', 'index.ejs');
-}
-const _login = path.join(__dirname, 'login.ejs');
-
 function renderURI(req, res, uris) {
     const userinfo = req.session.userinfo || {};
     const _to = uris[0];

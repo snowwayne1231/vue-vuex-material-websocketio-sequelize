@@ -49,7 +49,8 @@ const global = {
   },
   actions: {
     wsEmitMessage: () => {
-
+    },
+    wsEmitADMINCTL: () => {
     },
     ...actions
   },

@@ -21,4 +21,6 @@ module.exports = {
     MapsGlobalAttributes: ['id', 'name', 'x', 'y', 'route', 'cityId', 'ownCountryId'],
     CityGlobalAttributes: ['id', 'money', 'addResource', 'timeBeAttacked', 'jsonConstruction'],
     CountryGlobalAttributes: ['id', 'name', 'money', 'emperorId', 'peopleMax', 'color', 'originCityId'],
+    ADMIN_AUTHORIZE: 999,
+    ADMIN_CONTROL: 'ADMINCTL'
 }

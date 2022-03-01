@@ -74,12 +74,11 @@ const moduleUser = {
                     window.localStorage.removeItem('_token_');
                     return window.alert(parsedMsg.reason);
                 }
-                case enums.AUTHORIZE: {
+                case enums.AUTHORIZE:
+                default:
                     return Object.keys(payload).map(key => {
                         state[key] = payload[key];
                     });
-                }
-                default:
             }
         },
     },

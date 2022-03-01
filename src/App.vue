@@ -57,15 +57,20 @@ export default {
         // 已經登入過 有token
         const token = window.localStorage.getItem('_token_');
         var payload;
-        
-        if (_logintimestamp) {
+
+        if (location.hostname == 'localhost') {
+          payload = {
+            code : 'R343',
+            pwd : '343'
+          }
+        } else if (_logintimestamp) {
           payload = _logintimestamp;
         } else if (token) {
           payload = {token};
         } else {
-          // 不同域 提交 code and pwd 嘗試登入
           let code = window.prompt('輸入工號: ');
           let pwd = window.prompt('密碼: ');
+          
           /*
               Just for test and demo
           */

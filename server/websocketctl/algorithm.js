@@ -67,4 +67,20 @@ module.exports = {
         }
         return distance;
     },
+    flatMap(obj, col) {
+        return Object.values(obj).map(e => {
+            let _ = [];
+            col.map(c => { _.push(e[c]) });
+            return _;
+        });
+    },
+    parseJson(obj, keys = []) {
+        keys.forEach(key => {
+            let _loc = obj[key];
+            if (typeof _loc == 'string') {
+                obj[key] = _loc.match(/^\d{4}-\d{2}-\d{2}/) ? new Date(_loc) : JSON.parse(_loc);
+            }
+        });
+        return obj;
+    },    
 }

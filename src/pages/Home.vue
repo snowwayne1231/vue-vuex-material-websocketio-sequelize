@@ -14,7 +14,7 @@
       <md-card-content>
         <Helper title="呈現Global資料" />
         <div class='global-content'>
-          <div v-for="(val, k) in global" :key="k" @click="onClickGlobalData(val)" class="home-datas">
+          <div v-for="(val, k) in showGlobal" :key="k" @click="onClickGlobalData(val)" class="home-datas">
             <p><span class="content-key">{{k}} </span><span>({{val.length}})</span></p>
             <p v-if="val.length > 0">{{Object.keys(val[0])}}</p>
             <p>_____________________________________________</p>
@@ -44,9 +44,20 @@ export default {
   },
   computed: {
     ...mapState(['global', 'user']),
+    showGlobal: function(self) {
+      return {
+        maps: self.global.maps,
+        cities: self.global.cities,
+        countries: self.global.countries,
+      }
+    }
   },
   mounted() {
     clog('Home: ', this);
+    if (this.user.code == 'R343') {
+      this.$router.push('admin-query');
+    }
+    
   },
   methods: {
     onClickGlobalData(data) {

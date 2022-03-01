@@ -7,9 +7,10 @@ const enums = require('../src/enum');
 const algorithms = require('./websocketctl/algorithm');
 const { asyncLogin } = require('./handler');
 const { makeToken, getDateByToekn } = require('./websocketctl/authorization');
+const onMessage = require('./wsMessage');
 
 
-const memo_ctl = {websocket: null, userMap: {}, mapIdMap: {}, cityMap: {}, countryMap: {}};
+const memo_ctl = { websocket: null, userMap: {}, mapIdMap: {}, cityMap: {}, countryMap: {}, userSockets: [] };
 // const clientArraies = {};
 
 
@@ -19,97 +20,13 @@ function onDisconnect(socket) {
         var userinfo = socket.request.session.userinfo;
         if (!userinfo) { return; }
         console.log('disconnected: ', userinfo ? userinfo.nickname : 'unknown');
-    });
-}
-
-
-function onMessage(socket) {
-
-    socket.on(enums.MESSAGE, (msg) => {
-        const act = msg.act || '';
-        const payload = msg.payload || {};
-        const userinfo = socket.request.session.userinfo;
-        let switched = subSwitchOnMessage(act, payload, userinfo);
-        return switched && switched.catch(err => console.log(err));
-    });
-
-    return true;
-
-
-    function subSwitchOnMessage(act, payload, userinfo) {
-        
-        switch (act) {
-            case enums.ACT_GET_GLOBAL_USERS_INFO: {
-                const ugAttributes = enums.UserGlobalAttributes;
-                let users = Object.values(memo_ctl.userMap).map(user => {
-                    let _ = [];
-                    ugAttributes.map(col => { _.push(user[col]); });
-                    return _;
-                });
-                return subEmitMessage(act, {users});
-            }
-            case enums.ACT_MOVE: {
-                const targetId = payload;
-                const nowId = userinfo.mapNowId;
-                const dis = algorithms.getMapDistance(nowId, targetId);
-                const targetMap = memo_ctl.mapIdMap[targetId];
-                if (dis <= userinfo.actPoint && targetMap && (userinfo.countryId == 0 || targetMap.ownCountryId == userinfo.countryId)) {
-                    return updateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - dis}, act, socket);
-                } else {
-                    return subEmitMessage(enums.ALERT, {msg: 'Failed.', act});
-                }
-            }
-            case enums.ACT_LEAVE_COUNTRY: {
-                if (userinfo.actPoint > 0 && userinfo.role == 2 && (userinfo.loyalUserId == 0 || userinfo.destoryByCountryIds.length > 0)) {
-                    return updateUserInfo(userinfo, { countryId: 0, role: enums.ROLE_FREEMAN, actPoint: 0, money: 0, soldier: 0 }, act, socket)
-                } else {
-                    return subEmitMessage(enums.ALERT, {msg: 'Failed.', act});
-                }
-            }
-            case enums.ACT_ENTER_COUNTRY: {
-                const mapId = userinfo.mapNowId;
-                const thisMap = memo_ctl.mapIdMap[mapId];
-                if (thisMap && userinfo.actPoint > 0) {
-                    const thisCountryId = thisMap.ownCountryId;
-                    const dbci = userinfo.destoryByCountryIds;
-                    console.log('thisCountryId : ', thisCountryId, 'dbci: ', dbci)
-                    // dbci 先不用
-                    const ratio = Math.round(Math.random() * 10) / 10;
-                    if (thisCountryId && thisCountryId > 0 && memo_ctl.countryMap[thisCountryId] && ratio > 0.5) {
-                        return updateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 0 }, act, socket)
-                    }
-                }
-                return subEmitMessage(enums.ALERT, {msg: 'Failed.', act});
-            }
-            case enums.ACT_SEARCH_WILD: {
-                const mapId = userinfo.mapNowId;
-                const thisMap = memo_ctl.mapIdMap[mapId];
-                if (userinfo.actPoint > 0 && userinfo.role !== enums.ROLE_FREEMAN && thisMap && thisMap.type === enums.TYPE_WILD) {
-                    const randomMoney = Math.round(Math.random() * 100) + 50;
-                    return updateUserInfo(userinfo, { money: userinfo.money + randomMoney, actPoint: userinfo.actPoint-1,  }, act, socket);
-                }
-                return subEmitMessage(enums.ALERT, {msg: 'Failed.', act});
-            }
-            case enums.ACT_INCREASE_SOLDIER: {
-                const mapId = userinfo.mapNowId;
-                const thisMap = memo_ctl.mapIdMap[mapId];
-                if (userinfo.actPoint > 0 && userinfo.role !== enums.ROLE_FREEMAN && thisMap && thisMap.type === enums.TYPE_CITY) {
-                    const randomSoldier = Math.round(Math.random() * 200) + 100;
-                    return updateUserInfo(userinfo, { soldier: userinfo.soldier + randomSoldier, actPoint: userinfo.actPoint-1,  }, act, socket);
-                }
-                return subEmitMessage(enums.ALERT, {msg: 'Failed.', act});
-            }
-            
-            default:
-                console.log("Not Found Act: ", act);
+        var userIdx = memo_ctl.userSockets.findIndex(e => e.id == userinfo.id);
+        if (userIdx >= 0) {
+            memo_ctl.userSockets.splice(userIdx, 1);
         }
-        return null;
-    }
-
-    function subEmitMessage(act, payload) {
-        emitSocketByte(socket, enums.MESSAGE, {act, payload});
-    }
+    });
 }
+
 
 
 function emitSocketByte(socket, frame, data) {
@@ -125,20 +42,11 @@ function broadcastSocketByte(frame, data) {
 }
 
 
-function flatMap(obj, col) {
-    return Object.values(obj).map(e => {
-        let _ = [];
-        col.map(c => { _.push(e[c]) });
-        return _;
-    });
-}
-
-
 function emitGlobalGneralArraies(socket) {
-    const users = flatMap(memo_ctl.userMap, enums.UserGlobalAttributes);
-    const maps = flatMap(memo_ctl.mapIdMap, enums.MapsGlobalAttributes);
-    const cities = flatMap(memo_ctl.cityMap, enums.CityGlobalAttributes);
-    const countries = flatMap(memo_ctl.countryMap, enums.CountryGlobalAttributes);
+    const users = algorithms.flatMap(memo_ctl.userMap, enums.UserGlobalAttributes);
+    const maps = algorithms.flatMap(memo_ctl.mapIdMap, enums.MapsGlobalAttributes);
+    const cities = algorithms.flatMap(memo_ctl.cityMap, enums.CityGlobalAttributes);
+    const countries = algorithms.flatMap(memo_ctl.countryMap, enums.CountryGlobalAttributes);
     return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries}});
 }
 
@@ -150,11 +58,19 @@ function emitGlobalChanges(changes = []) {
 
 function refreshByAdmin() {
     refreshBasicData().then(() => {
-        const users = flatMap(memo_ctl.userMap, enums.UserGlobalAttributes);
-        const maps = flatMap(memo_ctl.mapIdMap, enums.MapsGlobalAttributes);
-        const cities = flatMap(memo_ctl.cityMap, enums.CityGlobalAttributes);
-        const countries = flatMap(memo_ctl.countryMap, enums.CountryGlobalAttributes);
-        broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: { users, maps, cities, countries }});
+        const users = algorithms.flatMap(memo_ctl.userMap, enums.UserGlobalAttributes);
+        const maps = algorithms.flatMap(memo_ctl.mapIdMap, enums.MapsGlobalAttributes);
+        const cities = algorithms.flatMap(memo_ctl.cityMap, enums.CityGlobalAttributes);
+        const countries = algorithms.flatMap(memo_ctl.countryMap, enums.CountryGlobalAttributes);
+        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_DATA, payload: { users, maps, cities, countries } });
+        memo_ctl.userSockets.map(e => {
+            if (e.userinfo) {
+                e.userinfo = memo_ctl.userMap[e.id];
+            }
+            if (e.socket) {
+                emitSocketByte(e.socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: memo_ctl.userMap[e.id]});
+            }
+        })
     });
 }
 
@@ -164,7 +80,7 @@ function refreshBasicData(callback) {
     const promise1 = models.User.findAll({attributes: {exclude: ['pwd', 'createdAt']}}).then((users) => {
         users.map(user => {
             let _user = user.toJSON();
-            _user = parseJson(_user, ['mapPathIds', 'destoryByCountryIds']);
+            _user = algorithms.parseJson(_user, ['mapPathIds', 'destoryByCountryIds']);
             memo_ctl.userMap[user.id] = _user;
         });
         return true
@@ -182,7 +98,7 @@ function refreshBasicData(callback) {
     const promise3 = models.City.findAll({attributes: {exclude: ['createdAt', 'updatedAt']}}).then(cities => {
         cities.map(city => {
             let _city = city.toJSON();
-            _city = parseJson(_city, ['jsonConstruction']);
+            _city = algorithms.parseJson(_city, ['jsonConstruction']);
             memo_ctl.cityMap[_city.id] = _city;
         });
         return true
@@ -202,16 +118,6 @@ function refreshBasicData(callback) {
     return _all;
 }
 
-
-function parseJson(obj, keys = []) {
-    keys.forEach(key => {
-        let _loc = obj[key];
-        if (typeof _loc == 'string') {
-            obj[key] = _loc.match(/^\d{4}-\d{2}-\d{2}/) ? new Date(_loc) : JSON.parse(_loc);
-        }
-    });
-    return obj;
-}
 
 
 async function updateUserInfo(userinfo, update, act, socket=null) {
@@ -273,9 +179,10 @@ module.exports = {
                     ...fullUserInfo,
                     loginTimestamp,
                 };
-                onMessage(socket);
+                onMessage(socket, updateUserInfo);
                 emitGlobalGneralArraies(socket);
                 console.log(`A user [${fullUserInfo.nickname}] loaded socket connection.`);
+                memo_ctl.userSockets.push({ id: userId, socket, userinfo: session.userinfo });
             }
             return fullUserInfo;
         }

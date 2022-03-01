@@ -4,9 +4,9 @@ const path = require('path');
 const fs =require('fs');
 
 // render and handle the uri
-var _index = path.join(__dirname, '..', 'dist', 'index.ejs');
+var _index = path.join(__dirname, '..', 'dist', 's.ejs');
 if (!fs.existsSync(_index)) {
-    _index = path.join(__dirname, '..', 'index.ejs');
+    _index = path.join(__dirname, '..', 's.ejs');
 }
 const _login = path.join(__dirname, 'login.ejs');
 
