@@ -20,11 +20,12 @@ function setData(data) {
     return true;
 }
 
-function getAllowedPosition(nowId, moveEnergy = 1) {
+function getAllowedPosition(nowId, moveEnergy = 1, countryId = 0) {
     const _hash = mapdata.hash;
     const _now = _hash[nowId];
     const stpeRoutes = {};
     const all_routes = [];
+    const checkCountry = countryId > 0;
     let _step = 0;
     if (_now) {
         while (_step++ < moveEnergy) {
@@ -32,8 +33,12 @@ function getAllowedPosition(nowId, moveEnergy = 1) {
             let nextRoutes = [];
             if (lastRoutes) {
                 lastRoutes.map(rs => {
-                    let _loc = _hash[rs];
-                    _loc.route.map(_next => {
+                    const _loc = _hash[rs];
+                    let _routes = _loc.route;
+                    if (checkCountry) {
+                        _routes = _routes.filter(r => _hash[r].ownCountryId === countryId);
+                    }
+                    _routes.map(_next => {
                         if (!all_routes.includes(_next) && _next != nowId) {
                             nextRoutes.push(_next);
                             all_routes.push(_next);
@@ -42,11 +47,15 @@ function getAllowedPosition(nowId, moveEnergy = 1) {
                 });
             } else {
                 nextRoutes = _now.route.slice();
+                if (checkCountry) {
+                    nextRoutes = nextRoutes.filter(r => _hash[r].ownCountryId === countryId)
+                }
                 nextRoutes.map(r => {
                     all_routes.push(r);
                 });
             }
             stpeRoutes[_step] = nextRoutes;
+            if (nextRoutes.length == 0) { break }
         }
     }
     return {all: all_routes, steps: stpeRoutes};

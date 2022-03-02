@@ -91,7 +91,7 @@ module.exports = {
                         if (payload.done) {
                             req.session.userinfo = payload.data;
                             res.cookie('_logintimestamp_', payload.data.loginTimestamp);
-                            res.redirect('/');
+                            res.redirect('/s');
                         } else {
                             res.status(203);
                             this.renderLogin(res, payload);

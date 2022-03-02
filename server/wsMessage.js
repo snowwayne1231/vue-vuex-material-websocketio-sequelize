@@ -49,13 +49,22 @@ function onMessage(socket, asyncUpdateUserInfo, memoController) {
             case enums.ACT_MOVE: {
                 const targetId = payload;
                 const nowId = userinfo.mapNowId;
-                const dis = algorithms.getMapDistance(nowId, targetId);
                 const targetMap = memoController.mapIdMap[targetId];
-                if (dis <= userinfo.actPoint && targetMap && (userinfo.countryId == 0 || targetMap.ownCountryId == userinfo.countryId)) {
-                    return asyncUpdateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - dis}, act, socket);
-                } else {
-                    return subEmitMessage(enums.ALERT, {msg: 'Failed.', act});
+                if (targetMap) {
+                    const dis = algorithms.getMapDistance(nowId, targetId, userinfo.countryId);
+                    console.log('[ACT_MOVE] Distance : ', dis)
+                    console.log('nowId : ', nowId, ' targetId: ', targetId, ' userinfo.countryId: ', userinfo.countryId)
+                    if (userinfo.countryId == 0 || targetMap.ownCountryId == userinfo.countryId) {
+                        if (dis > 0 && dis <= userinfo.actPoint) {
+                            return asyncUpdateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - dis}, act, socket);
+                        } else {
+                            console.log('[ACT_MOVE] Distance wrong: ', dis)
+                        }
+                    } else {
+                        console.log('[ACT_MOVE] userinfo wrong: ', userinfo)
+                    }
                 }
+                return subEmitMessage(enums.ALERT, {msg: 'Failed.', act});
             }
             case enums.ACT_LEAVE_COUNTRY: {
                 if (userinfo.actPoint > 0 && userinfo.role == 2 && (userinfo.loyalUserId == 0 || userinfo.destoryByCountryIds.length > 0)) {
@@ -69,10 +78,8 @@ function onMessage(socket, asyncUpdateUserInfo, memoController) {
                 const thisMap = memoController.mapIdMap[mapId];
                 if (thisMap && userinfo.actPoint > 0) {
                     const thisCountryId = thisMap.ownCountryId;
-                    const dbci = userinfo.destoryByCountryIds;
-                    console.log('thisCountryId : ', thisCountryId, 'dbci: ', dbci)
-                    // dbci 先不用
-                    if (thisCountryId && thisCountryId > 0 && memoController.countryMap[thisCountryId]) {
+                    const dbciAry = Array.isArray(userinfo.destoryByCountryIds) ? userinfo.destoryByCountryIds : [];
+                    if (thisCountryId && thisCountryId > 0 && memoController.countryMap[thisCountryId] && !dbciAry.includes(thisCountryId)) {
                         const ratio = Math.round(Math.random() * 10) / 10;
                         if (ratio > 0.5) {
                             return asyncUpdateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 0 }, act, socket);
@@ -112,5 +119,15 @@ function onMessage(socket, asyncUpdateUserInfo, memoController) {
         emitSocketByte(socket, enums.MESSAGE, {act, payload});
     }
 }
+
+
+
+function emitSocketByte(socket, frame, data) {
+    var buf = Buffer.from(JSON.stringify(data), 'utf-8');
+    socket.emit(frame, buf);
+    return socket;
+}
+
+
 
 module.exports = onMessage

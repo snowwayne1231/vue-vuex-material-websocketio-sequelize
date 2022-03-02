@@ -7,7 +7,9 @@
             <span>Room</span>
           </div>
           <div class="md-subhead">
-            <span>Sub</span>
+            <span>{{user.nickname}}</span>
+            <span>行動力: {{user.actPoint}}</span>
+            <span>國家ID: {{user.countryId}}</span>
           </div>
         </md-card-header-text>
       </md-card-header>
@@ -15,7 +17,8 @@
         <div class="map" @mousedown="onMouseDown($event)" @mousemove="onMouseMove($event)" @mouseup="onMouseUp()" @mouseleave="onMouseUp()">
           <div class="render" :style="{ transform: `translate(${viewX}px, ${viewY}px)` }">
             <li v-for="(p, idx) in mapData" :key="p.id+idx" class="point" :style="{left: `${p.x}px`, top: `${p.y}px`}" @click="onClickPoint(p)">
-              <span :class="{light: showLights.includes(p.id), now: showNow==p.id}">🏠{{p.name}}  {{showLights.includes(p.id)}}</span>
+              <span :class="{light: showLights.includes(p.id), now: showNow==p.id}">🏠{{p.name}}</span>
+              <span v-if="p.ownCountryId == user.countryId">🏴</span>
               <Man
                 v-if="showNow==p.id"
                 name="帥哥"
@@ -106,7 +109,15 @@ export default {
           return this.$store.dispatch('actMove', dataset.id);
         }
       } else if (dataset.id == this.showNow) {
-        const routes = mapAlgorithm.getAllowedPosition(dataset.id, 3);
+        const routes = mapAlgorithm.getAllowedPosition(dataset.id, this.user.actPoint, this.user.countryId);
+        const maps = this.global.maps;
+        routes.names = {};
+        Object.keys(routes.steps).map(key => {
+          let loc = routes.steps[key];
+          let res = loc.map(mid => maps.find(e => e.id == mid)).map(e => e.name);
+          routes.names[key] = res;
+        })
+        clog('Routes : ', routes);
         this.showLights = routes.all;
       }
     },

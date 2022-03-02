@@ -64,11 +64,16 @@ function refreshByAdmin() {
         const countries = algorithms.flatMap(memo_ctl.countryMap, enums.CountryGlobalAttributes);
         broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_DATA, payload: { users, maps, cities, countries } });
         memo_ctl.userSockets.map(e => {
+            const memoUser = memo_ctl.userMap[e.id];
             if (e.userinfo) {
-                e.userinfo = memo_ctl.userMap[e.id];
+                memoUser && Object.keys(e.userinfo).map(key => {
+                    if (memoUser[key]) {
+                        e.userinfo[key] = memoUser[key];
+                    }
+                });
             }
             if (e.socket) {
-                emitSocketByte(e.socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: memo_ctl.userMap[e.id]});
+                emitSocketByte(e.socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: memoUser});
             }
         })
     });
