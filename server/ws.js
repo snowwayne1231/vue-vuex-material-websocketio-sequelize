@@ -179,7 +179,7 @@ module.exports = {
                     ...fullUserInfo,
                     loginTimestamp,
                 };
-                onMessage(socket, updateUserInfo);
+                onMessage(socket, updateUserInfo, memo_ctl);
                 emitGlobalGneralArraies(socket);
                 console.log(`A user [${fullUserInfo.nickname}] loaded socket connection.`);
                 memo_ctl.userSockets.push({ id: userId, socket, userinfo: session.userinfo });

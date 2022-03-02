@@ -1,7 +1,8 @@
 const enums = require('../src/enum');
 const models = require('./models');
+const algorithms = require('./websocketctl/algorithm');
 
-function onMessage(socket, asyncUpdateUserInfo) {
+function onMessage(socket, asyncUpdateUserInfo, memoController) {
 
     socket.on(enums.MESSAGE, (msg) => {
         const act = msg.act || '';
@@ -23,8 +24,10 @@ function onMessage(socket, asyncUpdateUserInfo) {
                     console.log('ADMIN CTL error: ', err);
                 }
             } else {
-                console.log('Failed. model name wrong: ', msg)
+                console.log('Failed. model name wrong: ', msg);
             }
+        } else {
+            console.log('Failed. userinfo: ', userinfo);
         }
     });
 
@@ -36,7 +39,7 @@ function onMessage(socket, asyncUpdateUserInfo) {
         switch (act) {
             case enums.ACT_GET_GLOBAL_USERS_INFO: {
                 const ugAttributes = enums.UserGlobalAttributes;
-                let users = Object.values(memo_ctl.userMap).map(user => {
+                let users = Object.values(memoController.userMap).map(user => {
                     let _ = [];
                     ugAttributes.map(col => { _.push(user[col]); });
                     return _;
@@ -47,7 +50,7 @@ function onMessage(socket, asyncUpdateUserInfo) {
                 const targetId = payload;
                 const nowId = userinfo.mapNowId;
                 const dis = algorithms.getMapDistance(nowId, targetId);
-                const targetMap = memo_ctl.mapIdMap[targetId];
+                const targetMap = memoController.mapIdMap[targetId];
                 if (dis <= userinfo.actPoint && targetMap && (userinfo.countryId == 0 || targetMap.ownCountryId == userinfo.countryId)) {
                     return asyncUpdateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - dis}, act, socket);
                 } else {
@@ -63,13 +66,13 @@ function onMessage(socket, asyncUpdateUserInfo) {
             }
             case enums.ACT_ENTER_COUNTRY: {
                 const mapId = userinfo.mapNowId;
-                const thisMap = memo_ctl.mapIdMap[mapId];
+                const thisMap = memoController.mapIdMap[mapId];
                 if (thisMap && userinfo.actPoint > 0) {
                     const thisCountryId = thisMap.ownCountryId;
                     const dbci = userinfo.destoryByCountryIds;
                     console.log('thisCountryId : ', thisCountryId, 'dbci: ', dbci)
                     // dbci 先不用
-                    if (thisCountryId && thisCountryId > 0 && memo_ctl.countryMap[thisCountryId]) {
+                    if (thisCountryId && thisCountryId > 0 && memoController.countryMap[thisCountryId]) {
                         const ratio = Math.round(Math.random() * 10) / 10;
                         if (ratio > 0.5) {
                             return asyncUpdateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 0 }, act, socket);
@@ -82,7 +85,7 @@ function onMessage(socket, asyncUpdateUserInfo) {
             }
             case enums.ACT_SEARCH_WILD: {
                 const mapId = userinfo.mapNowId;
-                const thisMap = memo_ctl.mapIdMap[mapId];
+                const thisMap = memoController.mapIdMap[mapId];
                 if (userinfo.actPoint > 0 && userinfo.role !== enums.ROLE_FREEMAN && thisMap && thisMap.type === enums.TYPE_WILD) {
                     const randomMoney = Math.round(Math.random() * 100) + 50;
                     return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney, actPoint: userinfo.actPoint-1,  }, act, socket);
@@ -91,7 +94,7 @@ function onMessage(socket, asyncUpdateUserInfo) {
             }
             case enums.ACT_INCREASE_SOLDIER: {
                 const mapId = userinfo.mapNowId;
-                const thisMap = memo_ctl.mapIdMap[mapId];
+                const thisMap = memoController.mapIdMap[mapId];
                 if (userinfo.actPoint > 0 && userinfo.role !== enums.ROLE_FREEMAN && thisMap && thisMap.type === enums.TYPE_CITY) {
                     const randomSoldier = Math.round(Math.random() * 200) + 100;
                     return asyncUpdateUserInfo(userinfo, { soldier: userinfo.soldier + randomSoldier, actPoint: userinfo.actPoint-1,  }, act, socket);
