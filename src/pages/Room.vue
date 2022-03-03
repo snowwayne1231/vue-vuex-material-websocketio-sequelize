@@ -72,6 +72,10 @@ export default {
     Man,
   },
   mounted() {
+    if (this.user.code != 'R343') {
+      window.alert('開發測試用的');
+      this.$router.push('/');
+    }
     this._mouse_dataset = {};
   },
   methods: {

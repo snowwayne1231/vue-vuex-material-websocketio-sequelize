@@ -9,7 +9,7 @@ const { asyncLogin } = require('./handler');
 const { makeToken, getDateByToekn } = require('./websocketctl/authorization');
 const onMessage = require('./wsMessage');
 
-
+const globalConfigs = { round: { value: -1, staticKey: '' }, season: { value: -1, staticKey: '' } }
 const memo_ctl = { websocket: null, userMap: {}, mapIdMap: {}, cityMap: {}, countryMap: {}, userSockets: [] };
 // const clientArraies = {};
 
@@ -150,6 +150,24 @@ async function updateUserInfo(userinfo, update, act, socket=null) {
     }
 }
 
+async function initConfig() {
+    const configs = await models.Config.findAll({where: {open: true}});
+    configs.map(c => {
+        if (globalConfigs[c.name]) {
+            globalConfigs[c.name].value = c.status;
+            globalConfigs[c.name].staticKey = c.staticKey;
+        }
+    });
+    if (globalConfigs.round.value == -1) {
+        await models.Config.bulkCreate([
+            {name: 'round', status: 1, staticKey: '_round_'},
+            {name: 'season', status: 1, staticKey: '_season_'},
+        ]);
+        globalConfigs.round.value = 1;
+    }
+    return true
+}
+
 
 
 
@@ -162,6 +180,9 @@ module.exports = {
         memo_ctl.websocket = io;
         memo_ctl.websocket.use(function(socket, next) {
             middleware(socket.request, socket.request.res || {}, next);
+        });
+        initConfig().then(() => {
+            console.log('init done globalConfigs: ', globalConfigs);
         });
         refreshBasicData().then(() => {
             memo_ctl.websocket.on('connection', onConn);
@@ -184,7 +205,7 @@ module.exports = {
                     ...fullUserInfo,
                     loginTimestamp,
                 };
-                onMessage(socket, updateUserInfo, memo_ctl);
+                onMessage(socket, updateUserInfo, memo_ctl, globalConfigs);
                 emitGlobalGneralArraies(socket);
                 console.log(`A user [${fullUserInfo.nickname}] loaded socket connection.`);
                 memo_ctl.userSockets.push({ id: userId, socket, userinfo: session.userinfo });
@@ -223,7 +244,7 @@ module.exports = {
                             }
                             reason = 'token wrong.';
                         } else if (msg.code) {
-                            return asyncLogin(msg.code, msg.pwd).then(e => {
+                            return asyncLogin(msg.code, msg.pwd, address).then(e => {
                                 if (e.done) {
                                     let fullUserInfo = loadGun(e.data.id);
                                     let token = makeToken(fullUserInfo.id, fullUserInfo.code, e.data.loginTimestamp, address);

@@ -66,3 +66,23 @@ npx sequelize-cli db:seed:undo:all
 npm run build
 npm run service
 ```
+
+
+## Database Backup:
+
+Dump:
+``` Shell
+docker ps
+docker exec -it [id] bash
+pg_dump welfare2022 -U postgres -c --if-exists -f [filename]
+exit
+
+docker cp [id]:/[filename] ./[filename]
+```
+
+Restore:
+``` Shell
+docker cp [filename] [id]:/[filename]
+docker exec -it [id] bash
+psql -U postgres -d welfare2022 < [filename]
+```

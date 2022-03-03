@@ -25,7 +25,7 @@ module.exports = {
         res.clearCookie('_logintimestamp_');
         return res.redirect('/');
     },
-    asyncLogin: async function(code, pwd) {
+    asyncLogin: async function(code, pwd, address = '') {
         const loginTimestamp = new Date().getTime();
         const user = await models.User.findOne({
             attributes: ['id', 'nickname', 'pwd', 'code'],
@@ -38,6 +38,12 @@ module.exports = {
                 return {done: false, register: true};
             } else if (user_data.pwd == md5(String(pwd))) {
                 // 登錄
+                const _record = models.RecordLogin.build({
+                    userId: user_data.id,
+                    timestamp: new Date(loginTimestamp),
+                    ip: address,
+                });
+                await _record.save();
                 return {done: true, msg: '', data: {
                     ...user_data,
                     loginTimestamp,
@@ -87,7 +93,7 @@ module.exports = {
                         }
                     });
                 } else {
-                    return this.asyncLogin(code, pwd).then(payload => {
+                    return this.asyncLogin(code, pwd, req.socket.remoteAddress).then(payload => {
                         if (payload.done) {
                             req.session.userinfo = payload.data;
                             res.cookie('_logintimestamp_', payload.data.loginTimestamp);

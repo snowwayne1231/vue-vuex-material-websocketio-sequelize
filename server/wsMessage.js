@@ -1,8 +1,9 @@
 const enums = require('../src/enum');
 const models = require('./models');
+const config = require('./models/config');
 const algorithms = require('./websocketctl/algorithm');
 
-function onMessage(socket, asyncUpdateUserInfo, memoController) {
+function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
 
     socket.on(enums.MESSAGE, (msg) => {
         const act = msg.act || '';
@@ -52,11 +53,11 @@ function onMessage(socket, asyncUpdateUserInfo, memoController) {
                 const targetMap = memoController.mapIdMap[targetId];
                 if (targetMap) {
                     const dis = algorithms.getMapDistance(nowId, targetId, userinfo.countryId);
-                    console.log('[ACT_MOVE] Distance : ', dis)
-                    console.log('nowId : ', nowId, ' targetId: ', targetId, ' userinfo.countryId: ', userinfo.countryId)
                     if (userinfo.countryId == 0 || targetMap.ownCountryId == userinfo.countryId) {
                         if (dis > 0 && dis <= userinfo.actPoint) {
-                            return asyncUpdateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - dis}, act, socket);
+                            return asyncUpdateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - dis}, act, socket).then(() => {
+                                return recordMove(configs.round.value, userinfo.id, nowId, targetId, dis)
+                            });
                         } else {
                             console.log('[ACT_MOVE] Distance wrong: ', dis)
                         }
@@ -129,5 +130,15 @@ function emitSocketByte(socket, frame, data) {
 }
 
 
+
+async function recordMove(round, userId, from, to, spend) {
+    await models.RecordMove.create({
+        round: round,
+        userId: userId,
+        fromMapId: from,
+        toMapId: to,
+        spendPoint: spend,
+    });
+}
 
 module.exports = onMessage
