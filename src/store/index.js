@@ -42,6 +42,7 @@ const userInitState = {
     soldier: 0,
     captiveDate: 0,
     connected: false,
+    location: wsLocation,
 };
 
 const moduleUser = {

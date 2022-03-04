@@ -7,7 +7,7 @@ const countryDataset = [
   { name: '音悅', mainCity: '梓潼', otherCity: ['成都']},
   { name: '鬆露', mainCity: '北平', otherCity: ['南皮', '代縣']},
   { name: '影', mainCity: '武陵', otherCity: []},
-  { name: '琥', mainCity: '鄱陽', otherCity: ['桂陽', '零陵']},
+  { name: '琥', mainCity: '鄱陽', otherCity: ['桂陽', '建業']},
   { name: '叡迅', mainCity: '雲南', otherCity: ['江洲', '永安']},
 ];
 
@@ -102,7 +102,7 @@ const userLocations = [
   },
   {
       "nickname": "張華特",
-      "location": "零陵"
+      "location": "建業"
   },
   {
       "nickname": "余鱗",
@@ -110,7 +110,7 @@ const userLocations = [
   },
   {
       "nickname": "鄒墾丁",
-      "location": "零陵"
+      "location": "建業"
   },
   {
       "nickname": "林特",
@@ -394,7 +394,7 @@ const userLocations = [
   },
   {
       "nickname": "林利歐",
-      "location": "零陵"
+      "location": "建業"
   },
   {
       "nickname": "黃塞蒙",

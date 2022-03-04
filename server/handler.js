@@ -2,6 +2,7 @@ const models = require('./models');
 const md5 = require('md5');
 const path = require('path');
 const fs =require('fs');
+const sequelize = require('sequelize');
 
 // render and handle the uri
 var _index = path.join(__dirname, '..', 'dist', 's.ejs');
@@ -70,7 +71,7 @@ module.exports = {
             return {done: false, msg: 'Password has difference.', register: true};
         }
     },
-    handlePOST: function(req, res, where) {
+    handlePOST: function(req, res, where, ws = null) {
         // const ifLocal = req.headers.host.match(/127.0.0.1/i);
         const _body = req.body;
         switch (where) {
@@ -105,9 +106,43 @@ module.exports = {
                     });
                 }
             }
+            case 'checkweek': {
+                const gapMinutes = 60*24*5;
+                const recoverDay = 1;
+                const now = new Date();
+                const nowMinutes = Math.floor(now.getTime() / 60000);
+                const configs = {round: 0, recover: 0};
+                if (now.getDay()==recoverDay) {
+                    const self = this;
+                    return models.Config.findAll({attributes: ['name', 'status'], where: {open: true}}).then(cs => {
+                        cs.map(c => { if (configs[c.name] >= 0) { configs[c.name] = c.status; } });
+                        let isNew = configs.recover == 0;
+                        if ((nowMinutes - configs.recover) > gapMinutes){
+                            self.recoverPoint(nowMinutes, ws, isNew).then(() => {
+                                res.status(200).send('done');
+                            }).catch(err => {
+                                res.status(403).send(err);
+                            });
+                        } else {
+                            res.status(201).send('nothing');
+                        }
+                    });
+                }
+            }
             default:
                 res.status(404).send('Wrong Parameter.');
         }
         return res;
+    },
+    recoverPoint: async function(now, ws, isnewly= false) {
+        if (isnewly) {
+            await models.Config.create({name: 'recover', status: now});
+        } else {
+            await models.Config.update({status: now}, {where: {name: 'recover'}})
+        }
+        // 行動點小於 max 補充到 max
+        await models.User.update({actPoint: sequelize.literal('"actPointMax"')}, {where: {actPoint: {[sequelize.Op.lt]: sequelize.literal('"actPointMax"')}}});
+        // 更新記憶體 user data
+        await ws.refreshMemoDataUsers();
     },
 };

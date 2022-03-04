@@ -8,24 +8,29 @@ const app = express();
 const http = require('http').createServer(app);
 const path = require('path');
 // const { Op } = require("sequelize");
+// pares command line parameter
+const argvv = process.argv.slice(2);
+let port = 81;
+if (argvv.length > 0) {
+    argvv.forEach((a, idx) => {
+        switch (idx) {
+            case 0:
+                port = parseInt(a);
+                break
+            case 1:
+                process.env.NODE_ENV = `${a}`;
+                break
+            default:
+        }
+    });
+}
+//
+console.log('NODE_ENV : ', process.env.NODE_ENV);
 
 const adminbro = require('./admin');
 const ws = require('./ws');
 const handlers = require('./handler');
 
-
-// pares command line parameter
-const argvv = process.argv.slice(2);
-let port = 81;
-if (argvv.length > 0) {
-    argvv.forEach(a => {
-        let integer = parseInt(a);
-        if (integer > 0) {
-            port = integer;
-        }
-    });
-}
-//
 app.engine('ejs', require('ejs').renderFile);
 app.set('trust proxy', 1);
 app.use(cors());
@@ -76,7 +81,7 @@ function renderURI(req, res, uris) {
     }
 
     if (req.method=='POST') {
-        return handlers.handlePOST(req, res, _to);
+        return handlers.handlePOST(req, res, _to, ws);
     }
 
     if (uris.length < 2) {

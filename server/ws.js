@@ -80,42 +80,53 @@ function refreshByAdmin() {
 }
 
 
-function refreshBasicData(callback) {
+function refreshBasicData(u=true, m=true, c=true, callback=null) {
     const promises = [];
-    const promise1 = models.User.findAll({attributes: {exclude: ['pwd', 'createdAt']}}).then((users) => {
-        users.map(user => {
-            let _user = user.toJSON();
-            _user = algorithms.parseJson(_user, ['mapPathIds', 'destoryByCountryIds']);
-            memo_ctl.userMap[user.id] = _user;
+    if (u) {
+        const promise1 = models.User.findAll({attributes: {exclude: ['pwd', 'createdAt']}}).then((users) => {
+            users.map(user => {
+                let _user = user.toJSON();
+                _user = algorithms.parseJson(_user, ['mapPathIds', 'destoryByCountryIds']);
+                memo_ctl.userMap[user.id] = _user;
+            });
+            return true
         });
-        return true
-    });
-    const promise2 = models.Map.findAll({attributes: {exclude: ['adventureId', 'createdAt', 'updatedAt']}}).then(maps => {
-        const _maps = maps.map(m => {
-            let _m = m.toJSON();
-            _m.type = _m.cityId > 0 ? enums.TYPE_CITY : enums.TYPE_WILD;
-            memo_ctl.mapIdMap[_m.id] = _m;
-            return _m;
+        promises.push(promise1);
+    }
+    
+    if (m) {
+        const promise2 = models.Map.findAll({attributes: {exclude: ['adventureId', 'createdAt', 'updatedAt']}}).then(maps => {
+            const _maps = maps.map(m => {
+                let _m = m.toJSON();
+                _m.type = _m.cityId > 0 ? enums.TYPE_CITY : enums.TYPE_WILD;
+                memo_ctl.mapIdMap[_m.id] = _m;
+                return _m;
+            });
+            algorithms.setMapData(_maps);
+            return true
         });
-        algorithms.setMapData(_maps);
-        return true
-    });
-    const promise3 = models.City.findAll({attributes: {exclude: ['createdAt', 'updatedAt']}}).then(cities => {
-        cities.map(city => {
-            let _city = city.toJSON();
-            _city = algorithms.parseJson(_city, ['jsonConstruction']);
-            memo_ctl.cityMap[_city.id] = _city;
+        const promise3 = models.City.findAll({attributes: {exclude: ['createdAt', 'updatedAt']}}).then(cities => {
+            cities.map(city => {
+                let _city = city.toJSON();
+                _city = algorithms.parseJson(_city, ['jsonConstruction']);
+                memo_ctl.cityMap[_city.id] = _city;
+            });
+            return true
         });
-        return true
-    });
-    const promise4 = models.Country.findAll({attributes: {exclude: ['createdAt', 'updatedAt']}}).then(countries => {
-        countries.map(country => {
-            let _country = country.toJSON();
-            memo_ctl.countryMap[_country.id] = _country;
+        promises.push(promise2, promise3);
+    }
+
+    if (c) {
+        const promise4 = models.Country.findAll({attributes: {exclude: ['createdAt', 'updatedAt']}}).then(countries => {
+            countries.map(country => {
+                let _country = country.toJSON();
+                memo_ctl.countryMap[_country.id] = _country;
+            });
+            return true
         });
-        return true
-    });
-    promises.push(promise1, promise2, promise3, promise4);
+        promises.push(promise4);
+    }
+    
     var _all = Promise.all(promises);
     if (callback) {
         _all.then(callback);
@@ -148,6 +159,7 @@ async function updateUserInfo(userinfo, update, act, socket=null) {
             ],
         });
     }
+    await recordApi(id, 'User', update, 2);
 }
 
 async function initConfig() {
@@ -169,6 +181,14 @@ async function initConfig() {
 }
 
 
+async function recordApi(userId, model='', payload={}, curd=0) {
+    await models.RecordApi.create({
+        userId,
+        model,
+        payload: JSON.stringify(payload),
+        curd,
+    });
+}
 
 
 
@@ -273,5 +293,20 @@ module.exports = {
         });
 
         onDisconnect(socket);
+    },
+    refreshMemoDataUsers: function() {
+        return refreshBasicData(true, false, false).then(() => {
+            return memo_ctl.userSockets.map(us => {
+                const memoUser = memo_ctl.userMap[us.id];
+                if (us.userinfo) {
+                    memoUser && Object.keys(us.userinfo).map(key => {
+                        if (memoUser[key]) { us.userinfo[key] = memoUser[key]; }
+                    });
+                }
+                if (us.socket) {
+                    emitSocketByte(us.socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: memoUser});
+                }
+            });
+        });
     }
 }

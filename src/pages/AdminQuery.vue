@@ -15,6 +15,7 @@
         <div class='global-content'>
             <div class="funcatinal-btns">
                 <button @click="onClickRefreshGlobal">Refresh Global</button>
+                <button @click="onClickCheckWeek">Check Week</button>
             </div>
             <div @click="onClickData(user, 'user')" class="home-datas"><p><span class="content-key">{{user.code}}-{{user.nickname}}</span> mapNowId: [{{user.mapNowId}}] actPoint: [{{user.actPoint}}]</p></div>
             <div v-for="(val, k) in global" :key="k" @click="onClickData(val, k)" class="home-datas">
@@ -52,7 +53,7 @@
 
 <script>
 import { mapState } from 'vuex'
-import enums from '@/enum';
+import axios from 'axios';
 
 export default {
   name: 'AdminQuery',
@@ -98,6 +99,11 @@ export default {
     },
     onClickLi(data) {
         this.selectedId = data.id;
+    },
+    onClickCheckWeek() {
+        axios.post(this.user.location + '/checkweek').then(e => {
+            console.log(e);
+        })
     },
     parseStrToObject(str) {
         var splitedLine = str.split(/[\r\n]+/gi);
