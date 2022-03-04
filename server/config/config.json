@@ -12,5 +12,12 @@
     "database": "welfare2022",
     "host": "127.0.0.1",
     "dialect": "postgres"
+  },
+  "qa": {
+    "username": "welfareuser",
+    "password": "welfare2022",
+    "database": "welfare2022_qa",
+    "host": "127.0.0.1",
+    "dialect": "postgres"
   }
 }
