@@ -70,6 +70,10 @@ const moduleUser = {
 
             const payload = parsedMsg.payload;
 
+            if (typeof parsedMsg.act === 'number') {
+                window.alert('successful');
+            }
+
             switch (parsedMsg.act) {
                 case enums.FAILED: {
                     window.localStorage.removeItem('_token_');

@@ -7,12 +7,12 @@
             <span>Home</span>
           </div>
           <div class="md-subhead">
-            <span>Sub</span>
+            <button @click="onClickRefreshGlobal">Refresh Global</button>
           </div>
         </md-card-header-text>
       </md-card-header>
       <md-card-content>
-        <Helper title="呈現Global資料" />
+        <!-- <Helper title="呈現Global資料" /> -->
         <div class='global-content'>
           <div v-for="(val, k) in showGlobal" :key="k" @click="onClickGlobalData(val)" class="home-datas">
             <p><span class="content-key">{{k}} </span><span>({{val.length}})</span></p>
@@ -63,6 +63,9 @@ export default {
     onClickGlobalData(data) {
       console.log(data);
       this.showdata = data;
+    },
+    onClickRefreshGlobal() {
+        this.$store.dispatch('wsEmitAuthorize', 'refreshByAdmin')
     },
   },
 }

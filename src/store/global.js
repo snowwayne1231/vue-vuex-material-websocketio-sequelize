@@ -8,7 +8,8 @@ const global = {
     users: [],
     maps: [],
     cities: [],
-    countries: []
+    countries: [],
+    notifications: []
   },
   mutations: {
     wsOnMESSAGE: (state, message) => {
@@ -22,6 +23,10 @@ const global = {
           state.cities = parser.parseArraiesToObjects(payload.cities, enums.CityGlobalAttributes)
           state.countries = parser.parseArraiesToObjects(payload.countries, enums.CountryGlobalAttributes)
           algorithm.setData(state.maps)
+          if (payload.notifications) {
+            state.notifications = payload.notifications.map(e => [new Date(e[0]), e[1]]);
+            state.notifications.sort((a,b) => b[0] - a[0]);
+          }
           break
         case enums.ACT_GET_GLOBAL_CHANGE_DATA: {
           const dataset = payload.dataset
@@ -43,6 +48,13 @@ const global = {
             });
           })
         } break
+        case enums.ACT_NOTIFICATION: {
+          const new_noti = [new Date(payload[0]), payload[1]]
+          state.notifications = [new_noti].concat(state.notifications);
+        } break
+        case enums.ALERT: {
+          window.alert(payload.msg);
+        }
         default:
       }
     }

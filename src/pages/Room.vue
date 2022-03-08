@@ -16,7 +16,7 @@
       <md-card-content>
         <div class="map" @mousedown="onMouseDown($event)" @mousemove="onMouseMove($event)" @mouseup="onMouseUp()" @mouseleave="onMouseUp()">
           <div class="render" :style="{ transform: `translate(${viewX}px, ${viewY}px)` }">
-            <li v-for="(p, idx) in mapData" :key="p.id+idx" class="point" :style="{left: `${p.x}px`, top: `${p.y}px`}" @click="onClickPoint(p)">
+            <li v-for="(p, idx) in mapData" :key="p.id+idx" class="point" :style="{left: `${p.x / 1.6}px`, top: `${p.y / 1.6}px`}" @click="onClickPoint(p)">
               <span :class="{light: showLights.includes(p.id), now: showNow==p.id}">🏠{{p.name}}</span>
               <span v-if="p.ownCountryId == user.countryId">🏴</span>
               <Man
@@ -35,6 +35,11 @@
           <button @click="onClickSearchWild">探索</button>
           <button @click="onClickLeaveCountry">下野</button>
           <button @click="onClickEnterCountry">入仕</button>
+        </div>
+        <div class="notifications">
+          <li v-for="(noti) in global.notifications" :key="noti[0].getTime()">
+            <span>{{noti[0].toLocaleString()}}</span><span>{{noti[1]}}</span>
+          </li>
         </div>
       </md-card-content>
     </md-card>
@@ -191,7 +196,8 @@ export default {
   width: 2800px;
   height: 2200px;
   // transition: all 0.2s linear;
-  background: chartreuse;
+  background: #f4ffe9;
+  font-size: 12px;
 }
 .point {
   list-style: none;
@@ -220,5 +226,11 @@ export default {
 .list-people {
   white-space: normal;
   width: 100px;
+  color: #aaa;
+  border: 1px solid #aaa;
+}
+.notifications {
+  height: 100px;
+  overflow: auto;
 }
 </style>

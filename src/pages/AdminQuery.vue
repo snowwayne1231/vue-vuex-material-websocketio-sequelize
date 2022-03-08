@@ -7,16 +7,16 @@
             <span>AdminQuery</span>
           </div>
           <div class="md-subhead">
-            <span>...</span>
+            <div class="funcatinal-btns">
+                <button @click="onClickRefreshGlobal">Refresh Global</button>
+                <button @click="onClickCheckWeek">Check Week</button>
+            </div>
           </div>
         </md-card-header-text>
       </md-card-header>
       <md-card-content>
         <div class='global-content'>
-            <div class="funcatinal-btns">
-                <button @click="onClickRefreshGlobal">Refresh Global</button>
-                <button @click="onClickCheckWeek">Check Week</button>
-            </div>
+            
             <div @click="onClickData(user, 'user')" class="home-datas"><p><span class="content-key">{{user.code}}-{{user.nickname}}</span> mapNowId: [{{user.mapNowId}}] actPoint: [{{user.actPoint}}]</p></div>
             <div v-for="(val, k) in global" :key="k" @click="onClickData(val, k)" class="home-datas">
                 <p><span class="content-key">{{k}} </span><span>({{val.length}})</span></p>
