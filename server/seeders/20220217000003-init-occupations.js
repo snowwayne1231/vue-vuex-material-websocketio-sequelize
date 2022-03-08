@@ -27,9 +27,18 @@ module.exports = {
     if (loc && loc.length > 0) {
         return false;
     }
+    const createdAt = new Date();
+    const insertData = [];
+    dataset.map(data => {
+      const _next_data = {
+        ...data,
+        createdAt: createdAt,
+        updatedAt: createdAt,
+      }
+      insertData.push(_next_data);
+    });
 
-
-
+    await queryInterface.bulkInsert("Occupations", insertData);
   },
 
   down: async (queryInterface, Sequelize) => {

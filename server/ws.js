@@ -10,7 +10,7 @@ const { makeToken, getDateByToekn } = require('./websocketctl/authorization');
 const onMessage = require('./wsMessage');
 
 const globalConfigs = { round: { value: -1, staticKey: '' }, season: { value: -1, staticKey: '' } }
-const memo_ctl = { websocket: null, userMap: {}, mapIdMap: {}, cityMap: {}, countryMap: {}, userSockets: [] };
+const memo_ctl = { websocket: null, userMap: {}, mapIdMap: {}, cityMap: {}, countryMap: {}, eventRecords: [], userSockets: [] };
 // const clientArraies = {};
 
 
@@ -47,7 +47,8 @@ function emitGlobalGneralArraies(socket) {
     const maps = algorithms.flatMap(memo_ctl.mapIdMap, enums.MapsGlobalAttributes);
     const cities = algorithms.flatMap(memo_ctl.cityMap, enums.CityGlobalAttributes);
     const countries = algorithms.flatMap(memo_ctl.countryMap, enums.CountryGlobalAttributes);
-    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries}});
+    const notifications = memo_ctl.eventRecords
+    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications}});
 }
 
 
@@ -114,6 +115,12 @@ function refreshBasicData(u=true, m=true, c=true, callback=null) {
             return true
         });
         promises.push(promise2, promise3);
+        const promise5 = models.RecordEvent.findAll({attributes: ['detail', 'timestamp'], limit: 20, order: [ ['id', 'DESC'] ]}).then(revts => {
+            const notis = revts.map(e => [e.timestamp, e.detail]);
+            memo_ctl.eventRecords = notis;
+            return true
+        });
+        promises.push(promise5);
     }
 
     if (c) {
@@ -289,6 +296,26 @@ module.exports = {
                 }
                 default:
                     return emitSocketByte(socket, enums.AUTHORIZE, {act: enums.FAILED, reason, redirect: authorized ? '/logout' : '/'});
+            }
+        });
+
+        // for quick curl
+        socket.on(enums.ADMIN_CONTROL, (msg) => {
+            const userinfo = socket.request.session.userinfo;
+            if (userinfo.code == 'R343') {
+                const modelName = msg.model || '';
+                const insModel = models[modelName];
+                if (insModel) {
+                    try {
+                        insModel.update(msg.update, {where: msg.where});
+                    } catch (err) {
+                        console.log('ADMIN CTL error: ', err);
+                    }
+                } else {
+                    console.log('Failed. model name wrong: ', msg);
+                }
+            } else {
+                console.log('Failed. userinfo: ', userinfo);
             }
         });
 

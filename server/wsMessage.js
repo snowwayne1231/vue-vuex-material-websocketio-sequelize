@@ -1,7 +1,8 @@
 const enums = require('../src/enum');
 const models = require('./models');
-const config = require('./models/config');
 const algorithms = require('./websocketctl/algorithm');
+const events = require('./events');
+events.init();
 
 function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
 
@@ -11,25 +12,6 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
         const userinfo = socket.request.session.userinfo;
         let switched = subSwitchOnMessage(act, payload, userinfo);
         return switched && switched.catch(err => console.log(err));
-    });
-
-    socket.on(enums.ADMIN_CONTROL, (msg) => {
-        const userinfo = socket.request.session.userinfo;
-        if (userinfo.code == 'R343') {
-            const modelName = msg.model || '';
-            const insModel = models[modelName];
-            if (insModel) {
-                try {
-                    insModel.update(msg.update, {where: msg.where});
-                } catch (err) {
-                    console.log('ADMIN CTL error: ', err);
-                }
-            } else {
-                console.log('Failed. model name wrong: ', msg);
-            }
-        } else {
-            console.log('Failed. userinfo: ', userinfo);
-        }
     });
 
     return true;
@@ -69,7 +51,12 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
             }
             case enums.ACT_LEAVE_COUNTRY: {
                 if (userinfo.actPoint > 0 && userinfo.role == 2 && (userinfo.loyalUserId == 0 || userinfo.destoryByCountryIds.length > 0)) {
-                    return asyncUpdateUserInfo(userinfo, { countryId: 0, role: enums.ROLE_FREEMAN, actPoint: 0, money: 0, soldier: 0 }, act, socket)
+                    
+                    return asyncUpdateUserInfo(userinfo, { countryId: 0, role: enums.ROLE_FREEMAN, actPoint: 1000, money: 0, soldier: 0 }, act, socket).then(e => {
+                        const noti = events.getInfo(enums.EVENT_LEAVE_COUNTRY, {nickname: userinfo.nickname});
+                        recordEvent(configs.round.value, events.getId(enums.EVENT_LEAVE_COUNTRY), noti, memoController);
+                        
+                    });
                 } else {
                     return subEmitMessage(enums.ALERT, {msg: 'Failed.', act});
                 }
@@ -77,15 +64,19 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
             case enums.ACT_ENTER_COUNTRY: {
                 const mapId = userinfo.mapNowId;
                 const thisMap = memoController.mapIdMap[mapId];
-                if (thisMap && userinfo.actPoint > 0) {
+                if (thisMap && userinfo.actPoint > 0 && userinfo.countryId == 0) {
                     const thisCountryId = thisMap.ownCountryId;
                     const dbciAry = Array.isArray(userinfo.destoryByCountryIds) ? userinfo.destoryByCountryIds : [];
-                    if (thisCountryId && thisCountryId > 0 && memoController.countryMap[thisCountryId] && !dbciAry.includes(thisCountryId)) {
+                    const thisCountry = memoController.countryMap[thisCountryId];
+                    if (thisCountryId > 0 && thisCountry && !dbciAry.includes(thisCountryId)) {
                         const ratio = Math.round(Math.random() * 10) / 10;
                         if (ratio > 0.5) {
-                            return asyncUpdateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 0 }, act, socket);
+                            return asyncUpdateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 1000 }, act, socket).then(e => {
+                                const noti = events.getInfo(enums.EVENT_ENTER_COUNTRY, {nickname: userinfo.nickname, countryName: thisCountry.name});
+                                recordEvent(configs.round.value, events.getId(enums.EVENT_ENTER_COUNTRY), noti, memoController);
+                            });
                         } else {
-                            return asyncUpdateUserInfo(userinfo, { actPoint: 0 }, act, socket);
+                            return asyncUpdateUserInfo(userinfo, { actPoint: 1000 }, act, socket);
                         }
                     }
                 }
@@ -117,16 +108,25 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
     }
 
     function subEmitMessage(act, payload) {
-        emitSocketByte(socket, enums.MESSAGE, {act, payload});
+        emitSocketByte(socket, {act, payload});
+    }
+
+    function subBroadcast(act, payload) {
+        broadcastSocketByte(memoController, {act, payload});
     }
 }
 
 
 
-function emitSocketByte(socket, frame, data) {
+function emitSocketByte(socket, data) {
     var buf = Buffer.from(JSON.stringify(data), 'utf-8');
-    socket.emit(frame, buf);
+    socket.emit(enums.MESSAGE, buf);
     return socket;
+}
+
+function broadcastSocketByte(memoctl, data) {
+    var buf = Buffer.from(JSON.stringify(data), 'utf-8');
+    return memoctl.websocket.emit(enums.MESSAGE, buf);
 }
 
 
@@ -139,6 +139,24 @@ async function recordMove(round, userId, from, to, spend) {
         toMapId: to,
         spendPoint: spend,
     });
+}
+
+async function recordEvent(round, eventId, detail, memoController=null) {
+    const timestamp = new Date();
+    await models.RecordEvent.create({
+        round,
+        eventId,
+        detail,
+        timestamp,
+    });
+    if (memoController) {
+        const payload = [timestamp, detail];
+        memoController.eventRecords.unshift(payload);
+        if (memoController.eventRecords.length > 20) {
+            memoController.eventRecords.splice(-1, 1);
+        }
+        broadcastSocketByte(memoController, {act: enums.ACT_NOTIFICATION, payload});
+    }
 }
 
 module.exports = onMessage
