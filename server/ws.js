@@ -10,7 +10,7 @@ const { makeToken, getDateByToekn } = require('./websocketctl/authorization');
 const onMessage = require('./wsMessage');
 
 const globalConfigs = { round: { value: -1, staticKey: '' }, season: { value: -1, staticKey: '' } }
-const memo_ctl = { websocket: null, userMap: {}, mapIdMap: {}, cityMap: {}, countryMap: {}, eventRecords: [], userSockets: [] };
+const memo_ctl = { websocket: null, userMap: {}, mapIdMap: {}, cityMap: {}, countryMap: {}, eventRecords: [], battlefieldMap: {}, userSockets: [] };
 // const clientArraies = {};
 
 
@@ -47,8 +47,9 @@ function emitGlobalGneralArraies(socket) {
     const maps = algorithms.flatMap(memo_ctl.mapIdMap, enums.MapsGlobalAttributes);
     const cities = algorithms.flatMap(memo_ctl.cityMap, enums.CityGlobalAttributes);
     const countries = algorithms.flatMap(memo_ctl.countryMap, enums.CountryGlobalAttributes);
+    const battlefieldMap = memo_ctl.battlefieldMap;
     const notifications = memo_ctl.eventRecords
-    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications}});
+    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap}});
 }
 
 
@@ -63,7 +64,8 @@ function refreshByAdmin() {
         const maps = algorithms.flatMap(memo_ctl.mapIdMap, enums.MapsGlobalAttributes);
         const cities = algorithms.flatMap(memo_ctl.cityMap, enums.CityGlobalAttributes);
         const countries = algorithms.flatMap(memo_ctl.countryMap, enums.CountryGlobalAttributes);
-        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_DATA, payload: { users, maps, cities, countries } });
+        const battlefieldMap = memo_ctl.battlefieldMap;
+        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_DATA, payload: { users, maps, cities, countries, battlefieldMap } });
         memo_ctl.userSockets.map(e => {
             const memoUser = memo_ctl.userMap[e.id];
             if (e.userinfo) {
@@ -121,6 +123,16 @@ function refreshBasicData(u=true, m=true, c=true, callback=null) {
             return true
         });
         promises.push(promise5);
+        const promise6 = models.RecordWar.findAll({ attributes: {exclude: ['createdAt', 'updatedAt']}, where: { winnerCountryId: 0 } }).then(wars => {
+            const newfieldMap = {};
+            wars.map(e => {
+                const _loc = e.toJSON();
+                newfieldMap[_loc.mapId] = _loc;
+            });
+            memo_ctl.battlefieldMap = newfieldMap;
+            return true
+        });
+        promises.push(promise6);
     }
 
     if (c) {
@@ -166,7 +178,9 @@ async function updateUserInfo(userinfo, update, act, socket=null) {
             ],
         });
     }
-    await recordApi(id, 'User', update, 2);
+    if (!(updatedKeys.includes('mapNowId') && updatedKeys.length < 3)) { // do not record moving event
+        await recordApi(id, 'User', update, 2);
+    }
 }
 
 async function initConfig() {

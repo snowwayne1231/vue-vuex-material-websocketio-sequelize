@@ -56,9 +56,6 @@ app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, '..', 'dist'), {maxAge: 1000*60*60*24}));
 app.use((req, res) => {
     const _ary = req.url.split(/[\/\\]+/g).filter(e=>e.length > 0);
-    if (_ary[0] == 'favicon.ico') {
-        return res.sendFile(path.join(__dirname, '..', 'static', 'favicon.ico'));
-    }
     return renderURI(req, res, _ary);
 });
 ws.buildWsConnection(http, session_middleware);

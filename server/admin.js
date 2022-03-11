@@ -35,6 +35,19 @@ const adminBro = new AdminBro({
         },
       },
     },
+    {
+      resource: db.RecordWar,
+      options: {
+        properties: {
+          detail: {
+            type: 'mixed',
+          },
+          attackCountryIds: {
+            type: 'mixed',
+          },
+        },
+      },
+    },
   ],
 });
 

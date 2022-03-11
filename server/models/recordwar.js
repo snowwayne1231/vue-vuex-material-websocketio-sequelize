@@ -26,14 +26,53 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   RecordWar.init({
-    attackCountryIds: DataTypes.TEXT,
+    attackCountryIds: {
+      type: DataTypes.TEXT,
+      get() {
+        const val = this.getDataValue('attackCountryIds');
+        return val && val[0] == '[' ? JSON.parse(val) : val;
+      },
+      set(val) {
+        this.setDataValue('attackCountryIds', typeof val != 'string' ? JSON.stringify(val) : val);
+      }
+    },
     defenceCountryId: DataTypes.INTEGER,
     winnerCountryId: DataTypes.INTEGER,
     mapId: DataTypes.INTEGER,
     judgeId: DataTypes.INTEGER,
+    toolmanId: DataTypes.INTEGER,
+    atkUserIds: {
+      type: DataTypes.STRING,
+      get() {
+        const val = this.getDataValue('atkUserIds');
+        return val && val[0] == '[' ? JSON.parse(val) : val;
+      },
+      set(val) {
+        this.setDataValue('atkUserIds', typeof val != 'string' ? JSON.stringify(val) : val);
+      }
+    },
+    defUserIds: {
+      type: DataTypes.STRING,
+      get() {
+        const val = this.getDataValue('defUserIds');
+        return val && val[0] == '[' ? JSON.parse(val) : val;
+      },
+      set(val) {
+        this.setDataValue('defUserIds', typeof val != 'string' ? JSON.stringify(val) : val);
+      }
+    },
     timestamp: DataTypes.DATE,
     round: DataTypes.INTEGER,
-    detail: DataTypes.TEXT,
+    detail: {
+      type: DataTypes.TEXT,
+      get() {
+        const val = this.getDataValue('detail');
+        return val && val[0] == '{' ? JSON.parse(val) : val;
+      },
+      set(val) {
+        this.setDataValue('detail', typeof val != 'string' ? JSON.stringify(val) : val);
+      }
+    }
   }, {
     sequelize,
     modelName: 'RecordWar',

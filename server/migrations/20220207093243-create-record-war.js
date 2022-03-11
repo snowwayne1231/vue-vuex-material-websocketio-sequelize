@@ -10,7 +10,7 @@ module.exports = {
       },
       attackCountryIds: {
         type: Sequelize.TEXT,
-        defaultValue: '{}',
+        defaultValue: '[]',
       },
       defenceCountryId: {
         type: Sequelize.INTEGER,
@@ -27,6 +27,18 @@ module.exports = {
       judgeId: {
         type: Sequelize.INTEGER,
         defaultValue: 0,
+      },
+      toolmanId: {
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
+      },
+      atkUserIds: {
+        type: Sequelize.STRING,
+        defaultValue: '[]',
+      },
+      defUserIds: {
+        type: Sequelize.STRING,
+        defaultValue: '[]',
       },
       timestamp: {
         type: Sequelize.DATE,
@@ -52,6 +64,8 @@ module.exports = {
       queryInterface.addIndex('RecordWars', ['mapId']);
       queryInterface.addIndex('RecordWars', ['judgeId']);
       queryInterface.addIndex('RecordWars', ['round']);
+      queryInterface.addIndex('RecordWars', ['defenceCountryId']);
+      queryInterface.addIndex('RecordWars', ['timestamp']);
     });
   },
   async down(queryInterface, Sequelize) {
@@ -59,6 +73,8 @@ module.exports = {
       queryInterface.removeIndex('RecordWars', ['mapId']);
       queryInterface.removeIndex('RecordWars', ['judgeId']);
       queryInterface.removeIndex('RecordWars', ['round']);
+      queryInterface.removeIndex('RecordWars', ['defenceCountryId']);
+      queryInterface.removeIndex('RecordWars', ['timestamp']);
     });
   }
 };

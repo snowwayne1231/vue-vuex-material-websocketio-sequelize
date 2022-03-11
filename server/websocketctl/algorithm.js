@@ -11,6 +11,13 @@ module.exports = {
         });
         mapdata.hash = next_hash;
     },
+    updateHash(id, key, val) {
+        if (mapdata.hash[id]) {
+            if (mapdata.hash[id].hasOwnProperty(key)) {
+                mapdata.hash[id][key] = val;
+            }
+        }
+    },
     getMapDistance(start, end, countryId = 0) {
         const hash = mapdata.hash;
         const checkCountry = countryId > 0;
@@ -90,5 +97,53 @@ module.exports = {
             }
         });
         return obj;
-    },    
+    },
+    getTimeOptions(occupiedTimes) {
+        const allowedHours = [800, 1200, 1230, 1530, 2230];
+        const afterDays = 7;
+        const timeOptions = [];
+        const startDate = new Date();
+        startDate.setSeconds(0);
+        startDate.setMilliseconds(0);
+        startDate.setDate(startDate.getDate() + ( Math.max(0, startDate.getDay() -5 ) + afterDays));
+        if (occupiedTimes.length > 0 && startDate.getTime() < occupiedTimes[-1]) {
+            startDate.setTime(occupiedTimes[-1]);
+        }
+
+        let day = 0;
+        while (timeOptions.length < 5 && day++ < afterDays) {
+            if (startDate.getDay() <= 5) {
+                for(let i = 0; i < allowedHours.length; i++) {
+                    let loc = allowedHours[i];
+                    let hour = Math.floor(loc / 100);
+                    let minute = loc % 100;
+                    if (startDate.getHours() < hour || ( startDate.getHours() == hour && startDate.getMinutes() < minute )) {
+                        startDate.setHours(hour);
+                        startDate.setMinutes(minute);
+                        if (!occupiedTimes.includes(startDate.getTime())) {
+                            timeOptions.push(new Date(startDate.getTime()));
+                            if (timeOptions.length >= 5) break
+                        }
+                    }
+                }
+            }
+            startDate.setDate(startDate.getDate() +1);
+            startDate.setHours(1);
+        }
+        return timeOptions;
+    },
+    isValidatedBattleTime(timestamp) {
+        const allowedHours = [8, 12, 15, 22];
+        const allowedAfterDays = 7;
+        const now = new Date();
+        const selected = new Date(timestamp);
+        const gap = selected.getTime() - now.getTime();
+        if (gap < allowedAfterDays * 1000 * 60 * 60 * 24) {
+            return false;
+        }
+        if (!allowedHours.includes(selected.getHours())) {
+            return false;
+        }
+        return true;
+    },
 }

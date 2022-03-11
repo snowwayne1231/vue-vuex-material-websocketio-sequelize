@@ -3,9 +3,11 @@ const db = require('../models');
 const dataset = [
   { name: '下野', detail: '【下野】{nickname} 已經自請浪跡天涯', staticKey: '_LEAVE_COUNTRY_'},
   { name: '入仕', detail: '【入仕】{nickname} 成功加入 {countryName} 成為武將', staticKey: '_ENTER_COUNTRY_'},
-  { name: '戰役', detail: '', staticKey: '_WAR_'},
+  { name: '戰役', detail: '【戰役】於 {mapName} 發生戰役', staticKey: '_WAR_'},
   { name: '野戰', detail: '【野戰】{atkCountryName} 與 {defCountryName} 於 {mapName} 發生戰役', staticKey: '_WAR_WILD_'},
   { name: '攻城戰', detail: '【攻城戰】{atkCountryName} 與 {defCountryName} 於 {mapName} 發生戰役', staticKey: '_WAR_CITY_'},
+  { name: '戰役進攻', detail: '【戰役】{atkCountryName}({nicknames}) 成功奪下 {mapName} ', staticKey: '_WAR_WIN_'},
+  { name: '戰役防守', detail: '【戰役】{defCountryName}({nicknames}) 成功守住 {mapName} ', staticKey: '_WAR_DEFENCE_'},
   { name: '建國', detail: '【建國】{nickname} 位於 {mapName} 自封為王 國號為 {countrySign}', staticKey: '_CREATE_COUNTRY_'},
   { name: '叛亂', detail: '【叛亂】{nickname} 位於 {mapName} 叛亂 {whether}', staticKey: '_CHAOS_'},
   { name: '滅國', detail: '【滅國】{defCountryName} 已被 {atkCountryName} 消滅', staticKey: '_DESTROY_COUNTRY_'},
