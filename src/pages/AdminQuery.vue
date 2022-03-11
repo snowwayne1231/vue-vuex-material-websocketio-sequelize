@@ -89,6 +89,8 @@ export default {
                 case 'users': this.selectedTable = 'User'; break
                 case 'cities': this.selectedTable = 'City'; break
                 case 'countries': this.selectedTable = 'Country'; break
+                case 'battlefieldMap': this.selectedTable = 'RecordWar'; break
+                case 'notifications': this.selectedTable = 'RecordEvent'; break
                 default:
             }
         }

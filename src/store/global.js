@@ -9,7 +9,13 @@ const global = {
     maps: [],
     cities: [],
     countries: [],
-    notifications: []
+    battlefieldMap: {0: {id: 0, attackCountryIds: [], defenceCountryId: 0, detail: {}, judgeId: 0, mapId: 0, round: 0, timestamp: 0, winnerCountryId: 0}},
+    notifications: [],
+
+    battlefield: {
+      timeOptions: [],
+      mapId: 0,
+    },
   },
   mutations: {
     wsOnMESSAGE: (state, message) => {
@@ -26,6 +32,9 @@ const global = {
           if (payload.notifications) {
             state.notifications = payload.notifications.map(e => [new Date(e[0]), e[1]]);
             state.notifications.sort((a,b) => b[0] - a[0]);
+          }
+          if (payload.battlefieldMap) {
+            state.battlefieldMap = payload.battlefieldMap;
           }
           break
         case enums.ACT_GET_GLOBAL_CHANGE_DATA: {
@@ -44,7 +53,7 @@ const global = {
             console.log('pointer: ', pointer, 'update: ', _.update)
             Object.keys(_.update).map(key => {
               const value = _.update[key];
-              if (pointer[key]) { pointer[key] = value }
+              if (pointer.hasOwnProperty(key)) { pointer[key] = value }
             });
           })
         } break
@@ -52,12 +61,43 @@ const global = {
           const new_noti = [new Date(payload[0]), payload[1]]
           state.notifications = [new_noti].concat(state.notifications);
         } break
+        case enums.ACT_BATTLE: {
+          const timeOptions = payload.options;
+          const mapId = payload.mapId;
+          if (timeOptions) {
+            state.battlefield.timeOptions = timeOptions;
+            state.battlefield.mapId = mapId;
+          } else {
+            state.battlefield.timeOptions = [];
+            state.battlefield.mapId = 0;
+          }
+        } break
+        case enums.ACT_BATTLE_ADD: {
+          const mapId = payload.mapId;
+          const nextBattlefield = { ...state.battlefieldMap };
+          nextBattlefield[mapId] = payload.jsondata;
+          state.battlefieldMap = nextBattlefield;
+        } break
+        case enums.ACT_BATTLE_DONE: {
+          const mapId = payload.mapId;
+          const nextBattlefield = { ...state.battlefieldMap };
+          delete nextBattlefield[mapId];
+          state.battlefieldMap = nextBattlefield;
+        } break
         case enums.ALERT: {
           window.alert(payload.msg);
         }
         default:
       }
-    }
+    },
+    updateGlobal: (state, args) => {
+      Object.keys(args).map(key => {
+        let val = args[key];
+        if (state.hasOwnProperty(key)) {
+          state[key] = val;
+        }
+      });
+    },
   },
   actions: {
     wsEmitMessage: () => {

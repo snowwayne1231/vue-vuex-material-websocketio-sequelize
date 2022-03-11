@@ -61,9 +61,18 @@ function getAllowedPosition(nowId, moveEnergy = 1, countryId = 0) {
     return {all: all_routes, steps: stpeRoutes};
 }
 
+function getBattlePosition(nowId, countryId = 0) {
+    const _hash = mapdata.hash;
+    const _now = _hash[nowId];
+    if (countryId == 0) { return [] }
+    const positions = _now.route.filter(r => _hash[r].ownCountryId != countryId);
+    return positions
+}
+
 
 
 export default {
     setData,
     getAllowedPosition,
+    getBattlePosition
 }

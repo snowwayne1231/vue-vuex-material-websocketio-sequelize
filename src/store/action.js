@@ -32,5 +32,11 @@ module.exports = {
     actEnterCountry: ({dispatch}) => {
         dispatch('wsEmitMessage', {act: enums.ACT_ENTER_COUNTRY});
     },
+    actBattle: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_BATTLE, payload: args});
+    },
+    actBattleJoin: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_BATTLE_JOIN, payload: args});
+    },
     register,
 }
