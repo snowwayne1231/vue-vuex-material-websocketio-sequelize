@@ -113,8 +113,8 @@ export default {
         var res = {};
         splitedLine.map(line => {
             if (line.match(eq)) {
-                var ary = line.split(/\s*[\=\:]+\s*/ig);
-                var key = ary[0];
+                var ary = line.split(/\s*[\=]+?\s*/i);
+                var key = ary[0].trim();
                 var val = ary[1];
                 res[key] = val;
             }

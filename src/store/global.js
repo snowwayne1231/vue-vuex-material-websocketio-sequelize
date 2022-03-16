@@ -10,6 +10,7 @@ const global = {
     cities: [],
     countries: [],
     battlefieldMap: {0: {id: 0, attackCountryIds: [], defenceCountryId: 0, detail: {}, judgeId: 0, mapId: 0, round: 0, timestamp: 0, winnerCountryId: 0}},
+    occupationMap: {0: {id: 0, attackCountryIds: [], defenceCountryId: 0, detail: {}, judgeId: 0, mapId: 0, round: 0, timestamp: 0, winnerCountryId: 0}},
     notifications: [],
 
     battlefield: {
@@ -35,6 +36,9 @@ const global = {
           }
           if (payload.battlefieldMap) {
             state.battlefieldMap = payload.battlefieldMap;
+          }
+          if (payload.occupationMap) {
+            state.occupationMap = payload.occupationMap;
           }
           break
         case enums.ACT_GET_GLOBAL_CHANGE_DATA: {

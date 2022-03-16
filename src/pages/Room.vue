@@ -22,7 +22,7 @@
               <span v-if="p.ownCountryId == user.countryId">🏴</span>
               <Man
                 v-if="showNow==p.id"
-                name="帥哥"
+                :name="user.nickname"
                 :voted="localVoteBoolean"
               />
               <div class="list-people">
@@ -35,22 +35,34 @@
                     <td colspan="2">{{p.battlearea.time}}</td>
                   </tr>
                   <tr>
-                    <td>{{p.battlearea.atkCountry}}</td>
-                    <td>{{p.battlearea.defCountry}}</td>
+                    <th width="50%">{{p.battlearea.atkCountry}}</th>
+                    <th width="50%">{{p.battlearea.defCountry}}</th>
                   </tr>
                   <tr>
                     <td>
                       <dl v-for="(user, idx) in p.battlearea.atkUsers" :key="idx">
-                        <dd v-if="user">{{user.nickname}}</dd>
+                        <dd v-if="user">{{user.nickname}} {{p.battlearea.detail.atkSoldiers[idx]}}</dd>
                         <dd v-else @click="onClickJoin($event, idx, p.id, p.battlearea.id)">[+]</dd>
                       </dl>
                     </td>
                     <td>
                       <dl v-for="(user, idx) in p.battlearea.defUsers" :key="idx">
-                        <dd v-if="user">{{user.nickname}}</dd>
+                        <dd v-if="user">{{user.nickname}} {{p.battlearea.detail.defSoldiers[idx]}}</dd>
                         <dd v-else @click="onClickJoin($event, idx, p.id, p.battlearea.id)">[+]</dd>
                       </dl>
                     </td>
+                  </tr>
+                  <tr>
+                    <td>裁判: </td>
+                    <td><dd v-if="p.battlearea.judge">{{p.battlearea.judge}}</dd><dd v-else @click="onClickJoin($event, 4, p.id, p.battlearea.id)">[+]</dd></td>
+                  </tr>
+                  <tr>
+                    <td>工作: </td>
+                    <td><dd v-if="p.battlearea.toolman">{{p.battlearea.toolman}}</dd><dd v-else @click="onClickJoin($event, 5, p.id, p.battlearea.id)">[+]</dd></td>
+                  </tr>
+                  <tr>
+                    <td><dd class="btn" @click="onClickJudgeWin($event, p.battlearea.atkCountryId, p.id, p.battlearea.id)">攻成</dd></td>
+                    <td><dd class="btn" @click="onClickJudgeWin($event, p.battlearea.defCountryId, p.id, p.battlearea.id)">守贏</dd></td>
                   </tr>
                 </table>
               </div>
@@ -135,15 +147,22 @@ export default {
         if (areaData) {
           let countries = self.global.countries;
           let users = self.global.users;
+          let detail = areaData.detail;
+          let atkUsers = areaData.atkUserIds.map(u => u > 0 ? users.find(uu => uu.id == u) : null);
+          let defUsers = areaData.defUserIds.map(u => u > 0 ? users.find(uu => uu.id == u) : null);
+
           next.battlearea = {
             id: areaData.id,
             time: new Date(areaData.timestamp).toLocaleString(),
             atkCountry: areaData.attackCountryIds.map(ac => countries.find(c => ac==c.id).name).join(','),
+            atkCountryId: areaData.attackCountryIds[0],
             defCountry: countries.find(c => areaData.defenceCountryId==c.id).name,
+            defCountryId: areaData.defenceCountryId,
             judge: areaData.judgeId > 0 ? users.find(u => u.id == areaData.judgeId).nickname : '',
             toolman: areaData.toolmanId > 0 ? users.find(u => u.id == areaData.toolmanId).nickname : '',
-            atkUsers: areaData.atkUserIds.map(u => u > 0 ? users.find(uu => uu.id == u) : null),
-            defUsers: areaData.defUserIds.map(u => u > 0 ? users.find(uu => uu.id == u) : null),
+            atkUsers,
+            defUsers,
+            detail
           }
         }
         return next;
@@ -187,7 +206,7 @@ export default {
     Man,
   },
   mounted() {
-    if (window.location.hostname != 'localhost' && !['R343', 'R064', 'R307'].includes(this.user.code)) {
+    if (!['81', '8080'].includes(window.location.port) && !['R343', 'R064', 'R307'].includes(this.user.code)) {
       window.alert('開發測試用的');
       this.$router.push('/');
     }
@@ -221,6 +240,7 @@ export default {
       }
     },
     onClickPoint(dataset) {
+      if (this.user.mapTargetId != 0) {return false;}
       if (this.showLights.includes(dataset.id)) {
         let yes = window.confirm('確定移動這此嗎?');
         if (yes) {
@@ -299,14 +319,34 @@ export default {
       if (idx >= 0) {
         const selectedTime = battlefield.timeOptions[idx];
         console.log(selectedTime);
-        this.$store.dispatch('actBattle', {mapId: battlefield.mapId, time: selectedTime});
+        this.$store.dispatch('actBattle', {mapId: battlefield.mapId, time: selectedTime, soldier: 1000});
       }
     },
     onClickJoin(evt, index, mapId, battleId) {
       console.log(index, mapId, battleId);
       evt.stopPropagation();
-      if (window.confirm(`確定加入 [ ${this.global.maps.find(m => m.id == mapId).name} ] 的戰役嗎 ?`)) {
-        return this.$store.dispatch('actBattleJoin', {position: index, mapId, battleId});
+      const mapName = this.global.maps.find(m => m.id == mapId).name;
+      let yes = false;
+      let soldier = 0;
+      switch (index) {
+        case 4: yes = window.confirm(`確定成為 [ ${mapName} ] 之戰役的裁判嗎 ?`); break;
+        case 5: yes = window.confirm(`確定成為 [ ${mapName} ] 之戰役的工具人嗎 ?`); break;
+        default:
+          yes = window.confirm(`確定加入 [ ${mapName} ] 的戰役嗎 ?`);
+          soldier = parseInt(window.prompt('請輸入要派出的兵力'), 10);
+      }
+      if (yes) {
+        return this.$store.dispatch('actBattleJoin', {position: index, mapId, battleId, soldier});
+      }
+    },
+    onClickJudgeWin(evt, winId, mapId, battleId) {
+      console.log(winId, mapId, battleId);
+      evt.stopPropagation();
+      const mapName = this.global.maps.find(m => m.id == mapId).name;
+      const countryName = this.global.countries.find(c=> c.id ==winId).name;
+      const yes = window.confirm(`是否判定 [ ${mapName}} ] 之戰役的勝利方為 [ ${countryName} ] 嗎 ?`);
+      if (yes) {
+        return this.$store.dispatch('actBattleJudge', {winId, mapId, battleId});
       }
     },
     getCheck(ary = []) {
@@ -422,5 +462,8 @@ export default {
 }
 .battlearea dl, .battlearea dd {
   margin: 0px;
+}
+.battlearea .btn{
+  background-color: #ccc;
 }
 </style>
