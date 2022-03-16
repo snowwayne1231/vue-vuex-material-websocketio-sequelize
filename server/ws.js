@@ -5,13 +5,28 @@ const { Op } = require("sequelize");
 const models = require('./models');
 const enums = require('../src/enum');
 const algorithms = require('./websocketctl/algorithm');
+const events = require('./events');
+const battles = require('./battles');
 const { asyncLogin } = require('./handler');
 const { makeToken, getDateByToekn } = require('./websocketctl/authorization');
 const onMessage = require('./wsMessage');
 
-const globalConfigs = { round: { value: -1, staticKey: '' }, season: { value: -1, staticKey: '' } }
-const memo_ctl = { websocket: null, userMap: {}, mapIdMap: {}, cityMap: {}, countryMap: {}, eventRecords: [], battlefieldMap: {}, userSockets: [] };
-// const clientArraies = {};
+
+
+const memo_ctl = {
+    websocket: null,
+    userSockets: [],
+    userMap: {},
+    mapIdMap: {},
+    cityMap: {},
+    countryMap: {},
+    battlefieldMap: {},
+    occupationMap: {},
+    eventCtl: events,
+    battleCtl: battles,
+    broadcast: broadcastSocketByte,
+};
+const globalConfigs = { round: { value: -1, staticKey: '' }, season: { value: -1, staticKey: '' } };
 
 
 
@@ -48,8 +63,9 @@ function emitGlobalGneralArraies(socket) {
     const cities = algorithms.flatMap(memo_ctl.cityMap, enums.CityGlobalAttributes);
     const countries = algorithms.flatMap(memo_ctl.countryMap, enums.CountryGlobalAttributes);
     const battlefieldMap = memo_ctl.battlefieldMap;
-    const notifications = memo_ctl.eventRecords
-    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap}});
+    const occupationMap = memo_ctl.occupationMap;
+    const notifications = memo_ctl.eventCtl.getRecords();
+    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap, occupationMap}});
 }
 
 
@@ -65,12 +81,13 @@ function refreshByAdmin() {
         const cities = algorithms.flatMap(memo_ctl.cityMap, enums.CityGlobalAttributes);
         const countries = algorithms.flatMap(memo_ctl.countryMap, enums.CountryGlobalAttributes);
         const battlefieldMap = memo_ctl.battlefieldMap;
-        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_DATA, payload: { users, maps, cities, countries, battlefieldMap } });
+        const occupationMap = memo_ctl.occupationMap;
+        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_DATA, payload: { users, maps, cities, countries, battlefieldMap, occupationMap } });
         memo_ctl.userSockets.map(e => {
             const memoUser = memo_ctl.userMap[e.id];
             if (e.userinfo) {
                 memoUser && Object.keys(e.userinfo).map(key => {
-                    if (memoUser[key]) {
+                    if (memoUser.hasOwnProperty(key)) {
                         e.userinfo[key] = memoUser[key];
                     }
                 });
@@ -119,7 +136,7 @@ function refreshBasicData(u=true, m=true, c=true, callback=null) {
         promises.push(promise2, promise3);
         const promise5 = models.RecordEvent.findAll({attributes: ['detail', 'timestamp'], limit: 20, order: [ ['id', 'DESC'] ]}).then(revts => {
             const notis = revts.map(e => [e.timestamp, e.detail]);
-            memo_ctl.eventRecords = notis;
+            memo_ctl.eventCtl.setRecords(notis);
             return true
         });
         promises.push(promise5);
@@ -144,6 +161,12 @@ function refreshBasicData(u=true, m=true, c=true, callback=null) {
             return true
         });
         promises.push(promise4);
+        const promise7 = models.Occupation.findAll({attributes: {exclude: ['isAllowedPk', 'isAllowedItem', 'addPeopleLimit', 'createdAt', 'updatedAt']}}).then(os => {
+            os.map(o => {
+                memo_ctl.occupationMap[o.id] = o.toJSON();
+            });
+        });
+        promises.push(promise7);
     }
     
     var _all = Promise.all(promises);
@@ -197,6 +220,7 @@ async function initConfig() {
             {name: 'season', status: 1, staticKey: '_season_'},
         ]);
         globalConfigs.round.value = 1;
+        globalConfigs.season.value = 1;
     }
     return true
 }
@@ -211,7 +235,61 @@ async function recordApi(userId, model='', payload={}, curd=0) {
     });
 }
 
-
+function hookerHandleBattleFinish(battleChanges, time) {
+    console.log('[HookerHandleBattleFinish]: ', time.toLocaleTimeString());
+    try {
+        const globalChangeDataset = [];
+        battleChanges.map(bc => {
+            bc.User.map(usr => {
+                const updateKeys = Object.keys(usr.updated);
+                updateKeys.map(k => {
+                    memo_ctl.userMap[usr.id][k] = usr.updated[k];
+                });
+                globalChangeDataset.push({ depth: ['users', usr.id], update: usr.updated });
+                memo_ctl.userSockets.map(us => {
+                    if (us.id == usr.id) {
+                        updateKeys.map(k => {
+                            us.userinfo[k] = usr.updated[k];
+                        });
+                        emitSocketByte(us.socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: usr.updated});
+                    }
+                });
+            });
+            bc.RecordWar.map(rw => {
+                delete memo_ctl.battlefieldMap[rw.mapId];
+                broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_BATTLE_DONE, payload: {mapId: rw.mapId}});
+                const event = rw.isAttackerWin ? enums.EVENT_WAR_WIN : enums.EVENT_WAR_DEFENCE;
+                const mapIdMap = memo_ctl.mapIdMap;
+                const hasCountryDestoried = rw.isDestoried;
+                const atkCountryName = memo_ctl.countryMap[rw.winnerCountryId].name;
+                const defCountryName = memo_ctl.countryMap[rw.defenceCountryId].name;
+                const round = globalConfigs.round.value;
+                if (rw.isAttackerWin) {
+                    mapIdMap[rw.mapId].ownCountryId = rw.winnerCountryId;
+                    globalChangeDataset.push({ depth: ['maps', rw.mapId], update: {ownCountryId: rw.winnerCountryId} });
+                }
+                return memo_ctl.eventCtl.broadcastInfo(event, {
+                    round,
+                    defCountryName,
+                    atkCountryName,
+                    nicknames: (rw.isAttackerWin ? rw.atkUserIds : rw.defUserIds).filter(i => !!memo_ctl.userMap[i]).map(i => memo_ctl.userMap[i].nickname).join(','),
+                    mapName: mapIdMap[rw.mapId].name,
+                }).then(() => {
+                    return hasCountryDestoried && memo_ctl.eventCtl.broadcastInfo(enums.EVENT_DESTROY_COUNTRY, {
+                        round,
+                        defCountryName,
+                        atkCountryName,
+                    });
+                });
+            });
+        });
+        emitGlobalChanges({
+            dataset: globalChangeDataset,
+        });
+    } catch (err) {
+        console.log('[HookerHandleBattleFinish] err: ', err)
+    }
+}
 
 
 module.exports = {
@@ -226,6 +304,9 @@ module.exports = {
             console.log('init done globalConfigs: ', globalConfigs);
         });
         refreshBasicData().then(() => {
+            memo_ctl.eventCtl.init(broadcastSocketByte);
+            memo_ctl.battleCtl.init(io, memo_ctl.userSockets, memo_ctl.mapIdMap);
+            memo_ctl.battleCtl.bindSuccessfulRBF(hookerHandleBattleFinish);
             memo_ctl.websocket.on('connection', onConn);
         });
     },
@@ -321,6 +402,7 @@ module.exports = {
                 const insModel = models[modelName];
                 if (insModel) {
                     try {
+                        console.log('[ADMIN_CONTROL] update: ', msg.update);
                         insModel.update(msg.update, {where: msg.where});
                     } catch (err) {
                         console.log('ADMIN CTL error: ', err);
@@ -349,5 +431,6 @@ module.exports = {
                 }
             });
         });
-    }
+    },
+    initConfig
 }

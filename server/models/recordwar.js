@@ -44,7 +44,7 @@ module.exports = (sequelize, DataTypes) => {
     atkUserIds: {
       type: DataTypes.STRING,
       get() {
-        const val = this.getDataValue('atkUserIds');
+        let val = this.getDataValue('atkUserIds');
         return val && val[0] == '[' ? JSON.parse(val) : val;
       },
       set(val) {

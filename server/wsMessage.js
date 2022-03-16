@@ -1,16 +1,18 @@
 const enums = require('../src/enum');
 const models = require('./models');
 const algorithms = require('./websocketctl/algorithm');
-const events = require('./events');
 const { Op } = require("sequelize");
-events.init();
+
 
 function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
-
+    
     socket.on(enums.MESSAGE, (msg) => {
         const act = msg.act || '';
         const payload = msg.payload || {};
         const userinfo = socket.request.session.userinfo;
+        if (userinfo.captiveDate) {
+            return subEmitMessage(enums.ALERT, {msg: 'Be captured. ' + userinfo.captiveDate.toLocaleDateString()}); 
+        }
         let switched = subSwitchOnMessage(act, payload, userinfo);
         return switched && switched.catch && switched.catch(err => console.log(err));
     });
@@ -52,9 +54,8 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
             } break
             case enums.ACT_LEAVE_COUNTRY: {
                 if (userinfo.actPoint > 0 && userinfo.role == 2 && (userinfo.loyalUserId == 0 || userinfo.destoryByCountryIds.length > 0) && userinfo.mapTargetId == 0) {
-                    return asyncUpdateUserInfo(userinfo, { countryId: 0, role: enums.ROLE_FREEMAN, actPoint: 0, money: 0, soldier: 0, actPointMax: 3 }, act, socket).then(e => {
-                        const noti = events.getInfo(enums.EVENT_LEAVE_COUNTRY, {nickname: userinfo.nickname});
-                        recordEvent(configs.round.value, events.getId(enums.EVENT_LEAVE_COUNTRY), noti, memoController);
+                    return asyncUpdateUserInfo(userinfo, { countryId: 0, role: enums.ROLE_FREEMAN, actPoint: 0, money: 0, soldier: 0, actPointMax: 3, occupationId: 0 }, act, socket).then(e => {
+                        return memoController.eventCtl.broadcastInfo(eveenums.EVENT_LEAVE_COUNTRY, {nickname: userinfo.nickname, round: configs.round.value});
                     });
                 }
             } break
@@ -69,8 +70,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                         const ratio = Math.round(Math.random() * 10) / 10;
                         if (ratio > 0.5) {
                             return asyncUpdateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 0, actPointMax: 7 }, act, socket).then(e => {
-                                const noti = events.getInfo(enums.EVENT_ENTER_COUNTRY, {nickname: userinfo.nickname, countryName: thisCountry.name});
-                                recordEvent(configs.round.value, events.getId(enums.EVENT_ENTER_COUNTRY), noti, memoController);
+                                return memoController.eventCtl.broadcastInfo(eveenums.EVENT_ENTER_COUNTRY, {nickname: userinfo.nickname, countryName: thisCountry.name, round: configs.round.value});
                             });
                         } else {
                             return asyncUpdateUserInfo(userinfo, { actPoint: 0 }, act, socket);
@@ -97,16 +97,18 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
             case enums.ACT_BATTLE: {
                 const mapId = payload.mapId;
                 const timeSelected = payload.time;
+                const involvedSoldiers = payload.soldier;
                 const thisMap = memoController.mapIdMap[mapId];
                 const userCountry = memoController.countryMap[userinfo.countryId];
                 const notExistBattlefield = !memoController.battlefieldMap[mapId];
-                if (thisMap && thisMap.ownCountryId != userinfo.countryId && userCountry && notExistBattlefield && userinfo.mapTargetId == 0) {
+                if (thisMap && thisMap.ownCountryId != userinfo.countryId && userCountry && notExistBattlefield && userinfo.mapTargetId == 0) { // validate map info
                     const actSpend = 1;
                     const moneySpend = 100;
                     const soldierSpend = 1000;
                     const increaseContribution = 6;
-                    
-                    if (userinfo.actPoint >= actSpend && userinfo.money >= moneySpend && userinfo.soldier >= soldierSpend) { // enough resource
+
+                    if (algorithms.isWorking(userinfo.id, memoController)) { break }
+                    if (userinfo.actPoint >= actSpend && userinfo.money >= moneySpend && userinfo.soldier >= soldierSpend /*&& involvedSoldiers >= soldierSpend*/) { // enough resource
                         const usersHere = Object.values(memoController.userMap).filter(u => u.mapNowId == mapId && u.countryId > 0);
                         const isFreeWild = usersHere.length == 0 && thisMap.cityId == 0;
                         const atkCountryName = userCountry.name;
@@ -124,8 +126,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                                 });
                                 return updateMapOwner(mapId, userinfo.countryId , memoController);
                             }).then(() => {
-                                const noti = events.getInfo(enums.EVENT_WAR_WIN, {atkCountryName, mapName: thisMap.name, nicknames: userinfo.nickname});
-                                return recordEvent(configs.round.value, events.getId(enums.EVENT_WAR_WIN), noti, memoController);
+                                return memoController.eventCtl.broadcastInfo(eveenums.EVENT_WAR_WINnt, {atkCountryName, mapName: thisMap.name, nicknames: userinfo.nickname, round: configs.round.value});
                             });
                         }
 
@@ -136,7 +137,9 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                         }).then(wars => {
                             const warTimestamps = wars.map(w => new Date(w.timestamp).getTime());
                             if (timeSelected) {
-                                if (warTimestamps.includes(timeSelected)) {
+                                if (!involvedSoldiers || userinfo.soldier < involvedSoldiers) {
+                                    return subEmitMessage(enums.ALERT, {msg: 'Involved soldier wrong.', act});
+                                } else if (warTimestamps.includes(timeSelected)) {
                                     return subEmitMessage(enums.ALERT, {msg: 'Already aragnemented time.', act});
                                 } else if (algorithms.isValidatedBattleTime(timeSelected) && wars.findIndex(w => w.mapId == mapId) == -1) {
                                     subEmitMessage(act, {mapId});
@@ -148,7 +151,12 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                                         attackCountryIds: [userinfo.countryId],
                                         atkUserIds: [userinfo.id, 0, 0, 0],
                                         defUserIds: [0, 0, 0, 0],
-                                        detail: {}
+                                        detail: {
+                                            atkSoldiers: [involvedSoldiers, 0, 0, 0],
+                                            defSoldiers: [0, 0, 0, 0],
+                                            atkSoldierLoses: [0, 0, 0, 0],
+                                            defSoldierLoses: [0, 0, 0, 0],
+                                        }
                                     }, memoController);
                                 }
                                 return subEmitMessage(enums.ALERT, {msg: 'Not validated time.', act});
@@ -163,13 +171,12 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                                 return asyncUpdateUserInfo(userinfo, {
                                     actPoint: userinfo.actPoint - actSpend,
                                     money: userinfo.money - moneySpend,
-                                    soldier: userinfo.soldier - soldierSpend,
+                                    // soldier: userinfo.soldier - involvedSoldiers,
                                     contribution: userinfo.contribution + increaseContribution,
                                     mapTargetId: mapId,
                                 }, act, socket).then(() => {
                                     const event = thisMap.cityId > 0 ? enums.EVENT_WAR_CITY : enums.EVENT_WAR_WILD;
-                                    const noti = events.getInfo(event, {atkCountryName, mapName: thisMap.name, defCountryName});
-                                    return recordEvent(configs.round.value, events.getId(event), noti, memoController);
+                                    return memoController.eventCtl.broadcastInfo(event, {atkCountryName, mapName: thisMap.name, defCountryName, round: configs.round.value});
                                 });
                             }
                         });
@@ -180,6 +187,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const mapId = payload.mapId;
                 const battleId = payload.battleId;
                 const position = payload.position; // 0~3 = 戰鬥位置 4 = 裁判 5 = 工具人
+                const involvedSoldiers = payload.soldier;
                 const thisMap = mapId ? memoController.mapIdMap[mapId] : null;
                 const thisBattle = mapId ? memoController.battlefieldMap[mapId] : null;
                 const isAtkCountry = thisBattle.attackCountryIds.includes(userinfo.countryId);
@@ -188,13 +196,14 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                     if ([4,5].includes(position)) {
                         const increaseContribution = 12;
                         const bdata = {};
+                        if (algorithms.isWorking(userinfo.id, memoController)) { break }
                         if (position == 4) {
+                            if (thisBattle.judgeId > 0) { break }
                             bdata.judgeId = userinfo.id;
-                            if (thisBattle.judgeId > 0) break
                         }
                         if (position == 5) {
+                            if (thisBattle.toolmanId > 0) { break }
                             bdata.toolmanId = userinfo.id;
-                            if (thisBattle.toolmanId > 0) break
                         }
                         if (userinfo.countryId == thisBattle.defenceCountryId || isAtkCountry) { // is involved country
                             break
@@ -204,24 +213,25 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                                 contribution: userinfo.contribution + increaseContribution
                             }, act, socket) : null;
                         });
-                    } else if (position >= 0 && userinfo.role != enums.ROLE_FREEMAN && algorithms.getMapDistance(userinfo.mapNowId, mapId) <= 1) {
-                        const bdata = {};
+                    } else if (position >= 0 && userinfo.role != enums.ROLE_FREEMAN && involvedSoldiers > 0 && involvedSoldiers <= userinfo.soldier) {
+                        const bdata = {detail: thisBattle.detail};
                         const increaseContribution = 6;
-                        const actSpend = 1;
+                        const actSpend = algorithms.getMapDistance(userinfo.mapNowId, mapId);
                         const moneySpend = 100;
-                        const soldierSpend = 1000;
                         const isDefenceSite = userinfo.countryId == thisBattle.defenceCountryId;
                         const battleTime = new Date(thisBattle.timestamp);
                         battleTime.setDate(battleTime.getDate() - 3);
                         if (new Date().getTime() > battleTime.getTime()) { break }
-                        if (userinfo.actPoint >= actSpend && userinfo.money >= moneySpend && userinfo.soldier >= soldierSpend) { break }
+                        if (userinfo.actPoint < actSpend && userinfo.money < moneySpend) { break }
 
                         if (isDefenceSite && thisBattle.defUserIds[position] == 0) {
                             bdata.defUserIds = thisBattle.defUserIds.slice();
                             bdata.defUserIds[position] = userinfo.id;
+                            bdata.detail.defSoldiers[position] = involvedSoldiers;
                         } else if (isAtkCountry && thisBattle.atkUserIds[position] == 0) {
                             bdata.atkUserIds = thisBattle.atkUserIds.slice();
                             bdata.atkUserIds[position] = userinfo.id;
+                            bdata.detail.atkSoldiers[position] = involvedSoldiers;
                         } else { break }
 
                         return updateRecordWar(battleId, mapId, bdata, memoController).then(e => {
@@ -229,15 +239,33 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                                 contribution: userinfo.contribution + increaseContribution,
                                 actPoint: userinfo.actPoint - actSpend,
                                 money: userinfo.money - moneySpend,
-                                soldier: userinfo.soldier - soldierSpend,
+                                // soldier: userinfo.soldier - soldierSpend,
                                 mapTargetId: mapId,
+                                mapNowId: isDefenceSite ? mapId : userinfo.mapNowId,
                             }, act, socket) : null;
                         });
                     }
                 }
             } break
             case enums.ACT_BATTLE_JUDGE: {
+                const mapId = payload.mapId;
+                const battleId = payload.battleId;
+                const winId = payload.winId;
 
+                const thisBattle = memoController.battlefieldMap[mapId];
+                const thisCountry = memoController.countryMap[winId];
+
+                if (thisBattle && thisBattle.id == battleId && thisCountry) {
+                    if (thisBattle.judgeId == userinfo.id || algorithms.isWelfare(userinfo)) {
+                        const isAttackerWin = thisBattle.attackCountryIds.includes(winId);
+                        const defWin = thisBattle.defenceCountryId == winId;
+                        if (isAttackerWin || defWin) {
+                            return models.RecordWar.findOne({where: {id:battleId}}).then(war => {
+                                memoController.battleCtl.handleWarWinner(war, isAttackerWin, true);
+                            });
+                        }
+                    }
+                }
             } break
             
             default:
@@ -253,7 +281,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
     }
 
     function subBroadcast(act, payload) {
-        broadcastSocketByte(memoController, {act, payload});
+        broadcastSocket(memoController, {act, payload});
         return true
     }
 
@@ -270,9 +298,8 @@ function emitSocketByte(socket, data) {
     return socket;
 }
 
-function broadcastSocketByte(memoctl, data) {
-    var buf = Buffer.from(JSON.stringify(data), 'utf-8');
-    return memoctl.websocket.emit(enums.MESSAGE, buf);
+function broadcastSocket(memoctl, data) {
+    return memoctl.broadcast(enums.MESSAGE, data);
 }
 
 
@@ -298,31 +325,12 @@ async function recordMove(round, userId, from, to, spend) {
     return true
 }
 
-async function recordEvent(round, eventId, detail, memoController=null) {
-    const timestamp = new Date();
-    await models.RecordEvent.create({
-        round,
-        eventId,
-        detail,
-        timestamp,
-    });
-    if (memoController) {
-        const payload = [timestamp, detail];
-        memoController.eventRecords.unshift(payload);
-        if (memoController.eventRecords.length > 20) {
-            memoController.eventRecords.splice(-1, 1);
-        }
-        broadcastSocketByte(memoController, {act: enums.ACT_NOTIFICATION, payload});
-    }
-    return true
-}
-
 async function RecordWar(data, memoController) {
     const rw = await models.RecordWar.create(data);
     const jsondata = rw.toJSON();
     const mapId = jsondata.mapId;
     memoController.battlefieldMap[mapId] = jsondata;
-    broadcastSocketByte(memoController, {act: enums.ACT_BATTLE_ADD, payload: { mapId, jsondata }});
+    broadcastSocket(memoController, {act: enums.ACT_BATTLE_ADD, payload: { mapId, jsondata }});
     return jsondata
 }
 
@@ -332,10 +340,10 @@ async function updateRecordWar(id, mapId, data, memoController) {
         memoController.battlefieldMap[mapId][key] = data[key];
     });
     if (data.winnerCountryId == 1) {
-        broadcastSocketByte(memoController, {act: enums.ACT_BATTLE_DONE, payload: { mapId }});
+        broadcastSocket(memoController, {act: enums.ACT_BATTLE_DONE, payload: { mapId }});
     } else {
         const jsondata = memoController.battlefieldMap[mapId];
-        broadcastSocketByte(memoController, {act: enums.ACT_BATTLE_ADD, payload: { mapId, jsondata }});
+        broadcastSocket(memoController, {act: enums.ACT_BATTLE_ADD, payload: { mapId, jsondata }});
     }
     return true
 }

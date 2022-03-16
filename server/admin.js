@@ -38,12 +38,34 @@ const adminBro = new AdminBro({
     {
       resource: db.RecordWar,
       options: {
+        actions: { show: {}, edit: {isVisible: false}},
         properties: {
           detail: {
             type: 'mixed',
+            isVisible: { edit: false, show: true },
+            isDisabled: true,
+            components: {
+              // edit: AdminBro.bundle('./react-components/objectreader'),
+              show: AdminBro.bundle('./react-components/objectreader'),
+            },
           },
           attackCountryIds: {
-            type: 'mixed',
+            type: 'string',
+            isVisible: { edit: false, show: true },
+            isDisabled: true,
+            components: { show: AdminBro.bundle('./react-components/objectreader') },
+          },
+          atkUserIds: {
+            type: 'string',
+            isVisible: { edit: false, show: true },
+            isDisabled: true,
+            components: { show: AdminBro.bundle('./react-components/objectreader') },
+          },
+          defUserIds: {
+            type: 'string',
+            isVisible: { edit: false, show: true },
+            isDisabled: true,
+            components: { show: AdminBro.bundle('./react-components/objectreader') },
           },
         },
       },

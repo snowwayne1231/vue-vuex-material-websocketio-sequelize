@@ -104,26 +104,21 @@ module.exports = {
                 }
             }
             case 'checkweek': {
-                const gapMinutes = 60*24*5;
-                const recoverDay = 1;
-                const now = new Date();
-                const nowMinutes = Math.floor(now.getTime() / 60000);
                 const configs = {round: 0, recover: 0};
-                if (now.getDay()==recoverDay) {
+                const recoverDay = 1;
+                if (new Date().getDay()==recoverDay) {
                     const self = this;
                     return models.Config.findAll({attributes: ['name', 'status'], where: {open: true}}).then(cs => {
                         cs.map(c => { if (configs[c.name] >= 0) { configs[c.name] = c.status; } });
-                        let isNew = configs.recover == 0;
-                        if ((nowMinutes - configs.recover) > gapMinutes){
-                            self.recoverPoint(nowMinutes, ws, isNew).then(() => {
-                                res.status(200).send('done');
-                            }).catch(err => {
-                                res.status(403).send(err);
-                            });
-                        } else {
-                            res.status(201).send('nothing');
-                        }
+
+                        self.recoverPoint(ws, configs).then((updated) => {
+                            res.status(200).send(updated ? 'done' : 'nothing');
+                        }).catch(err => {
+                            res.status(403).send(err);
+                        });
                     });
+                } else {
+                    return res.status(201).send('Not recover day.');
                 }
             }
             default:
@@ -131,15 +126,25 @@ module.exports = {
         }
         return res;
     },
-    recoverPoint: async function(now, ws, isnewly= false) {
-        if (isnewly) {
-            await models.Config.create({name: 'recover', status: now});
-        } else {
-            await models.Config.update({status: now}, {where: {name: 'recover'}})
+    recoverPoint: async function(ws, configs) {
+        const gapMinutes = 60*24*6;
+        const now = new Date();
+        const nowMinutes = Math.floor(now.getTime() / 60000);
+        let isNew = configs.recover == 0;
+        if (isNew) {
+            await models.Config.create({name: 'recover', status: nowMinutes});
         }
-        // 行動點小於 max 補充到 max
-        await models.User.update({actPoint: sequelize.literal('"actPointMax"')}, {where: {actPoint: {[sequelize.Op.lt]: sequelize.literal('"actPointMax"')}}});
-        // 更新記憶體 user data
-        await ws.refreshMemoDataUsers();
+        if ((nowMinutes - configs.recover) > gapMinutes){
+            // 行動點小於 max 補充到 max
+            await models.User.update({actPoint: sequelize.literal('"actPointMax"')}, {where: {actPoint: {[sequelize.Op.lt]: sequelize.literal('"actPointMax"')}}});
+            // 更新記憶體 user data
+            await ws.refreshMemoDataUsers();
+            //
+            await models.Config.update({status: nowMinutes}, {where: {name: 'recover'}});
+            await models.Config.update({status: configs.round + 1}, {where: {name: 'round'}});
+            await ws.initConfig();
+            return true
+        }
+        return false
     },
 };

@@ -146,4 +146,11 @@ module.exports = {
         }
         return true;
     },
+    isWelfare(user) {
+        return ['R307', 'R064', 'R343'].includes(user.code);
+    },
+    isWorking(userId, memo) {
+        const bm = memo.battlefieldMap;
+        return Object.keys(bm).map(k => bm[k].judgeId == userId || bm[k].toolmanId == userId);
+    },
 }
