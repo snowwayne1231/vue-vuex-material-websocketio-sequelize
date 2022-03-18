@@ -4,7 +4,7 @@
       <md-card-header>
         <md-card-header-text>
           <div class="md-title">
-            <span>Home</span>
+            <span>DATAFLOW</span>
           </div>
           <div class="md-subhead">
             <button @click="onClickRefreshGlobal">Refresh Global</button>
@@ -16,7 +16,8 @@
         <div class='global-content'>
           <div v-for="(val, k) in showGlobal" :key="k" @click="onClickGlobalData(val)" class="home-datas">
             <p><span class="content-key">{{k}} </span><span>({{val.length}})</span></p>
-            <p v-if="val.length > 0">{{Object.keys(val[0])}}</p>
+            <p v-if="val.length > 0">{{Array.isArray(val[0]) ? 'Array[]' : Object.keys(val[0])}}</p>
+            <p v-else>Hash{}</p>
             <p>_____________________________________________</p>
           </div>
         </div>
@@ -49,15 +50,14 @@ export default {
         maps: self.global.maps,
         cities: self.global.cities,
         countries: self.global.countries,
+        notifications: self.global.notifications,
+        battlefieldMap: self.global.battlefieldMap,
+        occupationMap: self.global.occupationMap,
       }
     }
   },
   mounted() {
     clog('Home: ', this);
-    if (this.user.code == 'R343') {
-      this.$router.push('admin-query');
-    }
-    
   },
   methods: {
     onClickGlobalData(data) {

@@ -31,8 +31,8 @@ export default {
     ...mapState(['user', 'global']),
     menu() {
       return [
-        { name: '大廳', name_en: 'HALL', url: '/' },
-        { name: '臥室', name_en: 'ROOM', url: '/room' },
+        { name: '資料', name_en: 'DATAFLOW', url: '/' },
+        { name: '測試', name_en: 'TEST', url: '/room' },
         { name: '離開', name_en: 'SIGN OUT', url: '/logout', onclick: this.onClickLogout },
       ]
     },

@@ -70,7 +70,7 @@ export default {
     ...mapState(['global', 'user']),
   },
   mounted() {
-    const authorizedCodes = ['R001', 'R343', 'R307', 'R064']
+    const authorizedCodes = ['R343', 'R307', 'R064']
     if (!authorizedCodes.includes(this.user.code.toUpperCase())) {
         location.href = '/';
     }

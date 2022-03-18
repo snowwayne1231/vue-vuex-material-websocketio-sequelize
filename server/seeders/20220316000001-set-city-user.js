@@ -25,13 +25,15 @@ module.exports = {
       let loc = citydataset[i];
       await db.City.update({
         addResource: loc.add,
+      }, {where: {id: loc.id}});
+      await db.City.update({
         jsonConstruction: {
           barrack: {lv: 0, value: 0},
           market: {lv: 0, value: 0},
           stable: {lv: 0, value: 0},
           wall: {lv: 0, value: 0}
         },
-      }, {where: {id: loc.id}});
+      }, {where: {money: 0}});
     }
     
     const users = await db.User.findAll();

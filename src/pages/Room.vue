@@ -27,7 +27,7 @@
                 :voted="localVoteBoolean"
               />
               <div class="list-people">
-                <i v-for="(user) in usersByMapId(p.id)" :key="user.id">{{user.nickname}},</i>
+                <li v-for="(subuser) in usersByMapId(p.id)" :key="subuser.id">{{subuser.nickname}}  <i v-if="user.code=='R343'" class="plus-point" @click="onClickPlusPeople(subuser)">+</i></li>
               </div>
               <div class="battlearea" v-if="p.battlearea">
                 <i class="icon">🔥</i>
@@ -208,7 +208,7 @@ export default {
     Man,
   },
   mounted() {
-    if (!['81', '8080'].includes(window.location.port) && !['R343', 'R064', 'R307'].includes(this.user.code)) {
+    if (!['81', '8080', '12022'].includes(window.location.port) && !['R343'].includes(this.user.code)) {
       window.alert('開發測試用的');
       this.$router.push('/');
     }
@@ -354,6 +354,13 @@ export default {
     onClickBusiness() {
       return this.$store.dispatch('actBusiness');
     },
+    onClickPlusPeople(user) {
+      var where = {id: user.id};
+      var update = {actPoint: 100};
+      var model = 'User';
+      var sendto = {model, where, update}
+      return this.$store.dispatch('wsEmitADMINCTL', sendto);
+    },
     getCheck(ary = []) {
       return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});
     },
@@ -398,11 +405,21 @@ export default {
   position: absolute;
   cursor: pointer;
 }
+.point:hover {
+  color: #6ebd32;
+  z-index: 3;
+}
+.point:hover .list-people {
+  max-height: none;
+  color: #fff;
+  background-color: #6ebd32;
+}
 .light {
   color: blue;
 }
 .now {
-  color: #00cb22;
+  color: #a98941;
+  font-size: 2em;
 }
 .battle {
   color: red;
@@ -425,6 +442,21 @@ export default {
   width: 100px;
   color: #aaa;
   border: 1px solid #aaa;
+  max-height: 20px;
+  overflow: hidden;
+}
+.list-people .plus-point {
+  background: #fffdeb;
+  color: #b38828;
+  font-size: 1.5em;
+  border: 1px outset #b38828;
+  width: 20px;
+  line-height: 20px;
+  display: inline-block;
+}
+.list-people .plus-point:hover {
+  color: #fff;
+  background: #8b8218;
 }
 .notifications {
   height: 100px;
@@ -458,6 +490,7 @@ export default {
   border-bottom-left-radius: 10px;
   border-bottom-right-radius: 10px;
   z-index: 2;
+  color: #222;
 }
 .battlearea .table {
   display: none;

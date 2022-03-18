@@ -53,8 +53,18 @@ if (port == 81) {
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, '..', 'dist'), {maxAge: 1000*60*60*24}));
-app.use((req, res) => {
+
+const productKeyword = 'welfare22';
+const staticFrontendDirectory = (port > 20000) ? path.join(__dirname, '..', 'dist', 'welfare22') : path.join(__dirname, '..', 'dist', 'welfare22-qa');
+// app.use((req, res) => { // for static frontend 
+//     console.log('req.url: ', req.url);
+//     res.status(203).send('qq.');
+//     return res;
+// });
+app.use('/' + productKeyword, express.static(staticFrontendDirectory, {maxAge: 1000*60*60*24}));
+app.use(express.static(staticFrontendDirectory, {maxAge: 1000*60*60*24}));
+// app.use(express.static(path.join(__dirname, '..', 'dist'), {maxAge: 1000*60*60*24}));
+app.use((req, res) => { // basic 
     const _ary = req.url.split(/[\/\\]+/g).filter(e=>e.length > 0);
     return renderURI(req, res, _ary);
 });

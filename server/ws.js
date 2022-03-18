@@ -107,6 +107,23 @@ function refreshByAdmin() {
 }
 
 
+function refreshMemoDataUsers() {
+    return refreshBasicData(true, false, false).then(() => {
+        return memo_ctl.userSockets.map(us => {
+            const memoUser = memo_ctl.userMap[us.id];
+            if (us.userinfo) {
+                memoUser && Object.keys(us.userinfo).map(key => {
+                    if (memoUser[key]) { us.userinfo[key] = memoUser[key]; }
+                });
+            }
+            if (us.socket) {
+                emitSocketByte(us.socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: memoUser});
+            }
+        });
+    });
+}
+
+
 function refreshBasicData(u=true, m=true, c=true, callback=null) {
     const promises = [];
     if (u) {
@@ -417,7 +434,7 @@ module.exports = {
                 if (insModel) {
                     try {
                         console.log('[ADMIN_CONTROL] update: ', msg.update);
-                        insModel.update(msg.update, {where: msg.where});
+                        insModel.update(msg.update, {where: msg.where}).then(refreshMemoDataUsers);
                     } catch (err) {
                         console.log('ADMIN CTL error: ', err);
                     }
@@ -431,20 +448,6 @@ module.exports = {
 
         onDisconnect(socket);
     },
-    refreshMemoDataUsers: function() {
-        return refreshBasicData(true, false, false).then(() => {
-            return memo_ctl.userSockets.map(us => {
-                const memoUser = memo_ctl.userMap[us.id];
-                if (us.userinfo) {
-                    memoUser && Object.keys(us.userinfo).map(key => {
-                        if (memoUser[key]) { us.userinfo[key] = memoUser[key]; }
-                    });
-                }
-                if (us.socket) {
-                    emitSocketByte(us.socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: memoUser});
-                }
-            });
-        });
-    },
+    refreshMemoDataUsers,
     initConfig
 }
