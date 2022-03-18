@@ -22,7 +22,13 @@ module.exports = (sequelize, DataTypes) => {
     ownCountryId: DataTypes.INTEGER,
     addResource: DataTypes.INTEGER,
     timeBeAttacked: DataTypes.STRING,
-    jsonConstruction: DataTypes.TEXT,
+    // jsonConstruction: DataTypes.TEXT,
+    jsonConstruction: {
+      type: DataTypes.TEXT,
+      set(val) {
+        this.setDataValue('jsonConstruction', typeof val == 'object' ? JSON.stringify(val) : val);
+      }
+    },
   }, {
     sequelize,
     modelName: 'City',

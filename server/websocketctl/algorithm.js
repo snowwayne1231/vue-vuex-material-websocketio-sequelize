@@ -151,6 +151,12 @@ module.exports = {
     },
     isWorking(userId, memo) {
         const bm = memo.battlefieldMap;
-        return Object.keys(bm).map(k => bm[k].judgeId == userId || bm[k].toolmanId == userId);
+        return userId > 0 && Object.keys(bm).map(k => bm[k].judgeId == userId || bm[k].toolmanId == userId).filter(e => e).length > 0;
+    },
+    randomIncreaseSoldier(countryId) {
+        const numCities = mapdata.ary.filter(m => m.country == countryId && m.city > 0).length;
+        const max = 200 + (numCities * 15);
+        return Math.round(Math.random() * max) + 100;
+        
     },
 }

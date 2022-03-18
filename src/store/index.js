@@ -53,6 +53,7 @@ const moduleUser = {
         },
         wsOnDisconnect: (state) => {
             state.connected = false;
+            setTimeout(() => window.location.reload(), 3000);
         },
         wsOnAuthorize: (state, message) => {
             let parsedMsg = arrayBufferToJSON(message);    // byte array 轉回 json

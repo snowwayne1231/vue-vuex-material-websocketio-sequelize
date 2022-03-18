@@ -95,6 +95,13 @@ function refreshByAdmin() {
             if (e.socket) {
                 emitSocketByte(e.socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: memoUser});
             }
+        });
+        Object.values(memo_ctl.userMap).map(u => {
+            const inmap = memo_ctl.mapIdMap[u.mapNowId] || {};
+            const nott = u.countryId > 0 && u.countryId != inmap.ownCountryId;
+            if (nott) {
+                console.log(u)
+            }
         })
     });
 }
@@ -119,6 +126,7 @@ function refreshBasicData(u=true, m=true, c=true, callback=null) {
             const _maps = maps.map(m => {
                 let _m = m.toJSON();
                 _m.type = _m.cityId > 0 ? enums.TYPE_CITY : enums.TYPE_WILD;
+                _m.route = typeof _m.route == 'string' ? _m.route.split(',').map(_ => parseInt(_)) : _m.route;
                 memo_ctl.mapIdMap[_m.id] = _m;
                 return _m;
             });
@@ -262,11 +270,17 @@ function hookerHandleBattleFinish(battleChanges, time) {
                 const mapIdMap = memo_ctl.mapIdMap;
                 const hasCountryDestoried = rw.isDestoried;
                 const atkCountryName = memo_ctl.countryMap[rw.winnerCountryId].name;
+                const defCountry = memo_ctl.countryMap[rw.defenceCountryId];
                 const defCountryName = memo_ctl.countryMap[rw.defenceCountryId].name;
                 const round = globalConfigs.round.value;
                 if (rw.isAttackerWin) {
                     mapIdMap[rw.mapId].ownCountryId = rw.winnerCountryId;
                     globalChangeDataset.push({ depth: ['maps', rw.mapId], update: {ownCountryId: rw.winnerCountryId} });
+                }
+                if (hasCountryDestoried) {
+                    globalChangeDataset.push({ depth: ['countries', rw.defenceCountryId], update: {emperorId: 0, originCityId: 0} });
+                    defCountry.emperorId = 0;
+                    defCountry.originCityId = 0;
                 }
                 return memo_ctl.eventCtl.broadcastInfo(event, {
                     round,

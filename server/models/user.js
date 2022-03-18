@@ -51,7 +51,12 @@ module.exports = (sequelize, DataTypes) => {
     mapNowId: DataTypes.INTEGER,
     mapNextId: DataTypes.INTEGER,
     mapPathIds: DataTypes.TEXT,
-    destoryByCountryIds: DataTypes.TEXT,
+    destoryByCountryIds: {
+      type: DataTypes.TEXT,
+      set(val) {
+        this.setDataValue('destoryByCountryIds', typeof val != 'string' ? JSON.stringify(val) : val);
+      }
+    },
     soldier: DataTypes.INTEGER,
     captiveDate: DataTypes.DATE,
   }, {

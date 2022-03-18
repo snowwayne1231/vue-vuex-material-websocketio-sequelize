@@ -41,5 +41,8 @@ module.exports = {
     actBattleJudge: ({dispatch}, args) => {
         dispatch('wsEmitMessage', {act: enums.ACT_BATTLE_JUDGE, payload: args});
     },
+    actBusiness: ({dispatch}) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_BUSINESS});
+    },
     register,
 }

@@ -7,10 +7,11 @@
             <span>{{user.nickname}} </span>
           </div>
           <div class="md-subhead">
-            <span>行動力: ( {{user.actPoint}} ) </span>
-            <span>國家: ⚑[ {{myCountry.name}} ]⚑ </span>
-            <span>金: {{user.money}} 💰 </span>
-            <span>兵: {{user.soldier}} ⚔️ </span>
+            <span>行動力: ( {{user.actPoint}} ) | </span>
+            <span>國家: ⚑[ {{myCountry.name}} ]⚑ | </span>
+            <span>金: {{user.money}} 💰 | </span>
+            <span>兵: {{user.soldier}} ⚔️ | </span>
+            <span>貢獻: {{user.contribution}} ❤️ | </span>
           </div>
         </md-card-header-text>
       </md-card-header>
@@ -74,6 +75,7 @@
           <button @click="onClickSearchWild">探索</button>
           <button @click="onClickLeaveCountry">下野</button>
           <button @click="onClickEnterCountry">入仕</button>
+          <button @click="onClickBusiness">商業</button>
         </div>
         <div class="notifications">
           <li v-for="(noti) in global.notifications" :key="noti[0].getTime()">
@@ -170,7 +172,7 @@ export default {
       return mpas;
     },
     localVoteBoolean(self) {
-      return self.showLights.length == 0;
+      return self.showLights.length == 0 && self.showBattle.length == 0;
     },
     showNow(self) {
       return self.user.mapNowId;
@@ -348,6 +350,9 @@ export default {
       if (yes) {
         return this.$store.dispatch('actBattleJudge', {winId, mapId, battleId});
       }
+    },
+    onClickBusiness() {
+      return this.$store.dispatch('actBusiness');
     },
     getCheck(ary = []) {
       return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});

@@ -1,6 +1,7 @@
 const enums = require('../src/enum');
 const models = require('./models');
 const algorithms = require('./websocketctl/algorithm');
+const validation = require('./wsValidation');
 const { Op } = require("sequelize");
 
 
@@ -10,8 +11,9 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
         const act = msg.act || '';
         const payload = msg.payload || {};
         const userinfo = socket.request.session.userinfo;
-        if (userinfo.captiveDate) {
-            return subEmitMessage(enums.ALERT, {msg: 'Be captured. ' + userinfo.captiveDate.toLocaleDateString()}); 
+        const validated = validation.validate(act, payload, userinfo, memoController);
+        if (!validated.ok) {
+            return subEmitMessage(enums.ALERT, {msg: validated.msg, act}); 
         }
         let switched = subSwitchOnMessage(act, payload, userinfo);
         return switched && switched.catch && switched.catch(err => console.log(err));
@@ -35,216 +37,178 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
             case enums.ACT_MOVE: {
                 const targetId = payload;
                 const nowId = userinfo.mapNowId;
-                const existedTargetId = userinfo.mapTargetId;
-                const targetMap = memoController.mapIdMap[targetId];
-                if (targetMap && existedTargetId == 0) {
-                    const dis = algorithms.getMapDistance(nowId, targetId, userinfo.countryId);
-                    if (userinfo.countryId == 0 || targetMap.ownCountryId == userinfo.countryId) {
-                        if (dis > 0 && dis <= userinfo.actPoint) {
-                            return asyncUpdateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - dis}, act, socket).then(() => {
-                                return recordMove(configs.round.value, userinfo.id, nowId, targetId, dis)
-                            });
-                        } else {
-                            console.log('[ACT_MOVE] Distance wrong: ', dis)
-                        }
-                    } else {
-                        console.log('[ACT_MOVE] userinfo wrong: ', userinfo)
-                    }
+                const dis = algorithms.getMapDistance(nowId, targetId, userinfo.countryId);
+                if (dis > 0 && dis <= userinfo.actPoint) {
+                    return asyncUpdateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - dis}, act, socket).then(() => {
+                        return recordMove(configs.round.value, userinfo.id, nowId, targetId, dis)
+                    });
+                } else {
+                    console.log('[ACT_MOVE] Distance wrong: ', dis)
                 }
             } break
             case enums.ACT_LEAVE_COUNTRY: {
-                if (userinfo.actPoint > 0 && userinfo.role == 2 && (userinfo.loyalUserId == 0 || userinfo.destoryByCountryIds.length > 0) && userinfo.mapTargetId == 0) {
-                    return asyncUpdateUserInfo(userinfo, { countryId: 0, role: enums.ROLE_FREEMAN, actPoint: 0, money: 0, soldier: 0, actPointMax: 3, occupationId: 0 }, act, socket).then(e => {
-                        return memoController.eventCtl.broadcastInfo(eveenums.EVENT_LEAVE_COUNTRY, {nickname: userinfo.nickname, round: configs.round.value});
-                    });
-                }
-            } break
+                return asyncUpdateUserInfo(userinfo, { countryId: 0, role: enums.ROLE_FREEMAN, actPoint: 0, money: 0, soldier: 0, actPointMax: 3, occupationId: 0 }, act, socket).then(e => {
+                    return memoController.eventCtl.broadcastInfo(enums.EVENT_LEAVE_COUNTRY, {nickname: userinfo.nickname, round: configs.round.value});
+                });
+            }
             case enums.ACT_ENTER_COUNTRY: {
                 const mapId = userinfo.mapNowId;
-                const thisMap = memoController.mapIdMap[mapId];
-                if (thisMap && userinfo.actPoint > 0 && userinfo.countryId == 0) {
-                    const thisCountryId = thisMap.ownCountryId;
-                    const dbciAry = Array.isArray(userinfo.destoryByCountryIds) ? userinfo.destoryByCountryIds : [];
-                    const thisCountry = memoController.countryMap[thisCountryId];
-                    if (thisCountryId > 0 && thisCountry && !dbciAry.includes(thisCountryId)) {
-                        const ratio = Math.round(Math.random() * 10) / 10;
-                        if (ratio > 0.5) {
-                            return asyncUpdateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 0, actPointMax: 7 }, act, socket).then(e => {
-                                return memoController.eventCtl.broadcastInfo(eveenums.EVENT_ENTER_COUNTRY, {nickname: userinfo.nickname, countryName: thisCountry.name, round: configs.round.value});
-                            });
-                        } else {
-                            return asyncUpdateUserInfo(userinfo, { actPoint: 0 }, act, socket);
-                        }
-                    }
+                const thisCountryId = memoController.mapIdMap[mapId].ownCountryId;
+                const thisCountry = memoController.countryMap[thisCountryId];
+                const ratio = Math.round(Math.random() * 10) / 10;
+                console.log('[ACT_ENTER_COUNTRY]: ratio: ', ratio, ' nickname: ', userinfo.nickname);
+                if (ratio > 0.3) {
+                    return asyncUpdateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 0, actPointMax: 7 }, act, socket).then(e => {
+                        return memoController.eventCtl.broadcastInfo(enums.EVENT_ENTER_COUNTRY, {nickname: userinfo.nickname, countryName: thisCountry.name, round: configs.round.value});
+                    });
+                } else {
+                    return asyncUpdateUserInfo(userinfo, { actPoint: 0 }, act, socket);
                 }
-            } break
+            }
             case enums.ACT_SEARCH_WILD: {
-                const mapId = userinfo.mapNowId;
-                const thisMap = memoController.mapIdMap[mapId];
-                if (userinfo.actPoint > 0 && userinfo.role !== enums.ROLE_FREEMAN && thisMap && thisMap.type === enums.TYPE_WILD) {
-                    const randomMoney = Math.round(Math.random() * 100) + 50;
-                    return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney, actPoint: userinfo.actPoint-1,  }, act, socket);
-                }
-            } break
+                const randomMoney = Math.round(Math.random() * 100) + 50;
+                return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney, actPoint: userinfo.actPoint-1,  }, act, socket);
+            }
+            case enums.ACT_BUSINESS: {
+                const thisMap = memoController.mapIdMap[userinfo.mapNowId];
+                const thisCity = memoController.cityMap[thisMap.cityId];
+                const addMoney = thisCity.addResource;
+                // console.log('thisCity jsonConstruction: ', thisCity.jsonConstruction);
+                const randomMoney = Math.round(Math.random() * 100) + 50 + addMoney;
+                return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney, actPoint: userinfo.actPoint-1,  }, act, socket);
+            }
             case enums.ACT_INCREASE_SOLDIER: {
-                const mapId = userinfo.mapNowId;
-                const thisMap = memoController.mapIdMap[mapId];
-                if (userinfo.actPoint > 0 && userinfo.role !== enums.ROLE_FREEMAN && thisMap && thisMap.type === enums.TYPE_CITY) {
-                    const randomSoldier = Math.round(Math.random() * 200) + 100;
-                    return asyncUpdateUserInfo(userinfo, { soldier: userinfo.soldier + randomSoldier, actPoint: userinfo.actPoint-1,  }, act, socket);
-                }
-            } break
+                const randomSoldier = algorithms.randomIncreaseSoldier(userinfo.countryId);
+                return asyncUpdateUserInfo(userinfo, { soldier: userinfo.soldier + randomSoldier, actPoint: userinfo.actPoint-1,  }, act, socket);
+            }
             case enums.ACT_BATTLE: {
                 const mapId = payload.mapId;
                 const timeSelected = payload.time;
-                const involvedSoldiers = payload.soldier;
+                const involvedSoldiers = payload.soldier || 0;
                 const thisMap = memoController.mapIdMap[mapId];
                 const userCountry = memoController.countryMap[userinfo.countryId];
-                const notExistBattlefield = !memoController.battlefieldMap[mapId];
-                if (thisMap && thisMap.ownCountryId != userinfo.countryId && userCountry && notExistBattlefield && userinfo.mapTargetId == 0) { // validate map info
-                    const actSpend = 1;
-                    const moneySpend = 100;
-                    const soldierSpend = 1000;
-                    const increaseContribution = 6;
+                const usersHere = Object.values(memoController.userMap).filter(u => u.mapNowId == mapId && u.countryId > 0);
+                const isFreeWild = usersHere.length == 0 && thisMap.cityId == 0;
+                const atkCountryName = userCountry.name;
+                if (thisMap.ownCountryId == 0 || isFreeWild) { // empty or wild
+                    return asyncUpdateUserInfo(userinfo, {
+                        actPoint: userinfo.actPoint - enums.NUM_BATTLE_ACTION_MIN,
+                        money: userinfo.money - enums.NUM_BATTLE_MONEY_MIN,
+                        soldier: userinfo.soldier - enums.NUM_BATTLE_SOLDIER_MIN,
+                        mapNowId: mapId,
+                        contribution: userinfo.contribution + enums.NUM_BATTLE_CONTRUBUTION,
+                    }, act, socket).then(() => {
+                        const update = { ownCountryId: userinfo.countryId };
+                        subEmitGlobalChanges({
+                            dataset: [ { depth: ['maps', mapId], update } ]
+                        });
+                        return updateMapOwner(mapId, userinfo.countryId , memoController);
+                    }).then(() => {
+                        return memoController.eventCtl.broadcastInfo(enums.EVENT_WAR_WIN, {atkCountryName, mapName: thisMap.name, nicknames: userinfo.nickname, round: configs.round.value});
+                    });
+                }
 
-                    if (algorithms.isWorking(userinfo.id, memoController)) { break }
-                    if (userinfo.actPoint >= actSpend && userinfo.money >= moneySpend && userinfo.soldier >= soldierSpend /*&& involvedSoldiers >= soldierSpend*/) { // enough resource
-                        const usersHere = Object.values(memoController.userMap).filter(u => u.mapNowId == mapId && u.countryId > 0);
-                        const isFreeWild = usersHere.length == 0 && thisMap.cityId == 0;
-                        const atkCountryName = userCountry.name;
-                        if (thisMap.ownCountryId == 0 || isFreeWild) { // empty or wild
-                            return asyncUpdateUserInfo(userinfo, {
-                                actPoint: userinfo.actPoint - actSpend,
-                                money: userinfo.money - moneySpend,
-                                soldier: userinfo.soldier - soldierSpend,
-                                mapNowId: mapId,
-                                contribution: userinfo.contribution + increaseContribution,
-                            }, act, socket).then(() => {
-                                const update = { ownCountryId: userinfo.countryId };
-                                subEmitGlobalChanges({
-                                    dataset: [ { depth: ['maps', mapId], update } ]
-                                });
-                                return updateMapOwner(mapId, userinfo.countryId , memoController);
-                            }).then(() => {
-                                return memoController.eventCtl.broadcastInfo(eveenums.EVENT_WAR_WINnt, {atkCountryName, mapName: thisMap.name, nicknames: userinfo.nickname, round: configs.round.value});
-                            });
-                        }
-
-                        return models.RecordWar.findAll({
-                            where: { winnerCountryId: 0, timestamp: { [Op.gte]: new Date() } },
-                            attributes: ['timestamp', 'detail', 'round', 'mapId'],
-                            order: [['timestamp', 'DESC']]
-                        }).then(wars => {
-                            const warTimestamps = wars.map(w => new Date(w.timestamp).getTime());
-                            if (timeSelected) {
-                                if (!involvedSoldiers || userinfo.soldier < involvedSoldiers) {
-                                    return subEmitMessage(enums.ALERT, {msg: 'Involved soldier wrong.', act});
-                                } else if (warTimestamps.includes(timeSelected)) {
-                                    return subEmitMessage(enums.ALERT, {msg: 'Already aragnemented time.', act});
-                                } else if (algorithms.isValidatedBattleTime(timeSelected) && wars.findIndex(w => w.mapId == mapId) == -1) {
-                                    subEmitMessage(act, {mapId});
-                                    return RecordWar({
-                                        round: configs.round.value,
-                                        timestamp: new Date(timeSelected),
-                                        mapId: mapId,
-                                        defenceCountryId: thisMap.ownCountryId,
-                                        attackCountryIds: [userinfo.countryId],
-                                        atkUserIds: [userinfo.id, 0, 0, 0],
-                                        defUserIds: [0, 0, 0, 0],
-                                        detail: {
-                                            atkSoldiers: [involvedSoldiers, 0, 0, 0],
-                                            defSoldiers: [0, 0, 0, 0],
-                                            atkSoldierLoses: [0, 0, 0, 0],
-                                            defSoldierLoses: [0, 0, 0, 0],
-                                        }
-                                    }, memoController);
+                return models.RecordWar.findAll({
+                    where: { winnerCountryId: 0, timestamp: { [Op.gte]: new Date() } },
+                    attributes: ['timestamp', 'detail', 'round', 'mapId'],
+                    order: [['timestamp', 'DESC']]
+                }).then(wars => {
+                    const warTimestamps = wars.map(w => new Date(w.timestamp).getTime());
+                    if (timeSelected) {
+                        if (!involvedSoldiers || userinfo.soldier < involvedSoldiers) {
+                            return subEmitMessage(enums.ALERT, {msg: 'Involved soldier wrong.', act});
+                        } else if (warTimestamps.includes(timeSelected)) {
+                            return subEmitMessage(enums.ALERT, {msg: 'Already aragnemented time.', act});
+                        } else if (algorithms.isValidatedBattleTime(timeSelected) && wars.findIndex(w => w.mapId == mapId) == -1) {
+                            subEmitMessage(act, {mapId});
+                            return RecordWar({
+                                round: configs.round.value,
+                                timestamp: new Date(timeSelected),
+                                mapId: mapId,
+                                defenceCountryId: thisMap.ownCountryId,
+                                attackCountryIds: [userinfo.countryId],
+                                atkUserIds: [userinfo.id, 0, 0, 0],
+                                defUserIds: [0, 0, 0, 0],
+                                detail: {
+                                    atkSoldiers: [involvedSoldiers, 0, 0, 0],
+                                    defSoldiers: [0, 0, 0, 0],
+                                    atkSoldierLoses: [0, 0, 0, 0],
+                                    defSoldierLoses: [0, 0, 0, 0],
                                 }
-                                return subEmitMessage(enums.ALERT, {msg: 'Not validated time.', act});
-                            } else {
-                                const timeOptions = algorithms.getTimeOptions(warTimestamps);
-                                return subEmitMessage(act, {mapId, options: timeOptions.map(t => t.getTime())});
-                            }
-                        }).then(e => {
-                            if (e && e.id) {    // RecordWar create successful.
-                                console.log('RecordWar create successful. ', e.timestamp);
-                                const defCountryName = memoController.countryMap[thisMap.ownCountryId].name;
-                                return asyncUpdateUserInfo(userinfo, {
-                                    actPoint: userinfo.actPoint - actSpend,
-                                    money: userinfo.money - moneySpend,
-                                    // soldier: userinfo.soldier - involvedSoldiers,
-                                    contribution: userinfo.contribution + increaseContribution,
-                                    mapTargetId: mapId,
-                                }, act, socket).then(() => {
-                                    const event = thisMap.cityId > 0 ? enums.EVENT_WAR_CITY : enums.EVENT_WAR_WILD;
-                                    return memoController.eventCtl.broadcastInfo(event, {atkCountryName, mapName: thisMap.name, defCountryName, round: configs.round.value});
-                                });
-                            }
+                            }, memoController);
+                        }
+                        return subEmitMessage(enums.ALERT, {msg: 'Not validated time.', act});
+                    } else {
+                        const timeOptions = algorithms.getTimeOptions(warTimestamps);
+                        return subEmitMessage(act, {mapId, options: timeOptions.map(t => t.getTime())});
+                    }
+                }).then(e => {
+                    if (e && e.id) {    // RecordWar create successful.
+                        console.log('[ACT_BATTLE] RecordWar create successful. ', e.timestamp);
+                        const defCountryName = memoController.countryMap[thisMap.ownCountryId].name;
+                        return asyncUpdateUserInfo(userinfo, {
+                            actPoint: userinfo.actPoint -  enums.NUM_BATTLE_ACTION_MIN,
+                            money: userinfo.money - enums.NUM_BATTLE_MONEY_MIN,
+                            // soldier: userinfo.soldier - involvedSoldiers,
+                            contribution: userinfo.contribution + enums.NUM_BATTLE_CONTRUBUTION,
+                            mapTargetId: mapId,
+                        }, act, socket).then(() => {
+                            const event = thisMap.cityId > 0 ? enums.EVENT_WAR_CITY : enums.EVENT_WAR_WILD;
+                            return memoController.eventCtl.broadcastInfo(event, {atkCountryName, mapName: thisMap.name, defCountryName, round: configs.round.value});
                         });
                     }
-                }
-            } break
+                });
+            }
             case enums.ACT_BATTLE_JOIN: {
                 const mapId = payload.mapId;
                 const battleId = payload.battleId;
                 const position = payload.position; // 0~3 = 戰鬥位置 4 = 裁判 5 = 工具人
                 const involvedSoldiers = payload.soldier;
-                const thisMap = mapId ? memoController.mapIdMap[mapId] : null;
                 const thisBattle = mapId ? memoController.battlefieldMap[mapId] : null;
                 const isAtkCountry = thisBattle.attackCountryIds.includes(userinfo.countryId);
                 
-                if (thisBattle && thisMap && thisBattle.id == battleId && userinfo.mapTargetId == 0) {
-                    if ([4,5].includes(position)) {
-                        const increaseContribution = 12;
-                        const bdata = {};
-                        if (algorithms.isWorking(userinfo.id, memoController)) { break }
-                        if (position == 4) {
-                            if (thisBattle.judgeId > 0) { break }
-                            bdata.judgeId = userinfo.id;
-                        }
-                        if (position == 5) {
-                            if (thisBattle.toolmanId > 0) { break }
-                            bdata.toolmanId = userinfo.id;
-                        }
-                        if (userinfo.countryId == thisBattle.defenceCountryId || isAtkCountry) { // is involved country
-                            break
-                        }
-                        return updateRecordWar(battleId, mapId, bdata, memoController).then(e => {
-                            return e ? asyncUpdateUserInfo(userinfo, {
-                                contribution: userinfo.contribution + increaseContribution
-                            }, act, socket) : null;
-                        });
-                    } else if (position >= 0 && userinfo.role != enums.ROLE_FREEMAN && involvedSoldiers > 0 && involvedSoldiers <= userinfo.soldier) {
-                        const bdata = {detail: thisBattle.detail};
-                        const increaseContribution = 6;
-                        const actSpend = algorithms.getMapDistance(userinfo.mapNowId, mapId);
-                        const moneySpend = 100;
-                        const isDefenceSite = userinfo.countryId == thisBattle.defenceCountryId;
-                        const battleTime = new Date(thisBattle.timestamp);
-                        battleTime.setDate(battleTime.getDate() - 3);
-                        if (new Date().getTime() > battleTime.getTime()) { break }
-                        if (userinfo.actPoint < actSpend && userinfo.money < moneySpend) { break }
-
-                        if (isDefenceSite && thisBattle.defUserIds[position] == 0) {
-                            bdata.defUserIds = thisBattle.defUserIds.slice();
-                            bdata.defUserIds[position] = userinfo.id;
-                            bdata.detail.defSoldiers[position] = involvedSoldiers;
-                        } else if (isAtkCountry && thisBattle.atkUserIds[position] == 0) {
-                            bdata.atkUserIds = thisBattle.atkUserIds.slice();
-                            bdata.atkUserIds[position] = userinfo.id;
-                            bdata.detail.atkSoldiers[position] = involvedSoldiers;
-                        } else { break }
-
-                        return updateRecordWar(battleId, mapId, bdata, memoController).then(e => {
-                            return e ? asyncUpdateUserInfo(userinfo, {
-                                contribution: userinfo.contribution + increaseContribution,
-                                actPoint: userinfo.actPoint - actSpend,
-                                money: userinfo.money - moneySpend,
-                                // soldier: userinfo.soldier - soldierSpend,
-                                mapTargetId: mapId,
-                                mapNowId: isDefenceSite ? mapId : userinfo.mapNowId,
-                            }, act, socket) : null;
-                        });
+                if ([4,5].includes(position)) {
+                    const bdata = {};
+                    if (position == 4) {
+                        bdata.judgeId = userinfo.id;
                     }
+                    if (position == 5) {
+                        bdata.toolmanId = userinfo.id;
+                    }
+                    return updateRecordWar(battleId, mapId, bdata, memoController).then(e => {
+                        return e ? asyncUpdateUserInfo(userinfo, {
+                            contribution: userinfo.contribution + enums.NUM_BATTLE_TOOLMANS_CONTRUBUTION
+                        }, act, socket) : null;
+                    });
+                } else if (position >= 0 && userinfo.role != enums.ROLE_FREEMAN && involvedSoldiers > 0 && involvedSoldiers <= userinfo.soldier) {
+                    const bdata = {detail: thisBattle.detail};
+                    const actSpend = algorithms.getMapDistance(userinfo.mapNowId, mapId);
+                    const isDefenceSite = userinfo.countryId == thisBattle.defenceCountryId;
+                    const battleTime = new Date(thisBattle.timestamp);
+                    battleTime.setDate(battleTime.getDate() - 3);
+                    if (new Date().getTime() > battleTime.getTime()) { break }
+                    if (userinfo.actPoint < actSpend && userinfo.money < enums.NUM_BATTLE_MONEY_MIN) { break }
+
+                    if (isDefenceSite && thisBattle.defUserIds[position] == 0) {
+                        bdata.defUserIds = thisBattle.defUserIds.slice();
+                        bdata.defUserIds[position] = userinfo.id;
+                        bdata.detail.defSoldiers[position] = involvedSoldiers;
+                    } else if (isAtkCountry && thisBattle.atkUserIds[position] == 0) {
+                        bdata.atkUserIds = thisBattle.atkUserIds.slice();
+                        bdata.atkUserIds[position] = userinfo.id;
+                        bdata.detail.atkSoldiers[position] = involvedSoldiers;
+                    } else { break }
+
+                    return updateRecordWar(battleId, mapId, bdata, memoController).then(e => {
+                        return e ? asyncUpdateUserInfo(userinfo, {
+                            contribution: userinfo.contribution + enums.NUM_BATTLE_CONTRUBUTION,
+                            actPoint: userinfo.actPoint - actSpend,
+                            money: userinfo.money - enums.NUM_BATTLE_MONEY_MIN,
+                            // soldier: userinfo.soldier - soldierSpend,
+                            mapTargetId: mapId,
+                            mapNowId: isDefenceSite ? mapId : userinfo.mapNowId,
+                        }, act, socket) : null;
+                    });
                 }
             } break
             case enums.ACT_BATTLE_JUDGE: {
@@ -252,20 +216,34 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const battleId = payload.battleId;
                 const winId = payload.winId;
 
-                const thisBattle = memoController.battlefieldMap[mapId];
-                const thisCountry = memoController.countryMap[winId];
-
-                if (thisBattle && thisBattle.id == battleId && thisCountry) {
-                    if (thisBattle.judgeId == userinfo.id || algorithms.isWelfare(userinfo)) {
-                        const isAttackerWin = thisBattle.attackCountryIds.includes(winId);
-                        const defWin = thisBattle.defenceCountryId == winId;
-                        if (isAttackerWin || defWin) {
-                            return models.RecordWar.findOne({where: {id:battleId}}).then(war => {
-                                memoController.battleCtl.handleWarWinner(war, isAttackerWin, true);
-                            });
-                        }
+                const battlefieldMap = memoController.battlefieldMap;
+                const thisBattle = battlefieldMap[mapId];
+                const battleKeys = Object.keys(battlefieldMap);
+                let isAllowedTime = thisBattle.timestamp.getTime() < new Date().getTime();
+                if (battleKeys.length > 0) {
+                    const olderestBattleKey = battleKeys.sort((a,b) => {
+                        return battlefieldMap[a].timestamp.getTime() - battlefieldMap[b].timestamp.getTime();
+                    })[0];
+                    if (olderestBattleKey != mapId) {
+                        isAllowedTime = false;
                     }
                 }
+                
+                if ((isAllowedTime && thisBattle.judgeId == userinfo.id) || algorithms.isWelfare(userinfo)) {
+                    const isAttackerWin = thisBattle.attackCountryIds.includes(winId);
+                    const defWin = thisBattle.defenceCountryId == winId;
+                    if (isAttackerWin || defWin) {
+                        return models.RecordWar.findOne({where: {id:battleId}}).then(war => {
+                            memoController.battleCtl.handleWarWinner(war, isAttackerWin, true);
+                        });
+                    }
+                }
+            } break
+            case enums.ACT_APPOINTMENT: {
+
+            } break
+            case enums.ACT_DISMISS: {
+
             } break
             
             default:
