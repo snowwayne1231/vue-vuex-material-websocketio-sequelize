@@ -48,7 +48,7 @@ function validate(act, payload, userinfo, memo) {
         case enums.ACT_APPOINTMENT: {
             const userId = payload.userId;
             const occupationId = payload.occupationId;
-            res.msg = isRoleEmperor(userinfo) || hasPoint(userinfo, 3) || isSameCountryPartner(userinfo, userId, memo) || isOccupationEnoughContribution(userId, occupationId, memo);
+            res.msg = isRoleEmperor(userinfo) || hasPoint(userinfo, 3) || isSameCountryPartner(userinfo, userId, memo) || isOccupationEnoughContribution(userId, occupationId, memo) || isEmptyOccupation(userId, occupationId, memo);
         } break
         case enums.ACT_DISMISS: {
             const userId = payload.userId;
@@ -191,6 +191,12 @@ function isOccupationEnoughContribution(userId, occupationId, memo) {
     const _occu = memo.occupationMap[occupationId];
     const _user = memo.userMap[userId];
     return _occu && _user && _user.contribution >= _occu.contributionCondi ? '' : 'Not Enough Occupation Condition.';
+}
+
+function isEmptyOccupation(userId, occupationId, memo) {
+    const _user = memo.userMap[userId];
+    const _users = Object.values(memo.userMap).filter(u => u.countryId == _user.countryId);
+    return _users.findIndex(u => u.occupationId == occupationId) == -1 ? '' : 'Double Occupation.';
 }
 
 module.exports = {

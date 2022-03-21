@@ -14,17 +14,18 @@ const dataset = [
   { name: '起義', detail: '【起義】{users} 已於 {mapName} 起義', staticKey: '_GROUP_UP_'},
   { name: '外交', detail: '【外交】{atkCountryName} 已與 {defCountryName} 結成同盟', staticKey: '_COUNTRY_RELATIONSHIP_'},
   { name: '官職', detail: '【任命】{countryName} {nickname} 已被任命為 {occupationName}', staticKey: '_OCCUPATION_'},
+  { name: '系統恢復', detail: '【系統】所有人恢復每周行動力', staticKey: '_SYSTEM_RECOVER_'},
 ];
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    const evts = await queryInterface.rawSelect('Events', {plain: false}, ['id']);
-    if (evts && evts.length > 0) {
-        return false;
-    }
+    const evts = await queryInterface.rawSelect('Events', {plain: false}, ['id', 'staticKey']);
+    const existKeys = evts.map(e => e.staticKey);
     const createdAt = new Date();
+
     const insertData = [];
     dataset.map(data => {
+      if (existKeys.includes(data.staticKey)) { return }
       const _next_data = {
         ...data,
         createdAt: createdAt,
@@ -32,9 +33,9 @@ module.exports = {
       }
       insertData.push(_next_data);
     });
-
-    await queryInterface.bulkInsert("Events", insertData);
-
+    if (insertData.length > 0) {
+      await queryInterface.bulkInsert("Events", insertData);
+    }
   },
 
   down: async (queryInterface, Sequelize) => {

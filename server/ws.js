@@ -25,6 +25,7 @@ const memo_ctl = {
     eventCtl: events,
     battleCtl: battles,
     broadcast: broadcastSocketByte,
+    emitSocketByte,
 };
 const globalConfigs = { round: { value: -1, staticKey: '' }, season: { value: -1, staticKey: '' } };
 
@@ -96,13 +97,6 @@ function refreshByAdmin() {
                 emitSocketByte(e.socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: memoUser});
             }
         });
-        Object.values(memo_ctl.userMap).map(u => {
-            const inmap = memo_ctl.mapIdMap[u.mapNowId] || {};
-            const nott = u.countryId > 0 && u.countryId != inmap.ownCountryId;
-            if (nott) {
-                console.log(u)
-            }
-        })
     });
 }
 
@@ -448,6 +442,7 @@ module.exports = {
 
         onDisconnect(socket);
     },
+    getMemo() { return memo_ctl; },
     refreshMemoDataUsers,
     initConfig
 }

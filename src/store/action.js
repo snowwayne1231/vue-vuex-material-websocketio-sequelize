@@ -44,5 +44,11 @@ module.exports = {
     actBusiness: ({dispatch}) => {
         dispatch('wsEmitMessage', {act: enums.ACT_BUSINESS});
     },
+    actAppointOccupation: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_APPOINTMENT, payload: args});
+    },
+    actDismissOccupation: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_DISMISS, payload: args});
+    },
     register,
 }

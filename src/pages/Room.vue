@@ -76,6 +76,7 @@
           <button @click="onClickLeaveCountry">下野</button>
           <button @click="onClickEnterCountry">入仕</button>
           <button @click="onClickBusiness">商業</button>
+          <button @click="onClickAssignment">任命</button>
         </div>
         <div class="notifications">
           <li v-for="(noti) in global.notifications" :key="noti[0].getTime()">
@@ -119,6 +120,12 @@
             </tbody>
           </table>
         </div>
+        <Assignment v-if="openAssignment"
+          title="任命官吏"
+          :positions="global.occupationMap"
+          :candidates="asCandidates"
+          :clickClose="onClicAssignmentkClose"
+        />
       </md-card-content>
     </md-card>
   </div>
@@ -127,6 +134,7 @@
 <script>
 import { mapState } from 'vuex'
 import Man from '@/components/interactive/Man';
+import Assignment from '@/components/interactive/Assignment';
 import mapAlgorithm from '@/unit/mapAlgorithm';
 
 export default {
@@ -138,6 +146,7 @@ export default {
       showLights: [],
       showBattle: [],
       battleTimeSelected: -1,
+      openAssignment: false,
     }
   },
   computed: {
@@ -203,9 +212,20 @@ export default {
         defUsers,
       }
     },
+    asCandidates(self) {
+      const myCountryId = self.user.countryId;
+      return self.global.users.filter(u => u.countryId == myCountryId && u.role == 2).map(user => {
+        return {
+          id: user.id,
+          name: user.nickname,
+          contribution: user.contribution,
+          occupationId: user.occupationId,
+        }
+      });
+    }
   },
   components: {
-    Man,
+    Man, Assignment,
   },
   mounted() {
     if (!['81', '8080', '12022'].includes(window.location.port) && !['R343'].includes(this.user.code)) {
@@ -358,8 +378,14 @@ export default {
       var where = {id: user.id};
       var update = {actPoint: 100};
       var model = 'User';
-      var sendto = {model, where, update}
-      return this.$store.dispatch('wsEmitADMINCTL', sendto);
+      var sendto = {model, where, update};
+      return window.confirm(`確定儲給 ${user.nickname} ${100}行動嗎`) && this.$store.dispatch('wsEmitADMINCTL', sendto);
+    },
+    onClickAssignment() {
+      this.openAssignment = true;
+    },
+    onClicAssignmentkClose() {
+      this.openAssignment = false;
     },
     getCheck(ary = []) {
       return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});

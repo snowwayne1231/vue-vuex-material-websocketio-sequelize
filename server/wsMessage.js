@@ -240,11 +240,37 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 }
             } break
             case enums.ACT_APPOINTMENT: {
-
-            } break
+                const userId = payload.userId;
+                const occupationId = payload.occupationId;
+                const occupation = memoController.occupationMap[occupationId]
+                const actPointMax = occupation.addActPoint + 7;
+                return updateSingleUser(userId, {occupationId, actPointMax}, memoController).then(e => {
+                    if (e) {
+                        const user = memoController.userMap[userId];
+                        const nickname = user.nickname;
+                        const countryName = memoController.countryMap[user.countryId].name;
+                        const occupationName = occupation.name;
+                        memoController.eventCtl.broadcastInfo(enums.EVENT_OCCUPATION, {
+                            countryName,
+                            nickname,
+                            occupationName,
+                            round: configs.round.value
+                        });
+                        return asyncUpdateUserInfo(userinfo, {
+                            actPoint: userinfo.actPoint - 3,
+                        }, act, socket)
+                    }
+                    return null;
+                });
+            }
             case enums.ACT_DISMISS: {
-
-            } break
+                const userId = payload.userId;
+                return updateSingleUser(userId, {occupationId: 0, actPointMax: 7}, memoController).then(e => {
+                    return e ? asyncUpdateUserInfo(userinfo, {
+                        actPoint: userinfo.actPoint - 1,
+                    }, act, socket) : null;
+                });
+            }
             
             default:
                 console.log("Not Found Act: ", act);
@@ -254,7 +280,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
     }
 
     function subEmitMessage(act, payload) {
-        emitSocketByte(socket, {act, payload});
+        memoController.emitSocketByte(socket, enums.MESSAGE, {act, payload});
         return ![enums.ALERT].includes(act); 
     }
 
@@ -270,9 +296,9 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
 
 
 
-function emitSocketByte(socket, data) {
+function emitSocketByte(socket, data, msg = enums.MESSAGE) {
     var buf = Buffer.from(JSON.stringify(data), 'utf-8');
-    socket.emit(enums.MESSAGE, buf);
+    socket.emit(msg, buf);
     return socket;
 }
 
@@ -324,6 +350,20 @@ async function updateRecordWar(id, mapId, data, memoController) {
         broadcastSocket(memoController, {act: enums.ACT_BATTLE_ADD, payload: { mapId, jsondata }});
     }
     return true
+}
+
+async function updateSingleUser(id, update, memoController) {
+    const user = await models.User.update(update, {where: {id}});
+    Object.keys(update).map(key => {
+        memoController.userMap[id][key] = update[key];
+    });
+    broadcastSocket(memoController, {act: enums.ACT_GET_GLOBAL_CHANGE_DATA, payload: { dataset: [ { depth: ['users', id], update } ] }});
+    memoController.userSockets.map(user => {
+        if (user.socket) {
+            memoController.emitSocketByte(user.socket,  enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: update},);
+        }
+    });
+    return user;
 }
 
 module.exports = onMessage

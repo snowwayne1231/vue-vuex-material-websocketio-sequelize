@@ -62,8 +62,8 @@ const staticFrontendDirectory = (port > 20000) ? path.join(__dirname, '..', 'dis
 //     return res;
 // });
 app.use('/' + productKeyword, express.static(staticFrontendDirectory, {maxAge: 1000*60*60*24}));
-app.use(express.static(staticFrontendDirectory, {maxAge: 1000*60*60*24}));
-// app.use(express.static(path.join(__dirname, '..', 'dist'), {maxAge: 1000*60*60*24}));
+app.use(express.static(staticFrontendDirectory, {maxAge: 1000*60*60}));
+app.use(express.static(path.join(__dirname, '..', 'dist'), {maxAge: 1000*60*60*24}));
 app.use((req, res) => { // basic 
     const _ary = req.url.split(/[\/\\]+/g).filter(e=>e.length > 0);
     return renderURI(req, res, _ary);

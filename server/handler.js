@@ -3,6 +3,7 @@ const md5 = require('md5');
 const path = require('path');
 const fs =require('fs');
 const sequelize = require('sequelize');
+const enums = require('../src/enum');
 
 // render and handle the uri
 var _index = path.join(__dirname, '..', 'dist', 's.ejs');
@@ -106,7 +107,9 @@ module.exports = {
             case 'checkweek': {
                 const configs = {round: 0, recover: 0};
                 const recoverDay = 1;
-                if (new Date().getDay()==recoverDay) {
+                const now = new Date();
+                console.log('[System][CheckWeek]: ', now.toLocaleString());
+                if (now.getDay()==recoverDay) {
                     const self = this;
                     return models.Config.findAll({attributes: ['name', 'status'], where: {open: true}}).then(cs => {
                         cs.map(c => { if (configs[c.name] >= 0) { configs[c.name] = c.status; } });
@@ -127,7 +130,7 @@ module.exports = {
         return res;
     },
     recoverPoint: async function(ws, configs) {
-        const gapMinutes = 60*24*6;
+        const gapMinutes = 60*24*5;
         const now = new Date();
         const nowMinutes = Math.floor(now.getTime() / 60000);
         let isNew = configs.recover == 0;
@@ -143,6 +146,13 @@ module.exports = {
             await models.Config.update({status: nowMinutes}, {where: {name: 'recover'}});
             await models.Config.update({status: configs.round + 1}, {where: {name: 'round'}});
             await ws.initConfig();
+            const memo = ws.getMemo();
+            if (memo) {
+                memo.eventCtl.broadcastInfo(enums.EVENT_SYSTEM_RECOVER, {
+                    round: configs.round,
+                    time: new Date().toLocaleString()
+                })
+            }
             return true
         }
         return false

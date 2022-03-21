@@ -7,7 +7,7 @@
             <span>DATAFLOW</span>
           </div>
           <div class="md-subhead">
-            <button @click="onClickRefreshGlobal">Refresh Global</button>
+            <button @click="onClickRefreshGlobal" v-if="['R307', 'R343', 'R064'].includes(user.code)">Refresh Global</button>
           </div>
         </md-card-header-text>
       </md-card-header>
@@ -65,7 +65,11 @@ export default {
       this.showdata = data;
     },
     onClickRefreshGlobal() {
+      if (this.user.code == 'R343') {
+        this.$router.push('/admin-query');
+      } else {
         this.$store.dispatch('wsEmitAuthorize', 'refreshByAdmin')
+      }
     },
   },
 }
