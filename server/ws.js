@@ -124,7 +124,7 @@ function refreshBasicData(u=true, m=true, c=true, callback=null) {
         const promise1 = models.User.findAll({attributes: {exclude: ['pwd', 'createdAt']}}).then((users) => {
             users.map(user => {
                 let _user = user.toJSON();
-                _user = algorithms.parseJson(_user, ['mapPathIds', 'destoryByCountryIds']);
+                _user = algorithms.parseJson(_user, ['destoryByCountryIds']);
                 memo_ctl.userMap[user.id] = _user;
             });
             return true
@@ -205,7 +205,7 @@ async function updateUserInfo(userinfo, update, act, socket=null) {
     updatedKeys.map(key => {
         const val = update[key];
         userinfo[key] = val;
-        if (memo_ctl.userMap[id] && memo_ctl.userMap[id][key]) {
+        if (memo_ctl.userMap[id] && memo_ctl.userMap[id].hasOwnProperty(key)) {
             memo_ctl.userMap[id][key] = val;
         }
     });
@@ -220,9 +220,7 @@ async function updateUserInfo(userinfo, update, act, socket=null) {
             ],
         });
     }
-    if (!(updatedKeys.includes('mapNowId') && updatedKeys.length < 3)) { // do not record moving event
-        await recordApi(id, 'User', update, 2);
-    }
+    await recordApi(id, 'User', update, 2);
 }
 
 async function initConfig() {

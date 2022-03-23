@@ -39,7 +39,9 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const nowId = userinfo.mapNowId;
                 const dis = algorithms.getMapDistance(nowId, targetId, userinfo.countryId);
                 if (dis > 0 && dis <= userinfo.actPoint) {
-                    return asyncUpdateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - dis}, act, socket).then(() => {
+                    const discount = getCityConstruction(nowId, 'stable', memoController).lv;
+                    const spendPoint = Math.max(1, dis - discount);
+                    return asyncUpdateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - spendPoint}, act, socket).then(() => {
                         return recordMove(configs.round.value, userinfo.id, nowId, targetId, dis)
                     });
                 } else {
@@ -58,7 +60,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const ratio = Math.round(Math.random() * 10) / 10;
                 console.log('[ACT_ENTER_COUNTRY]: ratio: ', ratio, ' nickname: ', userinfo.nickname);
                 if (ratio > 0.3) {
-                    return asyncUpdateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 0, actPointMax: 7 }, act, socket).then(e => {
+                    return asyncUpdateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 0, actPointMax: 7, loyalUserId: 0 }, act, socket).then(e => {
                         return memoController.eventCtl.broadcastInfo(enums.EVENT_ENTER_COUNTRY, {nickname: userinfo.nickname, countryName: thisCountry.name, round: configs.round.value});
                     });
                 } else {
@@ -73,13 +75,16 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const thisMap = memoController.mapIdMap[userinfo.mapNowId];
                 const thisCity = memoController.cityMap[thisMap.cityId];
                 const addMoney = thisCity.addResource;
-                // console.log('thisCity jsonConstruction: ', thisCity.jsonConstruction);
                 const randomMoney = Math.round(Math.random() * 100) + 50 + addMoney;
-                return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney, actPoint: userinfo.actPoint-1,  }, act, socket);
+                const construction = getCityConstruction(userinfo.mapNowId, 'market', memoController);
+                const additionalMoney = construction.lv * enums.NUM_ADDITIONAL_MARKET_MONEY;
+                return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney + additionalMoney, actPoint: userinfo.actPoint-1,  }, act, socket);
             }
             case enums.ACT_INCREASE_SOLDIER: {
                 const randomSoldier = algorithms.randomIncreaseSoldier(userinfo.countryId);
-                return asyncUpdateUserInfo(userinfo, { soldier: userinfo.soldier + randomSoldier, actPoint: userinfo.actPoint-1,  }, act, socket);
+                const construction = getCityConstruction(userinfo.mapNowId, 'barrack', memoController);
+                const additionalSoldier = construction.lv * enums.NUM_ADDITIONAL_BARRACK_SOLDIER;
+                return asyncUpdateUserInfo(userinfo, { soldier: userinfo.soldier + randomSoldier + additionalSoldier, actPoint: userinfo.actPoint-1,  }, act, socket);
             }
             case enums.ACT_BATTLE: {
                 const mapId = payload.mapId;
@@ -120,6 +125,11 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                         } else if (warTimestamps.includes(timeSelected)) {
                             return subEmitMessage(enums.ALERT, {msg: 'Already aragnemented time.', act});
                         } else if (algorithms.isValidatedBattleTime(timeSelected) && wars.findIndex(w => w.mapId == mapId) == -1) {
+                            const construction = getCityConstruction(mapId, 'wall', memoController);
+                            const wallDefence = (construction.lv * enums.NUM_ADDITIONAL_WALL_TRAPEZOID) + enums.NUM_BATTLE_SOLDIER_MIN;
+                            if (involvedSoldiers < wallDefence) {
+                                return subEmitMessage(enums.ALERT, {msg: 'Attack Soldier Less Than City Defence.', act});
+                            }
                             subEmitMessage(act, {mapId});
                             return RecordWar({
                                 round: configs.round.value,
@@ -169,6 +179,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 
                 if ([4,5].includes(position)) {
                     const bdata = {};
+                    if (userinfo.actPoint < 1) { break }
                     if (position == 4) {
                         bdata.judgeId = userinfo.id;
                     }
@@ -177,6 +188,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                     }
                     return updateRecordWar(battleId, mapId, bdata, memoController).then(e => {
                         return e ? asyncUpdateUserInfo(userinfo, {
+                            actPoint: userinfo.actPoint - 1,
                             contribution: userinfo.contribution + enums.NUM_BATTLE_TOOLMANS_CONTRUBUTION
                         }, act, socket) : null;
                     });
@@ -244,7 +256,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const occupationId = payload.occupationId;
                 const occupation = memoController.occupationMap[occupationId]
                 const actPointMax = occupation.addActPoint + 7;
-                return updateSingleUser(userId, {occupationId, actPointMax}, memoController).then(e => {
+                return updateSingleUser(userId, {occupationId, actPointMax}, userinfo, memoController).then(e => {
                     if (e) {
                         const user = memoController.userMap[userId];
                         const nickname = user.nickname;
@@ -265,9 +277,25 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
             }
             case enums.ACT_DISMISS: {
                 const userId = payload.userId;
-                return updateSingleUser(userId, {occupationId: 0, actPointMax: 7}, memoController).then(e => {
+                return updateSingleUser(userId, {occupationId: 0, actPointMax: 7}, userinfo, memoController).then(e => {
                     return e ? asyncUpdateUserInfo(userinfo, {
                         actPoint: userinfo.actPoint - 1,
+                    }, act, socket) : null;
+                });
+            }
+            case enums.ACT_LEVELUP_CITY: {
+                const cityId = payload.cityId;
+                const constructionName = payload.constructionName;
+                const city = memoController.cityMap[cityId];
+                const update = {
+                    jsonConstruction: {...city.jsonConstruction}
+                };
+                const next_lv = city.jsonConstruction[constructionName].lv + 1;
+                const pirce = next_lv * enums.NUM_LEVELUP_TRAPEZOID_SPENDING;
+                update.jsonConstruction[constructionName].lv = next_lv;
+                return updateCity(cityId, update, userinfo, memoController).then(e => {
+                    return e ? asyncUpdateUserInfo(userinfo, {
+                        money: userinfo.money - pirce,
                     }, act, socket) : null;
                 });
             }
@@ -294,13 +322,6 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
     }
 }
 
-
-
-function emitSocketByte(socket, data, msg = enums.MESSAGE) {
-    var buf = Buffer.from(JSON.stringify(data), 'utf-8');
-    socket.emit(msg, buf);
-    return socket;
-}
 
 function broadcastSocket(memoctl, data) {
     return memoctl.broadcast(enums.MESSAGE, data);
@@ -352,7 +373,7 @@ async function updateRecordWar(id, mapId, data, memoController) {
     return true
 }
 
-async function updateSingleUser(id, update, memoController) {
+async function updateSingleUser(id, update, userinfo, memoController) {
     const user = await models.User.update(update, {where: {id}});
     Object.keys(update).map(key => {
         memoController.userMap[id][key] = update[key];
@@ -363,7 +384,34 @@ async function updateSingleUser(id, update, memoController) {
             memoController.emitSocketByte(user.socket,  enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: update},);
         }
     });
+    await models.RecordApi.create({
+        userId: userinfo.id,
+        model: 'User',
+        payload: JSON.stringify(update),
+        curd: 2,
+    });
     return user;
+}
+
+async function updateCity(id, update, userinfo, memoController) {
+    const city = await models.City.update(update, {where: {id}});
+    Object.keys(update).map(key => {
+        memoController.cityMap[id][key] = update[key];
+    });
+    broadcastSocket(memoController, {act: enums.ACT_GET_GLOBAL_CHANGE_DATA, payload: { dataset: [ { depth: ['cities', id], update } ] }});
+    await models.RecordApi.create({
+        userId: userinfo.id,
+        model: 'City',
+        payload: JSON.stringify(update),
+        curd: 2,
+    });
+    return city;
+}
+
+function getCityConstruction(mapId, name, memoController) {
+    const map = memoController.mapIdMap[mapId];
+    const city = map.cityId > 0 ? memoController.cityMap[map.cityId] : null;
+    return city && city.jsonConstruction && city.jsonConstruction.hasOwnProperty(name) ? city.jsonConstruction[name] : {lv: 0, value: 0};
 }
 
 module.exports = onMessage

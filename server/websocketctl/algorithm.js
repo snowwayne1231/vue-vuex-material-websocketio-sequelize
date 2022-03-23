@@ -93,7 +93,12 @@ module.exports = {
         keys.forEach(key => {
             let _loc = obj[key];
             if (typeof _loc == 'string') {
-                obj[key] = _loc.match(/^\d{4}-\d{2}-\d{2}/) ? new Date(_loc) : JSON.parse(_loc);
+                try {
+                    obj[key] = _loc.match(/^\d{4}-\d{2}-\d{2}/) ? new Date(_loc) : JSON.parse(_loc);
+                } catch(err) {
+                    console.log('[parseJson] err: ', err, ' key: ', key, ' val: ', obj[key]);
+                    obj[key] = [];
+                }
             }
         });
         return obj;

@@ -40,7 +40,7 @@ function refresBattlefields() {
     const hours = [8, 12, 15, 22];
     const isInHour = hours.includes(now.getHours());
     // console.log('maps: ', Object.values(memo.map).map(m => [m.id, m.ownCountryId]).filter(e => e[1] == 8));
-    if (isInHour || true) {
+    if (isInHour) {
         const prepareTimestamp = now.setDate(now.getDate() +3);
         models.RecordWar.findAll({where: { winnerCountryId: 0, timestamp: {[Op.lte]: prepareTimestamp} }}).then(wars => {
             return wars.map(war => {
@@ -83,6 +83,22 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
         isDestoried = false;
     }
 
+    let finalDiscountRatio = 1;
+    const map = await models.Map.findOne({where: {id: warModel.mapId}});
+    if (map.cityId > 0) {
+        const city = map.cityId > 0 ? await models.City.findOne({where: {id: map.cityId}}) : null;
+        const _city = city ? city.toJSON() : {};
+        if (_city.jsonConstruction) {
+            const jsonConstruction = JSON.parse(_city.jsonConstruction);
+            if (jsonConstruction.wall && jsonConstruction.wall.hasOwnProperty('lv')) {
+                finalDiscountRatio = 1 - ((jsonConstruction.wall.lv * enums.NUM_ADDITIONAL_WALL_DISCOUNT_DAMAGE_RATIO) / 100);
+            }
+        }
+    }
+    // console.log('finalDiscountRatio: ', finalDiscountRatio);
+    detail.finalDiscountRatio = finalDiscountRatio;
+    detail.atkSoldierRatio = atkSoldierRatio;
+    detail.defSoldierRatio = defSoldierRatio;
     const involvedUserIds = (atkUserIds.concat(defUserIds)).filter(u => u>0);
     const involvedUsers = await models.User.findAll({where: {id: {[Op.in]: involvedUserIds}}});
     // console.log('involvedUsers length: ', involvedUsers.length);
@@ -93,12 +109,12 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
         let decentSoldier;
         
         if (idxDef >= 0) {  // is defence user
-            decentSoldier = Math.round(detail.defSoldiers[idxDef] * defSoldierRatio);
+            decentSoldier = Math.round(detail.defSoldiers[idxDef] * defSoldierRatio * finalDiscountRatio);
             detail.defSoldierLoses[idxDef] = decentSoldier;
         } else {
             const idxAtk = atkUserIds.indexOf(user.id);
             decentSoldier = Math.round(detail.atkSoldiers[idxAtk] * atkSoldierRatio);
-            detail.defSoldierLoses[idxAtk] = decentSoldier;
+            detail.atkSoldierLoses[idxAtk] = decentSoldier;
             if (isAttackerWin) { // attacker go to the battle map
                 userUpdateData.mapNowId = warModel.mapId;
             }

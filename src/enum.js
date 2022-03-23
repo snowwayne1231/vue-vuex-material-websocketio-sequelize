@@ -26,6 +26,7 @@ module.exports = {
     ACT_BUSINESS: 25,
     ACT_APPOINTMENT: 26,
     ACT_DISMISS: 27,
+    ACT_LEVELUP_CITY: 28,
     UserGlobalAttributes: ['id', 'code', 'nickname', 'countryId', 'loyalty', 'loyalUserId', 'contribution', 'occupationId', 'role', 'mapNowId', 'soldier', 'captiveDate'],
     MapsGlobalAttributes: ['id', 'name', 'x', 'y', 'route', 'cityId', 'ownCountryId'],
     CityGlobalAttributes: ['id', 'money', 'addResource', 'timeBeAttacked', 'jsonConstruction'],
@@ -49,6 +50,11 @@ module.exports = {
     NUM_BATTLE_ACTION_MIN: 1,
     NUM_BATTLE_CONTRUBUTION: 6,
     NUM_BATTLE_TOOLMANS_CONTRUBUTION: 12,
+    NUM_LEVELUP_TRAPEZOID_SPENDING: 300,
+    NUM_ADDITIONAL_BARRACK_SOLDIER: 10,
+    NUM_ADDITIONAL_MARKET_MONEY: 6,
+    NUM_ADDITIONAL_WALL_DISCOUNT_DAMAGE_RATIO: 9,
+    NUM_ADDITIONAL_WALL_TRAPEZOID: 900,
     ADMIN_AUTHORIZE: 999,
     ADMIN_CONTROL: 'ADMINCTL'
 }

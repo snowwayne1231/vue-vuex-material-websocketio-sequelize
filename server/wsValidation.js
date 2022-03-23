@@ -54,6 +54,11 @@ function validate(act, payload, userinfo, memo) {
             const userId = payload.userId;
             res.msg = isRoleEmperor(userinfo) || hasPoint(userinfo, 1) || isSameCountryPartner(userinfo, userId, memo);
         } break
+        case enums.ACT_LEVELUP_CITY: {
+            const cityId = payload.cityId;
+            const constructionName = payload.constructionName;
+            res.msg = isExistCity(cityId, memo) || hasPoint(userinfo, 1) || hasCityLevelupMoney(userinfo, cityId, constructionName, memo) || isHereCity(userinfo, cityId, memo);
+        } break
         default:
             console.log("Not Found Act: ", act);
             res.msg = 'Unknown Action.';
@@ -74,7 +79,11 @@ function isNoTarget(userinfo) {
 }
 
 function isExistMap(mapId, memo) {
-    return !!memo.mapIdMap[mapId] ? '' : 'Not Exist Map';
+    return memo.mapIdMap[mapId] ? '' : 'Not Exist Map';
+}
+
+function isExistCity(cityId, memo) {
+    return memo.cityMap[cityId] ? '' : 'Not Exist City';
 }
 
 function isEnemyMap(userinfo, mapId, memo) {
@@ -88,6 +97,17 @@ function isAllowedGo(userinfo, mapData = {}) {
 
 function hasPoint(userinfo, atLease = 1) {
     return userinfo.actPoint >= atLease ? '' : 'Point Not Enough.';
+}
+
+function hasMoney(userinfo, money) {
+    return userinfo.money >= money ? '' : 'Money Not Enough.';
+}
+
+function hasCityLevelupMoney(userinfo, cityId, constructionName, memo) {
+    const construction = memo.cityMap[cityId].jsonConstruction;
+    const atLeaseMoney = construction.hasOwnProperty(constructionName) ? ( 1 + construction[constructionName].lv) * enums.NUM_LEVELUP_TRAPEZOID_SPENDING : -1;
+    if (atLeaseMoney == -1) return 'Wrong Lv Of ' + constructionName;
+    return hasMoney(userinfo, atLeaseMoney)
 }
 
 function isRoleWarrier(userinfo) {
@@ -145,6 +165,12 @@ function isHereCityMap(mapId, memo) {
     const _map = memo.mapIdMap[mapId] || {};
     const _city = memo.cityMap[_map.cityId];
     return _city && _map.type == enums.TYPE_CITY ? '' : 'Not City Here.';
+}
+
+function isHereCity(userinfo, cityId, memo) {
+    const _mapId = userinfo.mapNowId;
+    const _map = memo.mapIdMap[_mapId];
+    return _map && cityId == _map.cityId ? '' : 'Is Not This City.';
 }
 
 function isNotExistBattlefield(mapId, memo) {

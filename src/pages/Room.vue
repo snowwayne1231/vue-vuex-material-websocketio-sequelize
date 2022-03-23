@@ -18,19 +18,17 @@
       <md-card-content>
         <div class="map" @mousedown="onMouseDown($event)" @mousemove="onMouseMove($event)" @mouseup="onMouseUp()" @mouseleave="onMouseUp()">
           <div class="render" :style="{ transform: `translate(${viewX}px, ${viewY}px)` }">
-            <li v-for="(p, idx) in mapData" :key="p.id+idx" class="point" :style="{left: `${p.x / 1.6}px`, top: `${p.y / 1.6}px`}" @click="onClickPoint(p)">
+            <li v-for="(p, idx) in mapData" :key="p.id+idx" class="point" :style="{left: `${p.x / 1.4}px`, top: `${p.y / 1.4}px`}" @click="onClickPoint(p)">
               <span :class="{light: showLights.includes(p.id), now: showNow==p.id, battle: showBattle.includes(p.id)}">🏠{{p.name}}</span>
-              <span v-if="p.ownCountryId == user.countryId">🏴</span>
+              <dd class="person-zone" v-if="p.users.length > 0"><span class="md-icon person">person</span><i>{{p.users.length}}</i></dd>
+              <span v-if="p.color" class="md-icon flag" :style="{color: p.color}">flag</span>
               <Man
                 v-if="showNow==p.id"
                 :name="user.nickname"
                 :voted="localVoteBoolean"
               />
-              <div class="list-people">
-                <li v-for="(subuser) in usersByMapId(p.id)" :key="subuser.id">{{subuser.nickname}}  <i v-if="user.code=='R343'" class="plus-point" @click="onClickPlusPeople(subuser)">+</i></li>
-              </div>
               <div class="battlearea" v-if="p.battlearea">
-                <i class="icon">🔥</i>
+                <i class="icon">🔥🔥🔥🔥🔥🔥</i>
                 <table class="table">
                   <tr>
                     <td colspan="2">{{p.battlearea.time}}</td>
@@ -71,12 +69,17 @@
           </div>
         </div>
         <div class="nav">
+          <button @click="onClickMove">移動</button>
           <button @click="onClickIncreaseSoldier">徵兵</button>
           <button @click="onClickSearchWild">探索</button>
           <button @click="onClickLeaveCountry">下野</button>
           <button @click="onClickEnterCountry">入仕</button>
           <button @click="onClickBusiness">商業</button>
           <button @click="onClickAssignment">任命</button>
+          <button @click="onClickLevelUp('barrack')">升軍營</button>
+          <button @click="onClickLevelUp('market')">升市場</button>
+          <button @click="onClickLevelUp('stable')">升馬廄</button>
+          <button @click="onClickLevelUp('wall')">升城牆</button>
         </div>
         <div class="notifications">
           <li v-for="(noti) in global.notifications" :key="noti[0].getTime()">
@@ -126,6 +129,9 @@
           :candidates="asCandidates"
           :clickClose="onClicAssignmentkClose"
         />
+        <div class="mask" v-if="selectedCityName" @click="selectedCityName = ''">
+          <CityPanel :cityName="selectedCityName" :cityId="selectedShowCityInfo" />
+        </div>
       </md-card-content>
     </md-card>
   </div>
@@ -135,6 +141,7 @@
 import { mapState } from 'vuex'
 import Man from '@/components/interactive/Man';
 import Assignment from '@/components/interactive/Assignment';
+import CityPanel from '@/components/interactive/CityPanel';
 import mapAlgorithm from '@/unit/mapAlgorithm';
 
 export default {
@@ -147,6 +154,8 @@ export default {
       showBattle: [],
       battleTimeSelected: -1,
       openAssignment: false,
+      selectedShowCityInfo: 0,
+      selectedCityName: '',
     }
   },
   computed: {
@@ -155,6 +164,8 @@ export default {
       let mpas = self.global.maps.map(m => {
         let next = {...m};
         let areaData = self.global.battlefieldMap[next.id];
+        let country = next.ownCountryId > 0 ? self.global.countries.find(c => c.id == next.ownCountryId) : null;
+        let users = self.global.users.filter(u => u.mapNowId == m.id);
         if (areaData) {
           let countries = self.global.countries;
           let users = self.global.users;
@@ -175,7 +186,12 @@ export default {
             defUsers,
             detail
           }
+          
         }
+        if (country) {
+          next.color = country.color.split(',')[0];
+        }
+        next.users = users && users.length > 0 ? users : [];
         return next;
       });
       return mpas;
@@ -225,7 +241,7 @@ export default {
     }
   },
   components: {
-    Man, Assignment,
+    Man, Assignment, CityPanel,
   },
   mounted() {
     if (!['81', '8080', '12022'].includes(window.location.port) && !['R343'].includes(this.user.code)) {
@@ -233,6 +249,7 @@ export default {
       this.$router.push('/');
     }
     this._mouse_dataset = {};
+    console.log('store: ', this.$store);
   },
   methods: {
     usersByMapId(mapId) {
@@ -261,33 +278,34 @@ export default {
         this.viewY = moveY;
       }
     },
-    onClickPoint(dataset) {
+    onClickMove() {
       if (this.user.mapTargetId != 0) {return false;}
+      if (this.localVoteBoolean) {
+        const routes = mapAlgorithm.getAllowedPosition(this.user.mapNowId, this.user.actPoint, this.user.countryId);
+        const maps = this.global.maps;
+        routes.names = {};
+        Object.keys(routes.steps).map(key => {
+          let loc = routes.steps[key];
+          let res = loc.map(mid => maps.find(e => e.id == mid)).map(e => e.name);
+          routes.names[key] = res;
+        })
+        clog('Routes : ', routes);
+        this.showLights = routes.all;
+        const battleIds = mapAlgorithm.getBattlePosition(this.user.mapNowId, this.user.countryId);
+        this.showBattle = battleIds;
+      } else {
+        this.showLights = [];
+        this.showBattle = [];
+      }
+    },
+    onClickPoint(dataset) {
+      console.log('onClickPoint: ', dataset);
       if (this.showLights.includes(dataset.id)) {
         let yes = window.confirm('確定移動這此嗎?');
         if (yes) {
           this.showLights = [];
           this.showBattle = [];
           return this.$store.dispatch('actMove', dataset.id);
-        }
-      } else if (dataset.id == this.showNow) {
-        if (this.localVoteBoolean) {
-          const routes = mapAlgorithm.getAllowedPosition(dataset.id, this.user.actPoint, this.user.countryId);
-          const maps = this.global.maps;
-          routes.names = {};
-          Object.keys(routes.steps).map(key => {
-            let loc = routes.steps[key];
-            let res = loc.map(mid => maps.find(e => e.id == mid)).map(e => e.name);
-            routes.names[key] = res;
-          })
-          clog('Routes : ', routes);
-          this.showLights = routes.all;
-
-          const battleIds = mapAlgorithm.getBattlePosition(dataset.id, this.user.countryId);
-          this.showBattle = battleIds;
-        } else {
-          this.showLights = [];
-          this.showBattle = [];
         }
       } else if (this.showBattle.includes(dataset.id)) {
         let yes = window.confirm('確定攻打這裡嗎?');
@@ -297,6 +315,8 @@ export default {
           return this.$store.dispatch('actBattle', { mapId: dataset.id });
         }
       }
+      this.selectedShowCityInfo = dataset.cityId;
+      this.selectedCityName = dataset.name;
     },
     onClickIncreaseSoldier() {
       const chekcs = this.getCheck([
@@ -341,7 +361,9 @@ export default {
       if (idx >= 0) {
         const selectedTime = battlefield.timeOptions[idx];
         console.log(selectedTime);
-        this.$store.dispatch('actBattle', {mapId: battlefield.mapId, time: selectedTime, soldier: 1000});
+        const soldier = parseInt(window.prompt('請輸入要出征的兵力:'));
+        console.log(soldier);
+        this.$store.dispatch('actBattle', {mapId: battlefield.mapId, time: selectedTime, soldier});
       }
     },
     onClickJoin(evt, index, mapId, battleId) {
@@ -374,18 +396,26 @@ export default {
     onClickBusiness() {
       return this.$store.dispatch('actBusiness');
     },
-    onClickPlusPeople(user) {
-      var where = {id: user.id};
-      var update = {actPoint: 100};
-      var model = 'User';
-      var sendto = {model, where, update};
-      return window.confirm(`確定儲給 ${user.nickname} ${100}行動嗎`) && this.$store.dispatch('wsEmitADMINCTL', sendto);
-    },
     onClickAssignment() {
       this.openAssignment = true;
     },
     onClicAssignmentkClose() {
       this.openAssignment = false;
+    },
+    onClickLevelUp(place) {
+      const _map = this.global.maps.find(m => m.id == this.user.mapNowId);
+      const _city = this.global.cities.find(c => c.id == _map.cityId);
+      if (_city && _city.jsonConstruction) {
+        const _data = _city.jsonConstruction[place];
+        const lv = _data.lv + 1;
+        const price = lv * 300;
+        console.log('_data: ', _data);
+        if (window.confirm(`是否花費 ${price} 升級?` )) {
+          this.$store.dispatch('actLevelUpCity', { cityId: _city.id, constructionName: place });
+        }
+      } else {
+        console.log('onClickLevelUp _city: ', _city);
+      }
     },
     getCheck(ary = []) {
       return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});
@@ -430,9 +460,41 @@ export default {
   list-style: none;
   position: absolute;
   cursor: pointer;
+  min-width: 96px;
+  border-bottom: 1px solid #ccc;
+  background: rgba(5,5,5,0.1);
+  text-align: left;
+
+  .flag {
+    position: absolute;
+    display: inline-block;
+    left: 0px;
+    top: -15px;
+    text-shadow: 1px 1px 2px #000;
+  }
+  .person-zone {
+    position: relative;
+    float: right;
+    >i {
+      position: absolute;
+      right: -6px;
+      top: -6px;
+      background-color: rgba(0,0,0,0.6);
+      color: #fff;
+      border-radius: 50%;
+      width: 14px;
+      line-height: 14px;
+      text-align: center;
+    }
+  }
+
+  .person {
+    
+    color: #000;
+  }
 }
 .point:hover {
-  color: #6ebd32;
+  background: rgba(5,5,5,0.3);
   z-index: 3;
 }
 .point:hover .list-people {
@@ -462,27 +524,6 @@ export default {
   width: 100%;
   height: 60px;
   background: rgba(0,0,0,0.2);
-}
-.list-people {
-  white-space: normal;
-  width: 100px;
-  color: #aaa;
-  border: 1px solid #aaa;
-  max-height: 20px;
-  overflow: hidden;
-}
-.list-people .plus-point {
-  background: #fffdeb;
-  color: #b38828;
-  font-size: 1.5em;
-  border: 1px outset #b38828;
-  width: 20px;
-  line-height: 20px;
-  display: inline-block;
-}
-.list-people .plus-point:hover {
-  color: #fff;
-  background: #8b8218;
 }
 .notifications {
   height: 100px;

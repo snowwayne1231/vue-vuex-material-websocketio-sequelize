@@ -50,5 +50,8 @@ module.exports = {
     actDismissOccupation: ({dispatch}, args) => {
         dispatch('wsEmitMessage', {act: enums.ACT_DISMISS, payload: args});
     },
+    actLevelUpCity: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_LEVELUP_CITY, payload: args});
+    },
     register,
 }
