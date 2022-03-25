@@ -56,15 +56,22 @@ module.exports = {
         user.actPointMax = 3;
       }
       
-      user.pwd = '';
+      // user.pwd = '';
       user.contribution = 0;
       user.occupationId = 0;
       user.destoryByCountryIds = [];
       switch (user.nickname) {
         case '楊薇薇': user.countryId = 7; break
         case '于凱琳': user.countryId = 3; break
-        case '趙斯特': user.mapNowId = 59; break
+        case '趙斯特': user.mapNowId = 38; break
         case '鍾沙亞': user.countryId = 2; break
+        case '侯祈': user.countryId = 1; user.mapNowId = 2; break
+        case '程寶寶': user.countryId = 0; user.mapNowId = 38; user.role = 3; user.soldier = 0; break
+        case '郭杜克': user.countryId = 0; user.actPointMax = 0; break
+        case '曾海倫': user.countryId = 0; user.actPointMax = 0; break
+        case '歐陽子': user.countryId = 0; user.actPointMax = 0; break
+        case '王燁妲': user.countryId = 0; user.actPointMax = 0; break
+        default:
       }
       await user.save();
     }

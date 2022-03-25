@@ -1,49 +1,44 @@
 const enums = require('../src/enum');
 
 
-
-
 function validate(act, payload, userinfo, memo) {
     const res = { ok: false, msg: '' };
-    if (userinfo.captiveDate) {
-        res.msg = 'Be captured. ' + userinfo.captiveDate.toLocaleDateString();
-        return res;
-    }
 
     switch (act) {
         case enums.ACT_MOVE: {
-            res.msg = isNoTarget(userinfo) || isExistMap(payload, memo) || isAllowedGo(userinfo, memo.mapIdMap[payload]);
+            res.msg = isNoTarget(userinfo) || isExistMap(payload, memo) || isAllowedGo(userinfo, memo.mapIdMap[payload]) || isNotBeCaptived(userinfo);
         } break
         case enums.ACT_LEAVE_COUNTRY: {
             res.msg = isNoTarget(userinfo) || hasPoint(userinfo) || isRoleWarrier(userinfo) || isNotLoyal(userinfo);
         } break
         case enums.ACT_ENTER_COUNTRY: {
-            res.msg = isNoTarget(userinfo) || isExistMap(userinfo.mapNowId, memo) || hasPoint(userinfo) || isNoCountry(userinfo) || isMyStandMapHasCountry(userinfo, memo) || isMyStandMapHasCountry(userinfo, memo) || isDestoriedByMapCountry(userinfo, memo);
+            res.msg = isNoTarget(userinfo) || isExistMap(userinfo.mapNowId, memo) || hasPoint(userinfo) || isNoCountry(userinfo) || isMyStandMapHasCountry(userinfo, memo)|| isNotDestoriedByMapCountry(userinfo, memo) || isNotBeCaptived(userinfo);
         } break
         case enums.ACT_SEARCH_WILD: {
-            res.msg = hasPoint(userinfo) || isRoleNotFree(userinfo) || isHereWildMap(userinfo.mapNowId, memo);
+            res.msg = hasPoint(userinfo) || isRoleNotFree(userinfo) || isHereWildMap(userinfo.mapNowId, memo) || isNotBeCaptived(userinfo);
         } break
         case enums.ACT_BUSINESS: {
-            res.msg = hasPoint(userinfo) || isRoleNotFree(userinfo) || isHereCityMap(userinfo.mapNowId, memo) || isInCountryHere(userinfo, memo);
+            res.msg = hasPoint(userinfo) || isRoleNotFree(userinfo) || isHereCityMap(userinfo.mapNowId, memo) || isInCountryHere(userinfo, memo) || isNotBeCaptived(userinfo);
         } break
         case enums.ACT_INCREASE_SOLDIER: {
-            res.msg = hasPoint(userinfo) || isRoleNotFree(userinfo) || isHereCityMap(userinfo.mapNowId, memo) || isInCountryHere(userinfo, memo);
+            res.msg = hasPoint(userinfo) || isRoleNotFree(userinfo) || isHereCityMap(userinfo.mapNowId, memo) || isInCountryHere(userinfo, memo) || isNotBeCaptived(userinfo);
         } break
         case enums.ACT_BATTLE: {
             const mapId = payload.mapId;
             res.msg = isNoTarget(userinfo) || isExistMap(mapId, memo) || isEnemyMap(userinfo, mapId, memo) || isInCountry(userinfo, memo) || isNotExistBattlefield(mapId, memo)
-                || isNotWorking(userinfo, memo) || hasPoint(userinfo) || haveBasicBattleResource(userinfo);
+                || isNotWorking(userinfo, memo) || hasPoint(userinfo) || haveBasicBattleResource(userinfo) || isNotBeCaptived(userinfo);
         } break
         case enums.ACT_BATTLE_JOIN: {
             const mapId = payload.mapId;
             const battleId = payload.battleId;
             const position = payload.position;
-            res.msg = isNoTarget(userinfo) || isNotWorking(userinfo, memo) || hasBattle(mapId, battleId, memo) || isEmptyBattlePosition(userinfo, position, mapId, memo) || isNotInvolvedBattle(userinfo, position, mapId, memo);
+            res.msg = isNoTarget(userinfo) || isNotWorking(userinfo, memo) || hasBattle(mapId, battleId, memo) || isEmptyBattlePosition(userinfo, position, mapId, memo) || isNotInvolvedBattle(userinfo, position, mapId, memo) || isNotBeCaptived(userinfo);
         } break
         case enums.ACT_BATTLE_JUDGE: {
             const mapId = payload.mapId;
             const battleId = payload.battleId;
-            res.msg = hasBattle(mapId, battleId, memo);
+            if (isWelfare(userinfo)=='') { break }
+            res.msg = hasBattle(mapId, battleId, memo) || isAllowedJudgeBattleTime(mapId, memo) || imJudge(userinfo, mapId, memo);
         } break
         case enums.ACT_APPOINTMENT: {
             const userId = payload.userId;
@@ -57,7 +52,17 @@ function validate(act, payload, userinfo, memo) {
         case enums.ACT_LEVELUP_CITY: {
             const cityId = payload.cityId;
             const constructionName = payload.constructionName;
-            res.msg = isExistCity(cityId, memo) || hasPoint(userinfo, 1) || hasCityLevelupMoney(userinfo, cityId, constructionName, memo) || isHereCity(userinfo, cityId, memo);
+            res.msg = isExistCity(cityId, memo) || hasPoint(userinfo, 1) || hasCityLevelupMoney(userinfo, cityId, constructionName, memo) || isHereCity(userinfo, cityId, memo) || isNotBeCaptived(userinfo);
+        } break
+        case enums.ACT_SHARE: {
+            const userId = payload.userId;
+            const soldier = payload.soldier;
+            const money = payload.money;
+            // const packetId = payload.packetId;
+            console.log('userId: ', userId);
+            console.log('soldier: ', soldier);
+            console.log('money: ', money);
+            res.msg = isAllowedShareUser(userinfo, memo) || hasPoint(userinfo, 1) || isNotBeCaptived(userinfo) || isHereCityMap(userinfo.mapNowId, memo) || isSameCountryPartner(userinfo, userId, memo) || haveSoldier(userinfo, soldier) || haveMoney(userinfo, money);
         } break
         default:
             console.log("Not Found Act: ", act);
@@ -76,6 +81,10 @@ function isNotWorking(userinfo, memo) {
 
 function isNoTarget(userinfo) {
     return userinfo.mapTargetId == 0 ? '' : 'Already Has Target.';
+}
+
+function isNotBeCaptived(userinfo) {
+    return !userinfo.captiveDate ? '' : `Be Captured. [${userinfo.captiveDate.toLocaleDateString()}]`
 }
 
 function isExistMap(mapId, memo) {
@@ -99,15 +108,15 @@ function hasPoint(userinfo, atLease = 1) {
     return userinfo.actPoint >= atLease ? '' : 'Point Not Enough.';
 }
 
-function hasMoney(userinfo, money) {
-    return userinfo.money >= money ? '' : 'Money Not Enough.';
+function haveMoney(userinfo, money) {
+    return 0 <= money && money <= userinfo.money ? '' : 'Money Not Enough.';
 }
 
 function hasCityLevelupMoney(userinfo, cityId, constructionName, memo) {
     const construction = memo.cityMap[cityId].jsonConstruction;
     const atLeaseMoney = construction.hasOwnProperty(constructionName) ? ( 1 + construction[constructionName].lv) * enums.NUM_LEVELUP_TRAPEZOID_SPENDING : -1;
     if (atLeaseMoney == -1) return 'Wrong Lv Of ' + constructionName;
-    return hasMoney(userinfo, atLeaseMoney)
+    return haveMoney(userinfo, atLeaseMoney)
 }
 
 function isRoleWarrier(userinfo) {
@@ -126,7 +135,8 @@ function isSameCountryPartner(userinfo, partnerId, memo) {
     return memo.userMap[partnerId] && userinfo.countryId == memo.userMap[partnerId].countryId ? '' : 'Not Same Country.';
 }
 
-function isDestoriedByMapCountry(userinfo, memo) {
+function isNotDestoriedByMapCountry(userinfo, memo) {
+    if (userinfo.loyalUserId == 0) return '';
     const _dbciAry = Array.isArray(userinfo.destoryByCountryIds) ? userinfo.destoryByCountryIds : [];
     const _map = memo.mapIdMap[userinfo.mapNowId];
     const _countryid = _map.ownCountryId || 0;
@@ -188,6 +198,10 @@ function hasBattle(mapId, battleId, memo) {
     return _battle && _battle.id == battleId ? '' : 'Not Exist Battle.';
 }
 
+function haveSoldier(userinfo, soldier) {
+    return 0 <= soldier && soldier <= userinfo.soldier ? '' : 'Do Not Have Enough Soldiers.';
+}
+
 function isEmptyBattlePosition(userinfo, position, mapId, memo) {
     const _battle = memo.battlefieldMap[mapId];
     const _countryId = userinfo.countryId;
@@ -213,6 +227,22 @@ function isNotInvolvedBattle(userinfo, position, mapId, memo) {
     }
 }
 
+function isAllowedJudgeBattleTime(mapId, memo) {
+    const battlefieldMap = memo.battlefieldMap;
+    const thisBattle = battlefieldMap[mapId];
+    const battleKeys = Object.keys(battlefieldMap);
+    let isAllowedTime = thisBattle.timestamp.getTime() < new Date().getTime();
+    if (battleKeys.length > 0) {
+        const olderestBattleKey = battleKeys.sort((a,b) => {
+            return battlefieldMap[a].timestamp.getTime() - battlefieldMap[b].timestamp.getTime();
+        })[0];
+        if (olderestBattleKey != mapId) {
+            return 'Is Not The Lasest Battle.';
+        }
+    }
+    return isAllowedTime ? '' : 'Time Expire Not Yet.';
+}
+
 function isOccupationEnoughContribution(userId, occupationId, memo) {
     const _occu = memo.occupationMap[occupationId];
     const _user = memo.userMap[userId];
@@ -223,6 +253,22 @@ function isEmptyOccupation(userId, occupationId, memo) {
     const _user = memo.userMap[userId];
     const _users = Object.values(memo.userMap).filter(u => u.countryId == _user.countryId);
     return _users.findIndex(u => u.occupationId == occupationId) == -1 ? '' : 'Double Occupation.';
+}
+
+function isWelfare(userinfo) {
+    return ['R307', 'R343', 'R064'].includes(userinfo.code) ? '' : 'Nont Welfare';
+}
+
+function imJudge(userinfo, mapId, memo) {
+    const _battlefieldMap = memo.battlefieldMap;
+    const _battle = _battlefieldMap[mapId];
+    return _battle.judgeId == userinfo.id ? '' : 'Not Judge.';
+}
+
+function isAllowedShareUser(userinfo, memo) {
+    if (userinfo.role == enums.ROLE_EMPEROR) return '';
+    const _myOccupation = memo.occupationMap[userinfo.occupationId];
+    return _myOccupation && _myOccupation.isAllowedShare ? '' : 'Not Be Allowed To Share.';
 }
 
 module.exports = {

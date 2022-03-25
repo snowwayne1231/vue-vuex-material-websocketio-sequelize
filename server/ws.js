@@ -21,6 +21,7 @@ const memo_ctl = {
     cityMap: {},
     countryMap: {},
     battlefieldMap: {},
+    battleRecords: [],
     occupationMap: {},
     eventCtl: events,
     battleCtl: battles,
@@ -59,7 +60,8 @@ function broadcastSocketByte(frame, data) {
 
 
 function emitGlobalGneralArraies(socket) {
-    const users = algorithms.flatMap(memo_ctl.userMap, enums.UserGlobalAttributes);
+    const actMaxIdx = enums.UserGlobalAttributes.indexOf('actPointMax');
+    const users = algorithms.flatMap(memo_ctl.userMap, enums.UserGlobalAttributes).filter(u => u[actMaxIdx] > 0);
     const maps = algorithms.flatMap(memo_ctl.mapIdMap, enums.MapsGlobalAttributes);
     const cities = algorithms.flatMap(memo_ctl.cityMap, enums.CityGlobalAttributes);
     const countries = algorithms.flatMap(memo_ctl.countryMap, enums.CountryGlobalAttributes);
@@ -77,7 +79,8 @@ function emitGlobalChanges(changes = []) {
 
 function refreshByAdmin() {
     refreshBasicData().then(() => {
-        const users = algorithms.flatMap(memo_ctl.userMap, enums.UserGlobalAttributes);
+        const actMaxIdx = enums.UserGlobalAttributes.indexOf('actPointMax');
+        const users = algorithms.flatMap(memo_ctl.userMap, enums.UserGlobalAttributes).filter(u => u[actMaxIdx] > 0);
         const maps = algorithms.flatMap(memo_ctl.mapIdMap, enums.MapsGlobalAttributes);
         const cities = algorithms.flatMap(memo_ctl.cityMap, enums.CityGlobalAttributes);
         const countries = algorithms.flatMap(memo_ctl.countryMap, enums.CountryGlobalAttributes);
@@ -169,6 +172,14 @@ function refreshBasicData(u=true, m=true, c=true, callback=null) {
             return true
         });
         promises.push(promise6);
+        const promise8 = models.RecordWar.findAll({ attributes: ['id', 'timestamp', 'mapId', 'winnerCountryId', 'attackCountryIds', 'defenceCountryId'], where: { winnerCountryId: {[Op.gt]: 0} } }).then(wars => {
+            const nextary = wars.map(e => {
+                return e.toJSON();
+            });
+            memo_ctl.battleRecords = nextary;
+            return true
+        });
+        promises.push(promise8);
     }
 
     if (c) {
@@ -202,6 +213,11 @@ async function updateUserInfo(userinfo, update, act, socket=null) {
     const updatedKeys = Object.keys(update);
     const userGlobalAttrs = enums.UserGlobalAttributes;
     await models.User.update(update, {where: { id }});
+    if (act == enums.ACT_MOVE) {
+        await recordMove(id, userinfo.mapNowId, update.mapNowId, userinfo.actPoint - update.actPoint);
+    } else {
+        await recordApi(id, 'User', update, 2);
+    }
     updatedKeys.map(key => {
         const val = update[key];
         userinfo[key] = val;
@@ -210,7 +226,12 @@ async function updateUserInfo(userinfo, update, act, socket=null) {
         }
     });
     if (socket) {
-        emitSocketByte(socket, enums.AUTHORIZE, {act, payload: update});
+        // emitSocketByte(socket, enums.AUTHORIZE, {act, payload: update});
+        memo_ctl.userSockets.map(us => {
+            if (us.id == id) {
+                emitSocketByte(us.socket, enums.AUTHORIZE, {act, payload: update});
+            }
+        });
     }
     if (updatedKeys.some(key => { return userGlobalAttrs.includes(key) })) {
         emitGlobalChanges({
@@ -220,7 +241,7 @@ async function updateUserInfo(userinfo, update, act, socket=null) {
             ],
         });
     }
-    await recordApi(id, 'User', update, 2);
+    return userinfo
 }
 
 async function initConfig() {
@@ -252,6 +273,17 @@ async function recordApi(userId, model='', payload={}, curd=0) {
     });
 }
 
+async function recordMove(userId, from, to, spend) {
+    await models.RecordMove.create({
+        round: globalConfigs.round.value,
+        userId: userId,
+        fromMapId: from,
+        toMapId: to,
+        spendPoint: spend,
+    });
+    return true
+}
+
 function hookerHandleBattleFinish(battleChanges, time) {
     console.log('[HookerHandleBattleFinish]: ', time.toLocaleTimeString());
     try {
@@ -273,6 +305,15 @@ function hookerHandleBattleFinish(battleChanges, time) {
                 });
             });
             bc.RecordWar.map(rw => {
+                const thisBattle = memo_ctl.battlefieldMap[rw.mapId];
+                memo_ctl.battleRecords.push({
+                    id: thisBattle.id,
+                    timestamp: this.timestamp,
+                    mapId: this.mapId,
+                    winnerCountryId: this.winnerCountryId,
+                    attackCountryIds: this.attackCountryIds,
+                    defenceCountryId: this.defenceCountryId
+                });
                 delete memo_ctl.battlefieldMap[rw.mapId];
                 broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_BATTLE_DONE, payload: {mapId: rw.mapId}});
                 const event = rw.isAttackerWin ? enums.EVENT_WAR_WIN : enums.EVENT_WAR_DEFENCE;

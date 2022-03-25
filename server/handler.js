@@ -25,7 +25,7 @@ module.exports = {
         req.session = null;
         res.clearCookie('_se_tls_');
         res.clearCookie('_logintimestamp_');
-        return res.redirect('/');
+        return res.redirect('/s');
     },
     asyncLogin: async function(code, pwd, address = '') {
         const loginTimestamp = new Date().getTime();
@@ -85,7 +85,7 @@ module.exports = {
                 if (isRegister) {
                     return this.asyncRegister(code, pwd, pwdre).then(payload => {
                         if (payload.done) {
-                            res.redirect('/');;
+                            res.redirect('/s');;
                         } else {
                             res.status(202);
                             this.renderLogin(res, payload);

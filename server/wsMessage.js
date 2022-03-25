@@ -41,9 +41,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 if (dis > 0 && dis <= userinfo.actPoint) {
                     const discount = getCityConstruction(nowId, 'stable', memoController).lv;
                     const spendPoint = Math.max(1, dis - discount);
-                    return asyncUpdateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - spendPoint}, act, socket).then(() => {
-                        return recordMove(configs.round.value, userinfo.id, nowId, targetId, dis)
-                    });
+                    return asyncUpdateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - spendPoint}, act, socket);
                 } else {
                     console.log('[ACT_MOVE] Distance wrong: ', dis)
                 }
@@ -59,7 +57,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const thisCountry = memoController.countryMap[thisCountryId];
                 const ratio = Math.round(Math.random() * 10) / 10;
                 console.log('[ACT_ENTER_COUNTRY]: ratio: ', ratio, ' nickname: ', userinfo.nickname);
-                if (ratio > 0.3) {
+                if (ratio > 0.35) {
                     return asyncUpdateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 0, actPointMax: 7, loyalUserId: 0 }, act, socket).then(e => {
                         return memoController.eventCtl.broadcastInfo(enums.EVENT_ENTER_COUNTRY, {nickname: userinfo.nickname, countryName: thisCountry.name, round: configs.round.value});
                     });
@@ -78,13 +76,13 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const randomMoney = Math.round(Math.random() * 100) + 50 + addMoney;
                 const construction = getCityConstruction(userinfo.mapNowId, 'market', memoController);
                 const additionalMoney = construction.lv * enums.NUM_ADDITIONAL_MARKET_MONEY;
-                return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney + additionalMoney, actPoint: userinfo.actPoint-1,  }, act, socket);
+                return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney + additionalMoney, actPoint: userinfo.actPoint-1 }, act, socket);
             }
             case enums.ACT_INCREASE_SOLDIER: {
                 const randomSoldier = algorithms.randomIncreaseSoldier(userinfo.countryId);
                 const construction = getCityConstruction(userinfo.mapNowId, 'barrack', memoController);
                 const additionalSoldier = construction.lv * enums.NUM_ADDITIONAL_BARRACK_SOLDIER;
-                return asyncUpdateUserInfo(userinfo, { soldier: userinfo.soldier + randomSoldier + additionalSoldier, actPoint: userinfo.actPoint-1,  }, act, socket);
+                return asyncUpdateUserInfo(userinfo, { soldier: userinfo.soldier + randomSoldier + additionalSoldier, actPoint: userinfo.actPoint-1 }, act, socket);
             }
             case enums.ACT_BATTLE: {
                 const mapId = payload.mapId;
@@ -107,7 +105,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                         subEmitGlobalChanges({
                             dataset: [ { depth: ['maps', mapId], update } ]
                         });
-                        return updateMapOwner(mapId, userinfo.countryId , memoController);
+                        return updateMapOwner(mapId, userinfo.countryId , userinfo, memoController);
                     }).then(() => {
                         return memoController.eventCtl.broadcastInfo(enums.EVENT_WAR_WIN, {atkCountryName, mapName: thisMap.name, nicknames: userinfo.nickname, round: configs.round.value});
                     });
@@ -199,7 +197,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                     const battleTime = new Date(thisBattle.timestamp);
                     battleTime.setDate(battleTime.getDate() - 3);
                     if (new Date().getTime() > battleTime.getTime()) { break }
-                    if (userinfo.actPoint < actSpend && userinfo.money < enums.NUM_BATTLE_MONEY_MIN) { break }
+                    if (userinfo.actPoint < actSpend || userinfo.money < enums.NUM_BATTLE_MONEY_MIN) { break }
 
                     if (isDefenceSite && thisBattle.defUserIds[position] == 0) {
                         bdata.defUserIds = thisBattle.defUserIds.slice();
@@ -227,28 +225,14 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const mapId = payload.mapId;
                 const battleId = payload.battleId;
                 const winId = payload.winId;
-
                 const battlefieldMap = memoController.battlefieldMap;
                 const thisBattle = battlefieldMap[mapId];
-                const battleKeys = Object.keys(battlefieldMap);
-                let isAllowedTime = thisBattle.timestamp.getTime() < new Date().getTime();
-                if (battleKeys.length > 0) {
-                    const olderestBattleKey = battleKeys.sort((a,b) => {
-                        return battlefieldMap[a].timestamp.getTime() - battlefieldMap[b].timestamp.getTime();
-                    })[0];
-                    if (olderestBattleKey != mapId) {
-                        isAllowedTime = false;
-                    }
-                }
-                
-                if ((isAllowedTime && thisBattle.judgeId == userinfo.id) || algorithms.isWelfare(userinfo)) {
-                    const isAttackerWin = thisBattle.attackCountryIds.includes(winId);
-                    const defWin = thisBattle.defenceCountryId == winId;
-                    if (isAttackerWin || defWin) {
-                        return models.RecordWar.findOne({where: {id:battleId}}).then(war => {
-                            memoController.battleCtl.handleWarWinner(war, isAttackerWin, true);
-                        });
-                    }
+                const isAttackerWin = thisBattle.attackCountryIds.includes(winId);
+                const defWin = thisBattle.defenceCountryId == winId;
+                if (isAttackerWin || defWin) {
+                    return models.RecordWar.findOne({where: {id:battleId}}).then(war => {
+                        memoController.battleCtl.handleWarWinner(war, isAttackerWin, true);
+                    });
                 }
             } break
             case enums.ACT_APPOINTMENT: {
@@ -295,7 +279,23 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 update.jsonConstruction[constructionName].lv = next_lv;
                 return updateCity(cityId, update, userinfo, memoController).then(e => {
                     return e ? asyncUpdateUserInfo(userinfo, {
+                        actPoint: userinfo.actPoint - 1,
                         money: userinfo.money - pirce,
+                        contribution: userinfo.contribution + enums.NUM_BATTLE_CONTRUBUTION,
+                    }, act, socket) : null;
+                });
+            }
+            case enums.ACT_SHARE: {
+                const userId = payload.userId;
+                const soldier = payload.soldier;
+                const money = payload.money;
+                const targetUser = memoController.userMap[userId];
+                // const packetId = payload.packetId;
+                return updateSingleUser(userId, {soldier: targetUser.soldier + soldier, money: targetUser.money + money}, userinfo, memoController).then(e => {
+                    return e ? asyncUpdateUserInfo(userinfo, {
+                        actPoint: userinfo.actPoint - 1,
+                        soldier: userinfo.soldier - soldier,
+                        money: userinfo.money - money,
                     }, act, socket) : null;
                 });
             }
@@ -328,7 +328,7 @@ function broadcastSocket(memoctl, data) {
 }
 
 
-async function updateMapOwner(mapId, countryId, memoController=null) {
+async function updateMapOwner(mapId, countryId, userinfo, memoController=null) {
     await models.Map.update({
         ownCountryId: countryId,
     }, {where: { id: mapId }});
@@ -336,17 +336,12 @@ async function updateMapOwner(mapId, countryId, memoController=null) {
         memoController.mapIdMap[mapId].ownCountryId = countryId;
         algorithms.updateHash(mapId, 'country', countryId);
     }
-    return true
-}
-
-async function recordMove(round, userId, from, to, spend) {
-    await models.RecordMove.create({
-        round: round,
-        userId: userId,
-        fromMapId: from,
-        toMapId: to,
-        spendPoint: spend,
-    });
+    await models.RecordApi.create({
+        userId: userinfo.id,
+        model: 'Map',
+        payload: JSON.stringify({id: mapId, ownCountryId: countryId}),
+        curd: 2,
+    })
     return true
 }
 
@@ -387,7 +382,7 @@ async function updateSingleUser(id, update, userinfo, memoController) {
     await models.RecordApi.create({
         userId: userinfo.id,
         model: 'User',
-        payload: JSON.stringify(update),
+        payload: JSON.stringify({targetUserId: id, ...update}),
         curd: 2,
     });
     return user;
