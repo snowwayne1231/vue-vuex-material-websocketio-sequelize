@@ -37,6 +37,7 @@ module.exports = {
     }
     
     const users = await db.User.findAll();
+    const freemans = [];
     for (let i = 0; i < users.length; i++) {
       let user = users[i];
       if (user.role == 1) {
@@ -54,9 +55,10 @@ module.exports = {
         user.actPoint = 3;
         user.money = 0;
         user.actPointMax = 3;
+        freemans.push(user);
       }
       
-      // user.pwd = '';
+      user.pwd = '';
       user.contribution = 0;
       user.occupationId = 0;
       user.destoryByCountryIds = [];
@@ -74,6 +76,17 @@ module.exports = {
         default:
       }
       await user.save();
+    }
+
+    for(let i = 0; i < freemans.length; i++) {
+      let freeuser = freemans[i];
+      db.UserTime.create({
+        utype: 1,
+        userId: freeuser.id,
+        before: '',
+        after: '{"User": {countryId: 0}}',
+        timestamp: new Date('2022-04-01 15:00')
+      });
     }
   },
 

@@ -144,6 +144,13 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
             
             updated.User.push({id: user.id, updated: userUpdateData });
             await user.update(userUpdateData);
+            await models.UserTime.create({
+                utype: enums.TYPE_USERTIME_FREE,
+                userId: user.id,
+                before: JSON.stringify({"User": {isDestoried: true}}),
+                after: JSON.stringify({"User": userUpdateData}),
+                timestamp: new Date()
+            });
         }
 
         await models.Country.update({

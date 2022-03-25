@@ -218,6 +218,15 @@ async function updateUserInfo(userinfo, update, act, socket=null) {
     } else {
         await recordApi(id, 'User', update, 2);
     }
+    if (update.role == enums.ROLE_FREEMAN) {
+        await models.UserTime.create({
+            utype: enums.TYPE_USERTIME_FREE,
+            userId: id,
+            before: JSON.stringify({"User": {role: userinfo.role}}),
+            after: JSON.stringify({"User": update}),
+            timestamp: new Date()
+        });
+    }
     updatedKeys.map(key => {
         const val = update[key];
         userinfo[key] = val;
@@ -241,6 +250,7 @@ async function updateUserInfo(userinfo, update, act, socket=null) {
             ],
         });
     }
+    
     return userinfo
 }
 
