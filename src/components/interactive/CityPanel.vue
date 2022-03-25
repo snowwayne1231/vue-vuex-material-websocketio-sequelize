@@ -85,18 +85,18 @@ export default {
       return self.cityId > 0 ? self.global.maps.find(m => m.cityId == self.cityId) : self.global.maps.find(m => m.name == self.cityName);
     },
     userdata(self) {
-      console.log('mapdata: ', self.mapdata);
+      // console.log('mapdata: ', self.mapdata);
       const _next = self.global.users.filter(u => u.mapNowId == self.mapdata.id);
       _next.sort((a,b) => {
         const roleGap = a.role - b.role;
         return roleGap == 0 ? b.soldier - a.soldier : roleGap;
       });
-      console.log('userdata: ', _next);
+      // console.log('userdata: ', _next);
       return _next;
     },
   },
   mounted() {
-    console.log('citydata: ', this.citydata);
+    // console.log('citydata: ', this.citydata);
   },
   methods: {
     onClickPlusPeople(user) {

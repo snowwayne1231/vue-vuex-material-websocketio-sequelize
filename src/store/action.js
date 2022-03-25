@@ -53,5 +53,8 @@ module.exports = {
     actLevelUpCity: ({dispatch}, args) => {
         dispatch('wsEmitMessage', {act: enums.ACT_LEVELUP_CITY, payload: args});
     },
+    actShare: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_SHARE, payload: args});
+    },
     register,
 }

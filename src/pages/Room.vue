@@ -80,6 +80,7 @@
           <button @click="onClickLevelUp('market')">升市場</button>
           <button @click="onClickLevelUp('stable')">升馬廄</button>
           <button @click="onClickLevelUp('wall')">升城牆</button>
+          <button @click="openSharePanel = true">配給</button>
         </div>
         <div class="notifications">
           <li v-for="(noti) in global.notifications" :key="noti[0].getTime()">
@@ -132,6 +133,33 @@
         <div class="mask" v-if="selectedCityName" @click="selectedCityName = ''">
           <CityPanel :cityName="selectedCityName" :cityId="selectedShowCityInfo" />
         </div>
+        <div class="mask" v-if="openSharePanel" @click="openSharePanel = false">
+          <div @click="$event.stopPropagation()" class="basic-dialog">
+            <table>
+              <tr>
+                <th></th>
+                <th>金</th>
+                <th>兵</th>
+              </tr>
+              <tr>
+                <td>
+                  <select v-model="shareData.userId">
+                  <option value="0">無</option>
+                  <option v-for="(user) in asCandidates" :key="user.id" :value="user.id">{{user.name}}</option>
+                </select>
+              </td>
+                <td><input type="number" v-model.number="shareData.money" /></td>
+                <td><input type="number" v-model.number="shareData.soldier" /></td>
+              </tr>
+              <tr>
+                <td></td>
+                <td></td>
+                <td><button @click="onClickShare">配</button></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        
       </md-card-content>
     </md-card>
   </div>
@@ -156,6 +184,12 @@ export default {
       openAssignment: false,
       selectedShowCityInfo: 0,
       selectedCityName: '',
+      openSharePanel: false,
+      shareData: {
+        userId: 0,
+        money: 0,
+        soldier: 0,
+      }
     }
   },
   computed: {
@@ -230,7 +264,7 @@ export default {
     },
     asCandidates(self) {
       const myCountryId = self.user.countryId;
-      return self.global.users.filter(u => u.countryId == myCountryId && u.role == 2).map(user => {
+      return self.global.users.filter(u => u.countryId == myCountryId && u.role == 2 && u.id != self.user.id).map(user => {
         return {
           id: user.id,
           name: user.nickname,
@@ -417,6 +451,12 @@ export default {
         console.log('onClickLevelUp _city: ', _city);
       }
     },
+    onClickShare() {
+      console.log('onClickShare: ', this.shareData);
+      if (this.shareData.userId) {
+        this.$store.dispatch('actShare', this.shareData);
+      }
+    },
     getCheck(ary = []) {
       return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});
     },
@@ -570,5 +610,17 @@ export default {
 }
 .battlearea .btn{
   background-color: #ccc;
+}
+.basic-dialog {
+  width: 600px;
+  margin: 40px auto;
+  min-height: 240px;
+  color: #fff;
+  background-color: #222;
+  border: 3px outset #d7cd36;
+
+  table {
+    width: 100%;
+  }
 }
 </style>
