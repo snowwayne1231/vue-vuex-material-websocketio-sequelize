@@ -81,6 +81,7 @@
           <button @click="onClickLevelUp('stable')">升馬廄</button>
           <button @click="onClickLevelUp('wall')">升城牆</button>
           <button @click="openSharePanel = true">配給</button>
+          <button @click="onClickEscape">逃脫</button>
         </div>
         <div class="notifications">
           <li v-for="(noti) in global.notifications" :key="noti[0].getTime()">
@@ -456,6 +457,10 @@ export default {
       if (this.shareData.userId) {
         this.$store.dispatch('actShare', this.shareData);
       }
+    },
+    onClickEscape() {
+      const money = 0;
+      this.$store.dispatch('actEscape', {money});
     },
     getCheck(ary = []) {
       return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});

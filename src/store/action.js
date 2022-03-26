@@ -56,5 +56,8 @@ module.exports = {
     actShare: ({dispatch}, args) => {
         dispatch('wsEmitMessage', {act: enums.ACT_SHARE, payload: args});
     },
+    actEscape: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_ESCAPE, payload: args});
+    },
     register,
 }

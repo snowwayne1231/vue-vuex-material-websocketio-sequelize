@@ -72,7 +72,12 @@ const moduleUser = {
             const payload = parsedMsg.payload;
 
             if (typeof parsedMsg.act === 'number') {
-                window.alert('successful');
+                console.log('successful: ', parsedMsg);
+                let msg = '';
+                switch (parsedMsg.act) {
+                    case enums.ACT_ESCAPE: {  msg = (payload.mapNowId > 0) ? '逃脫成功': '失敗'; } break
+                }
+                msg && window.alert(msg);
             }
 
             switch (parsedMsg.act) {
