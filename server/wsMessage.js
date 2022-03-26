@@ -299,6 +299,31 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                     }, act, socket) : null;
                 });
             }
+            case enums.ACT_ESCAPE: {
+                const happenRatio = 10;
+                const money = payload.money;
+                const successRatio = Math.round(Math.random() * 100) + Math.round(money / 100);
+                console.log('[ACT_ESCAPE] user: ', userinfo.nickname, ' successRatio: ', successRatio);
+                const successful = successRatio >= (100 - happenRatio);
+                const updateData = {
+                    actPoint: userinfo.actPoint - 1,
+                    money: userinfo.money - money,
+                };
+                if (successful) {
+                    const cityId = memoController.countryMap[userinfo.countryId].originCityId;
+                    let mapId = algorithms.getMapIdByCityId(cityId);
+                    updateData.mapNowId = mapId;
+                    updateData.captiveDate = null;
+                }
+                return asyncUpdateUserInfo(userinfo, updateData, act, socket).then(user => {
+                    if (successful) {
+                        memoController.eventCtl.broadcastInfo(enums.EVENT_CAPTIVE_ESCAPE, {
+                            nickname: user.nickname,
+                            round: configs.round.value
+                        });
+                    }
+                });
+            }
             
             default:
                 console.log("Not Found Act: ", act);

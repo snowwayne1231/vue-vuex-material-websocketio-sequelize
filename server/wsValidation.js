@@ -59,10 +59,11 @@ function validate(act, payload, userinfo, memo) {
             const soldier = payload.soldier;
             const money = payload.money;
             // const packetId = payload.packetId;
-            console.log('userId: ', userId);
-            console.log('soldier: ', soldier);
-            console.log('money: ', money);
             res.msg = isAllowedShareUser(userinfo, memo) || hasPoint(userinfo, 1) || isNotBeCaptived(userinfo) || isHereCityMap(userinfo.mapNowId, memo) || isSameCountryPartner(userinfo, userId, memo) || haveSoldier(userinfo, soldier) || haveMoney(userinfo, money);
+        } break
+        case enums.ACT_ESCAPE: {
+            const money = payload.money;
+            res.msg = isBeCaptived(userinfo) || hasPoint(userinfo, 1) || haveMoney(userinfo, money) || isExistOriginCity(userinfo, memo);
         } break
         default:
             console.log("Not Found Act: ", act);
@@ -87,12 +88,21 @@ function isNotBeCaptived(userinfo) {
     return !userinfo.captiveDate ? '' : `Be Captured. [${userinfo.captiveDate.toLocaleDateString()}]`
 }
 
+function isBeCaptived(userinfo) {
+    return userinfo.captiveDate ? '' : 'Not Be Catured.';
+}
+
 function isExistMap(mapId, memo) {
     return memo.mapIdMap[mapId] ? '' : 'Not Exist Map';
 }
 
 function isExistCity(cityId, memo) {
     return memo.cityMap[cityId] ? '' : 'Not Exist City';
+}
+
+function isExistOriginCity(userinfo, memo) {
+    const country = memo.countryMap[userinfo.countryId];
+    return country && isExistCity(country.originCityId, memo) == '' ? '' : 'Not Exist Origin City';
 }
 
 function isEnemyMap(userinfo, mapId, memo) {

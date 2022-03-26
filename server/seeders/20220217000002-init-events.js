@@ -15,6 +15,12 @@ const dataset = [
   { name: '外交', detail: '【外交】{atkCountryName} 已與 {defCountryName} 結成同盟', staticKey: '_COUNTRY_RELATIONSHIP_'},
   { name: '官職', detail: '【任命】{countryName} {nickname} 已被任命為 {occupationName}', staticKey: '_OCCUPATION_'},
   { name: '系統恢復', detail: '【系統】所有人恢復每周行動力', staticKey: '_SYSTEM_RECOVER_'},
+  { name: '俘虜逃脫', detail: '【俘虜】{nickname} 成功逃脫回主城', staticKey: '_CAPTIVE_ESCAPE_'},
+  { name: '俘虜釋放', detail: '【俘虜】{nickname} 被 {emperor} 釋放並回到主城', staticKey: '_CAPTIVE_RELEASE_'},
+  { name: '俘虜登庸', detail: '【俘虜】{nickname} 被 {emperor} 登庸成功', staticKey: '_CAPTIVE_RECRUIT_'},
+  { name: '遷都', detail: '【遷都】{countryName} 已將主城遷移至 {mapName}', staticKey: '_MIGRATE_MAIN_CITY_'},
+  { name: '招募', detail: '【招募】{countryName} 已成功招募 {nickname}', staticKey: '_RECRUIT_'},
+  { name: '錦囊', detail: '【錦囊】{nickname} 已成功使用錦囊 {tips}}', staticKey: '_USE_TIPS_'},
 ];
 
 module.exports = {

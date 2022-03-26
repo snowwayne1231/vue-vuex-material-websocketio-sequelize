@@ -71,6 +71,7 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
     const sumDefSoldier = detail.defSoldiers.reduce((a,b) => a+b, 0);
     let atkSoldierRatio, defSoldierRatio, isDestoried;
     try {
+        // 勝負 與 攻守方損兵
         if (isAttackerWin) {
             warModel.winnerCountryId = warModel.attackCountryIds[0];
             atkSoldierRatio = formulaRatio.ATKWIN(sumAtkSoldier, sumDefSoldier);
@@ -83,11 +84,12 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
             isDestoried = false;
         }
 
+        // 防守城池城牆抵禦率
         let finalDiscountRatio = 1;
         const map = await models.Map.findOne({where: {id: warModel.mapId}});
-        if (map.cityId > 0) {
-            const city = map.cityId > 0 ? await models.City.findOne({where: {id: map.cityId}}) : null;
-            const _city = city ? city.toJSON() : {};
+        const city = map.cityId > 0 ? await models.City.findOne({where: {id: map.cityId}}) : null;
+        if (city) {
+            const _city = city.toJSON();
             if (_city.jsonConstruction) {
                 const jsonConstruction = JSON.parse(_city.jsonConstruction);
                 if (jsonConstruction.wall && jsonConstruction.wall.hasOwnProperty('lv')) {
@@ -102,6 +104,7 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
         const involvedUserIds = (atkUserIds.concat(defUserIds)).filter(u => u>0);
         const involvedUsers = await models.User.findAll({where: {id: {[Op.in]: involvedUserIds}}});
         // console.log('involvedUsers length: ', involvedUsers.length);
+        // 結算 user 損耗
         for (let i = 0; i < involvedUsers.length; i++) {
             const user = involvedUsers[i];
             const idxDef = defUserIds.indexOf(user.id);
@@ -125,6 +128,7 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
             await user.update(userUpdateData);
         }
 
+        // 發生滅國
         if (isDestoried) {
             const destoriedUsers = await models.User.findAll({where: {countryId: warModel.defenceCountryId}});
             for (let i = 0; i < destoriedUsers.length; i++) {
@@ -195,7 +199,13 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
         await warModel.save();
         if (isAttackerWin) {
             await models.Map.update({ownCountryId: warModel.winnerCountryId}, {where: {id: warModel.mapId}});
-            // memo.map[warModel.mapId].ownCountryId = warModel.winnerCountryId;
+            if (city && !isDestoried) { // 陷落是城市 
+                const country = await models.Country.findOne(warModel.defenceCountryId);
+                if (country.originCityId == city.id) { // 是主城
+                    country.originCityId = 0;
+                    await country.save();
+                }
+            }
         }
         if (autoApply) {
             halfHourTimer.binds.map(fn => fn.apply(null, [[updated], new Date()]));

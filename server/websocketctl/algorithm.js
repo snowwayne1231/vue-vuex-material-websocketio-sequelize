@@ -137,6 +137,9 @@ module.exports = {
         }
         return timeOptions;
     },
+    getMapIdByCityId(cityId) {
+        return cityId > 0 ? mapdata.ary.find(m => m.city == cityId).id : 0;
+    },
     isValidatedBattleTime(timestamp) {
         const allowedHours = [8, 12, 15, 22];
         const allowedAfterDays = 7;

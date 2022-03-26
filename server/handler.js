@@ -105,20 +105,25 @@ module.exports = {
                 }
             }
             case 'checkweek': {
-                const configs = {round: 0, recover: 0};
                 const recoverDay = 1;
                 const now = new Date();
                 console.log('[System][CheckWeek]: ', now.toLocaleString());
                 if (now.getDay()==recoverDay) {
                     const self = this;
+                    const configs = {round: 0, recover: 0};
                     return models.Config.findAll({attributes: ['name', 'status'], where: {open: true}}).then(cs => {
                         cs.map(c => { if (configs[c.name] >= 0) { configs[c.name] = c.status; } });
-
-                        self.recoverPoint(ws, configs).then((updated) => {
-                            res.status(200).send(updated ? 'done' : 'nothing');
-                        }).catch(err => {
-                            res.status(403).send(err);
-                        });
+                        const gapMinutes = 60*24*5;
+                        const nowMinutes = Math.floor(now.getTime() / 60000);
+                        if ((nowMinutes - configs.recover) > gapMinutes){
+                            self.recoverPoint(ws, configs, nowMinutes).then((updated) => {
+                                res.status(200).send(updated ? 'done' : 'nothing');
+                            }).catch(err => {
+                                res.status(403).send(err);
+                            });
+                        } else {
+                            res.status(201).send('nothing');
+                        }
                     });
                 } else {
                     return res.status(201).send('Not recover day.');
@@ -129,32 +134,26 @@ module.exports = {
         }
         return res;
     },
-    recoverPoint: async function(ws, configs) {
-        const gapMinutes = 60*24*5;
-        const now = new Date();
-        const nowMinutes = Math.floor(now.getTime() / 60000);
+    recoverPoint: async function(ws, configs, nowMinutes) {
         let isNew = configs.recover == 0;
         if (isNew) {
             await models.Config.create({name: 'recover', status: nowMinutes});
-        }
-        if ((nowMinutes - configs.recover) > gapMinutes){
-            // 行動點小於 max 補充到 max
-            await models.User.update({actPoint: sequelize.literal('"actPointMax"')}, {where: {actPoint: {[sequelize.Op.lt]: sequelize.literal('"actPointMax"')}}});
-            // 更新記憶體 user data
-            await ws.refreshMemoDataUsers();
-            //
+        } else {
             await models.Config.update({status: nowMinutes}, {where: {name: 'recover'}});
-            await models.Config.update({status: configs.round + 1}, {where: {name: 'round'}});
-            await ws.initConfig();
-            const memo = ws.getMemo();
-            if (memo) {
-                memo.eventCtl.broadcastInfo(enums.EVENT_SYSTEM_RECOVER, {
-                    round: configs.round,
-                    time: new Date().toLocaleString()
-                })
-            }
-            return true
         }
-        return false
+        // 行動點小於 max 補充到 max
+        await models.User.update({actPoint: sequelize.literal('"actPointMax"')}, {where: {actPoint: {[sequelize.Op.lt]: sequelize.literal('"actPointMax"')}}});
+        // 更新記憶體 user data
+        await ws.refreshMemoDataUsers();
+        //
+        await models.Config.update({status: configs.round + 1}, {where: {name: 'round'}});
+        await ws.initConfig();
+        const memo = ws.getMemo();
+        if (memo) {
+            memo.eventCtl.broadcastInfo(enums.EVENT_SYSTEM_RECOVER, {
+                round: configs.round
+            })
+        }
+        return true
     },
 };
