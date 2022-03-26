@@ -5,7 +5,7 @@
     </div>
     <div class="city-body">
       <div class="city-construct" v-if="citydata">
-        <div v-for="(val, key) in citydata.jsonConstruction" :key="key">
+        <div v-for="(val, key) in citydata.jsonConstruction" :key="`${cityId}${key}`">
           <span><md-icon>house</md-icon>{{transMap[key]}}</span>
           <span>LV: {{val.lv}}</span>
         </div>
@@ -16,7 +16,7 @@
             <th width="50%">總兵力</th>
             <th width="50%">{{userdata.filter(u => u.countryId == mapdata.ownCountryId).reduce((a,b) => a + b.soldier, 0)}}</th>
           </tr>
-          <tr v-for="(info, idx) in basicInfos" :key="idx">
+          <tr v-for="(info, idx) in basicInfos" :key="`${cityId}${idx}`">
             <th v-if="info.common || citydata">{{info.name}}</th>
             <th v-if="info.common || citydata">{{info.formula(info.cons)}}</th>
           </tr>
