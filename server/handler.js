@@ -156,4 +156,8 @@ module.exports = {
         }
         return true
     },
+    getUserTimes: async function() {
+        const userts = await models.UserTime.findAll({where: {utype: enums.TYPE_USERTIME_FREE}});
+        return userts;
+    },
 };

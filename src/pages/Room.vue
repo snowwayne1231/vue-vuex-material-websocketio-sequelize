@@ -459,7 +459,7 @@ export default {
       }
     },
     onClickEscape() {
-      const money = 0;
+      const money = parseInt(window.prompt('請輸入要花多少黃金: ', 0));
       this.$store.dispatch('actEscape', {money});
     },
     getCheck(ary = []) {

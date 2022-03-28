@@ -79,6 +79,8 @@ module.exports = {
                     if (_founded || _backNextRoutes.length == 0) { break }
                 }
             }
+        } else {
+            return 0;
         }
         return _founded ? distance : -1;
     },

@@ -126,6 +126,7 @@ function hasCityLevelupMoney(userinfo, cityId, constructionName, memo) {
     const construction = memo.cityMap[cityId].jsonConstruction;
     const atLeaseMoney = construction.hasOwnProperty(constructionName) ? ( 1 + construction[constructionName].lv) * enums.NUM_LEVELUP_TRAPEZOID_SPENDING : -1;
     if (atLeaseMoney == -1) return 'Wrong Lv Of ' + constructionName;
+    if (construction[constructionName].lv >= 10) return 'Lv Out Of Max.';
     return haveMoney(userinfo, atLeaseMoney)
 }
 

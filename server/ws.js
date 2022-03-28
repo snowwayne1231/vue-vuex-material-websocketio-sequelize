@@ -156,12 +156,6 @@ function refreshBasicData(u=true, m=true, c=true, callback=null) {
             return true
         });
         promises.push(promise2, promise3);
-        const promise5 = models.RecordEvent.findAll({attributes: ['detail', 'timestamp'], limit: 20, order: [ ['id', 'DESC'] ]}).then(revts => {
-            const notis = revts.map(e => [e.timestamp, e.detail]);
-            memo_ctl.eventCtl.setRecords(notis);
-            return true
-        });
-        promises.push(promise5);
         const promise6 = models.RecordWar.findAll({ attributes: {exclude: ['createdAt', 'updatedAt']}, where: { winnerCountryId: 0 } }).then(wars => {
             const newfieldMap = {};
             wars.map(e => {
@@ -336,6 +330,7 @@ function hookerHandleBattleFinish(battleChanges, time) {
                 if (rw.isAttackerWin) {
                     mapIdMap[rw.mapId].ownCountryId = rw.winnerCountryId;
                     globalChangeDataset.push({ depth: ['maps', rw.mapId], update: {ownCountryId: rw.winnerCountryId} });
+
                 }
                 if (hasCountryDestoried) {
                     globalChangeDataset.push({ depth: ['countries', rw.defenceCountryId], update: {emperorId: 0, originCityId: 0} });
@@ -376,11 +371,14 @@ module.exports = {
         });
         initConfig().then(() => {
             console.log('init done globalConfigs: ', globalConfigs);
-        });
-        refreshBasicData().then(() => {
-            memo_ctl.eventCtl.init(broadcastSocketByte);
+            return true;
+        }).then(() => {
+            return refreshBasicData();
+        }).then(() => {
             memo_ctl.battleCtl.init(io, memo_ctl.userSockets, memo_ctl.mapIdMap);
             memo_ctl.battleCtl.bindSuccessfulRBF(hookerHandleBattleFinish);
+            return memo_ctl.eventCtl.init(broadcastSocketByte);
+        }).then(() => {
             memo_ctl.websocket.on('connection', onConn);
         });
     },

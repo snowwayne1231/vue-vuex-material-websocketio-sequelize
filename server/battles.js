@@ -200,7 +200,7 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
         if (isAttackerWin) {
             await models.Map.update({ownCountryId: warModel.winnerCountryId}, {where: {id: warModel.mapId}});
             if (city && !isDestoried) { // 陷落是城市 
-                const country = await models.Country.findOne(warModel.defenceCountryId);
+                const country = await models.Country.findByPk(warModel.defenceCountryId);
                 if (country.originCityId == city.id) { // 是主城
                     country.originCityId = 0;
                     await country.save();

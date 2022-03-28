@@ -21,6 +21,7 @@ const dataset = [
   { name: '遷都', detail: '【遷都】{countryName} 已將主城遷移至 {mapName}', staticKey: '_MIGRATE_MAIN_CITY_'},
   { name: '招募', detail: '【招募】{countryName} 已成功招募 {nickname}', staticKey: '_RECRUIT_'},
   { name: '錦囊', detail: '【錦囊】{nickname} 已成功使用錦囊 {tips}}', staticKey: '_USE_TIPS_'},
+  { name: '國內', detail: '【{type}】{content}', staticKey: '_DOMESTIC_'},
 ];
 
 module.exports = {
