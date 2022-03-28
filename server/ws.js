@@ -329,6 +329,7 @@ function hookerHandleBattleFinish(battleChanges, time) {
                 const round = globalConfigs.round.value;
                 if (rw.isAttackerWin) {
                     mapIdMap[rw.mapId].ownCountryId = rw.winnerCountryId;
+                    algorithms.updateHash(rw.mapId, 'country', rw.winnerCountryId);
                     globalChangeDataset.push({ depth: ['maps', rw.mapId], update: {ownCountryId: rw.winnerCountryId} });
 
                 }

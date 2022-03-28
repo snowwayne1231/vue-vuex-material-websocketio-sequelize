@@ -60,6 +60,7 @@ async function broadcastInfo(skey, data = {}) {
     const eventId = getId(skey);
     const detail = getInfo(skey, data);
     const countryId = data.countryId || 0;
+    let payload = [0,0];
     if (skey == enums.EVENT_DOMESTIC) {
         await models.RecordEventDomestic.create({
             round,
@@ -75,7 +76,7 @@ async function broadcastInfo(skey, data = {}) {
             detail,
             timestamp,
         });
-        const payload = [timestamp, detail];
+        payload = [timestamp, detail];
         eventRecords.unshift(payload);
         if (eventRecords.length > 32) {
             eventRecords.splice(-1, 1);
