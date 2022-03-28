@@ -30,6 +30,12 @@ const dataset = {
   '北平': 5,
 }
 
+const resetRouter = {
+  '江陵': '60, 42, 61',
+  '麥城': '60, 35, 62',
+}
+
+
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     const maps = await db.Map.findAll();
@@ -41,12 +47,22 @@ module.exports = {
       } else if (map.cityId == 0) {
         map.ownCountryId = 0;
       } else {
-        let users = await db.User.findAll({where: {mapNowId: map.id}, limit: 1});
-        if (users.length > 0) {
-          map.ownCountryId = users[0].countryId;
-        }
+        // let users = await db.User.findAll({where: {mapNowId: map.id}, limit: 1});
+        // if (users.length > 0) {
+        //   map.ownCountryId = users[0].countryId;
+        // }
       }
       await map.save();
+    }
+
+    for (let i = 0; i < maps.length; i++) {
+      let map = maps[i];
+      let router = resetRouter[map.name];
+      if (router) {
+        map.route = router
+        await map.save();
+      }
+      
     }
   },
 
