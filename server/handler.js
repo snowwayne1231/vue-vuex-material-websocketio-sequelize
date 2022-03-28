@@ -65,9 +65,12 @@ module.exports = {
                 attributes: ['id', 'nickname', 'pwd', 'code'],
                 where: { code: code }
             });
-            user.pwd = md5(pwd);
-            await user.save();
-            return {done: true};
+            if (user) {
+                user.pwd = md5(pwd);
+                await user.save();
+                return {done: true};
+            }
+            return {done: false, msg: 'Code Not Found.'}
         } else {
             return {done: false, msg: 'Password has difference.', register: true};
         }
