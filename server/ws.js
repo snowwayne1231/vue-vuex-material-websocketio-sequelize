@@ -53,13 +53,17 @@ function emitSocketByte(socket, frame, data) {
 }
 
 
-function broadcastSocketByte(frame, data) {
+function broadcastSocketByte(frame, data, countryId = 0) {
     var buf = Buffer.from(JSON.stringify(data), 'utf-8');
-    return memo_ctl.websocket.emit(frame, buf);
+    return (countryId==0) ? 
+        memo_ctl.websocket.emit(frame, buf) :
+        memo_ctl.userSockets.map(us => {
+            return us.userinfo.countryId == countryId && us.socket.emit(frame, buf);
+        });
 }
 
 
-function emitGlobalGneralArraies(socket) {
+function emitGlobalGneralArraies(socket, userinfo) {
     const actMaxIdx = enums.UserGlobalAttributes.indexOf('actPointMax');
     const users = algorithms.flatMap(memo_ctl.userMap, enums.UserGlobalAttributes).filter(u => u[actMaxIdx] > 0);
     const maps = algorithms.flatMap(memo_ctl.mapIdMap, enums.MapsGlobalAttributes);
@@ -68,7 +72,8 @@ function emitGlobalGneralArraies(socket) {
     const battlefieldMap = memo_ctl.battlefieldMap;
     const occupationMap = memo_ctl.occupationMap;
     const notifications = memo_ctl.eventCtl.getRecords();
-    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap, occupationMap}});
+    const domesticMessages = memo_ctl.eventCtl.getRecords(userinfo.countryId);
+    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap, occupationMap, domesticMessages}});
 }
 
 
@@ -401,7 +406,7 @@ module.exports = {
                     loginTimestamp,
                 };
                 onMessage(socket, updateUserInfo, memo_ctl, globalConfigs);
-                emitGlobalGneralArraies(socket);
+                emitGlobalGneralArraies(socket, session.userinfo);
                 console.log(`A user [${fullUserInfo.nickname}] loaded socket connection.`);
                 memo_ctl.userSockets.push({ id: userId, socket, userinfo: session.userinfo });
             }

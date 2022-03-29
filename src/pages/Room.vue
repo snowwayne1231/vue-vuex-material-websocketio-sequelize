@@ -84,9 +84,16 @@
           <button @click="onClickEscape">逃脫</button>
         </div>
         <div class="notifications">
-          <li v-for="(noti) in global.notifications" :key="noti[0].getTime()">
-            <span>{{noti[0].toLocaleString()}}</span><span>{{noti[1]}}</span>
-          </li>
+          <ul>
+            <li v-for="(msg) in global.domesticMessages" :key="msg[0].getTime()">
+              <span>{{msg[0].toLocaleString()}}</span><span>{{msg[1]}}</span>
+            </li>
+          </ul>
+          <ul>
+            <li v-for="(noti) in global.notifications" :key="noti[0].getTime()">
+              <span>{{noti[0].toLocaleString()}}</span><span>{{noti[1]}}</span>
+            </li>
+          </ul>
         </div>
         <div class="dialog" v-if="isOpenBattlePanel">
           <table>
@@ -572,10 +579,19 @@ export default {
 }
 .notifications {
   height: 100px;
-  overflow: auto;
+  overflow: hidden;
   background-color: #010600;
   color: #fff;
   box-sizing: border-box;
+  >ul {
+    width: 50%;
+    list-style: none;
+    margin: 0px;
+    padding: 5px;
+    float: left;
+    overflow: auto;
+    height: 100%;
+  }
 }
 .dialog {
   position: absolute;

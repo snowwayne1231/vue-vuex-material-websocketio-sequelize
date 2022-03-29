@@ -1,3 +1,4 @@
+const enums = require('../../src/enum');
 const mapdata = {ary: [], hash: {}}
 
 module.exports = {
@@ -168,5 +169,25 @@ module.exports = {
         const max = 200 + (numCities * 15);
         return Math.round(Math.random() * max) + 100;
         
+    },
+    getMsgLevelUp(nickname, came, cityName, lv) {
+        const chiName = enums.CHINESE_CONSTRUCTION_NAMES[came];
+        return `${nickname} 將 ${cityName}的${chiName} 升級至 Lv( ${lv} )`;
+    },
+    getMsgJoinBattle(nickname, soldier, mapName) {
+        return `${nickname} 領兵 ${soldier} 加入了 ${mapName} 的戰役`;   
+    },
+    getMsgShare(starterName, targetName, money = 0, soldier = 0, item = '') {
+        let resource = '';
+        if (money > 0) {
+            resource += `${money} 黃金 `;
+        }
+        if (soldier > 0) {
+            resource += `${soldier} 士兵 `;
+        }
+        if (item.length > 0) {
+            resource += `${item} 錦囊 `;
+        }
+        return `${starterName} 配給了 ${targetName} 共 ${resource}`;   
     },
 }

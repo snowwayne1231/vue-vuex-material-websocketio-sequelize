@@ -12,6 +12,7 @@ const global = {
     battlefieldMap: {0: {id: 0, attackCountryIds: [], defenceCountryId: 0, detail: {}, judgeId: 0, mapId: 0, round: 0, timestamp: 0, winnerCountryId: 0}},
     occupationMap: {0: {id: 0, name: '', contributionCondi: 999, addActPoint: 5, isAllowedRecurit: false, isAllowedShare: false}},
     notifications: [],
+    domesticMessages: [],
 
     battlefield: {
       timeOptions: [],
@@ -33,6 +34,10 @@ const global = {
           if (payload.notifications) {
             state.notifications = payload.notifications.map(e => [new Date(e[0]), e[1]]);
             state.notifications.sort((a,b) => b[0] - a[0]);
+          }
+          if (payload.domesticMessages) {
+            state.domesticMessages = payload.domesticMessages.map(e => [new Date(e[0]), e[1]]);
+            state.domesticMessages.sort((a,b) => b[0] - a[0]);
           }
           if (payload.battlefieldMap) {
             state.battlefieldMap = payload.battlefieldMap;
@@ -87,6 +92,10 @@ const global = {
           const nextBattlefield = { ...state.battlefieldMap };
           delete nextBattlefield[mapId];
           state.battlefieldMap = nextBattlefield;
+        } break
+        case enums.ACT_NOTIFICATION_DOMESTIC: {
+          const newmsg = [new Date(payload[0]), payload[1]]
+          state.domesticMessages = [newmsg].concat(state.domesticMessages);
         } break
         case enums.ALERT: {
           window.alert(payload.msg);

@@ -46,12 +46,8 @@ function getId(key) {
     return hash[key] ? hash[key].id : 0;
 }
 
-function pushRecord(record) {
-    eventRecords.push(record);
-}
-
-function getRecords() {
-    return eventRecords;
+function getRecords(countryId = 0) {
+    return countryId == 0 ? eventRecords : (eventRecordDomesticMap[countryId] || []);
 }
 
 async function broadcastInfo(skey, data = {}) {
@@ -60,28 +56,40 @@ async function broadcastInfo(skey, data = {}) {
     const eventId = getId(skey);
     const detail = getInfo(skey, data);
     const countryId = data.countryId || 0;
-    let payload = [0,0];
-    if (skey == enums.EVENT_DOMESTIC) {
-        await models.RecordEventDomestic.create({
-            round,
-            eventId,
-            countryId,
-            detail,
-            timestamp,
-        });
-    } else {
-        await models.RecordEvent.create({
-            round,
-            eventId,
-            detail,
-            timestamp,
-        });
-        payload = [timestamp, detail];
-        eventRecords.unshift(payload);
-        if (eventRecords.length > 32) {
-            eventRecords.splice(-1, 1);
-        }
-        memoBroadcast(enums.MESSAGE, {act: enums.ACT_NOTIFICATION, payload});
+    const payload = [timestamp, detail];
+    switch(skey) {
+        case enums.EVENT_OCCUPATION:
+        case enums.EVENT_DOMESTIC:
+            if (countryId) {
+                await models.RecordEventDomestic.create({
+                    round,
+                    eventId,
+                    countryId,
+                    detail,
+                    timestamp,
+                });
+                if (eventRecordDomesticMap[countryId]) {
+                    eventRecordDomesticMap[countryId].push(payload);
+                } else {
+                    eventRecordDomesticMap[countryId] = [payload];
+                }
+                memoBroadcast(enums.MESSAGE, {act: enums.ACT_NOTIFICATION_DOMESTIC, payload}, countryId);
+            } else {
+                console.log('[Event Error] broadcastInfo not has countryId.')
+            }
+            break
+        default:
+            await models.RecordEvent.create({
+                round,
+                eventId,
+                detail,
+                timestamp,
+            });
+            eventRecords.unshift(payload);
+            if (eventRecords.length > 32) {
+                eventRecords.splice(-1, 1);
+            }
+            memoBroadcast(enums.MESSAGE, {act: enums.ACT_NOTIFICATION, payload});
     }
     return payload;
 }
@@ -92,6 +100,5 @@ module.exports = {
     getInfo,
     getId,
     broadcastInfo,
-    pushRecord,
     getRecords,
 }

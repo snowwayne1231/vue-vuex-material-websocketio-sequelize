@@ -16,7 +16,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
             return subEmitMessage(enums.ALERT, {msg: validated.msg, act}); 
         }
         let switched = subSwitchOnMessage(act, payload, userinfo);
-        return switched && switched.catch && switched.catch(err => console.log(err));
+        return switched && switched.catch && switched.catch(err => console.log('[Error] ', err));
     });
 
     return true;
@@ -57,7 +57,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const thisCountry = memoController.countryMap[thisCountryId];
                 const ratio = Math.round(Math.random() * 10) / 10;
                 console.log('[ACT_ENTER_COUNTRY]: ratio: ', ratio, ' nickname: ', userinfo.nickname);
-                if (ratio > 0.35) {
+                if (ratio > 0.45) {
                     return asyncUpdateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 0, actPointMax: 7, loyalUserId: 0 }, act, socket).then(e => {
                         return memoController.eventCtl.broadcastInfo(enums.EVENT_ENTER_COUNTRY, {nickname: userinfo.nickname, countryName: thisCountry.name, round: configs.round.value});
                     });
@@ -162,7 +162,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                             mapTargetId: mapId,
                         }, act, socket).then(() => {
                             const event = thisMap.cityId > 0 ? enums.EVENT_WAR_CITY : enums.EVENT_WAR_WILD;
-                            return memoController.eventCtl.broadcastInfo(event, {atkCountryName, mapName: thisMap.name, defCountryName, round: configs.round.value});
+                            return memoController.eventCtl.broadcastInfo(event, {atkCountryName, mapName: `${thisMap.name}`, defCountryName, round: configs.round.value});
                         });
                     }
                 });
@@ -218,6 +218,13 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                             mapTargetId: mapId,
                             mapNowId: isDefenceSite ? mapId : userinfo.mapNowId,
                         }, act, socket) : null;
+                    }).then(() => {
+                        return memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
+                            round: configs.round.value,
+                            countryId: userinfo.countryId,
+                            type: enums.CHINESE_TYPE_BATTLE,
+                            content: algorithms.getMsgJoinBattle(userinfo.nickname, involvedSoldiers, memoController.mapIdMap[mapId].name),
+                        });
                     });
                 }
             } break
@@ -244,17 +251,20 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                     if (e) {
                         const user = memoController.userMap[userId];
                         const nickname = user.nickname;
-                        const countryName = memoController.countryMap[user.countryId].name;
+                        // const countryName = memoController.countryMap[user.countryId].name;
+                        const countryName = ' ';
                         const occupationName = occupation.name;
-                        memoController.eventCtl.broadcastInfo(enums.EVENT_OCCUPATION, {
-                            countryName,
-                            nickname,
-                            occupationName,
-                            round: configs.round.value
-                        });
                         return asyncUpdateUserInfo(userinfo, {
                             actPoint: userinfo.actPoint - 3,
-                        }, act, socket)
+                        }, act, socket).then(() => {
+                            return memoController.eventCtl.broadcastInfo(enums.EVENT_OCCUPATION, {
+                                round: configs.round.value,
+                                countryId: user.countryId,
+                                countryName,
+                                nickname,
+                                occupationName
+                            });
+                        });
                     }
                     return null;
                 });
@@ -283,6 +293,13 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                         money: userinfo.money - pirce,
                         contribution: userinfo.contribution + enums.NUM_BATTLE_CONTRUBUTION,
                     }, act, socket) : null;
+                }).then(() => {
+                    return memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
+                        round: configs.round.value,
+                        countryId: userinfo.countryId,
+                        type: enums.CHINESE_TYPE_DOMESTIC,
+                        content: algorithms.getMsgLevelUp(userinfo.nickname, constructionName, city.name, next_lv),
+                    });
                 });
             }
             case enums.ACT_SHARE: {
@@ -296,7 +313,14 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                         actPoint: userinfo.actPoint - 1,
                         soldier: userinfo.soldier - soldier,
                         money: userinfo.money - money,
-                    }, act, socket) : null;
+                    }, act, socket).then(() => {
+                        return memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
+                            round: configs.round.value,
+                            countryId: userinfo.countryId,
+                            type: enums.CHINESE_TYPE_DOMESTIC,
+                            content: algorithms.getMsgShare(userinfo.nickname, targetUser.nickname, money, soldier),
+                        });
+                    }) : null;
                 });
             }
             case enums.ACT_ESCAPE: {
