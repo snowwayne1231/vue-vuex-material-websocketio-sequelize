@@ -91,7 +91,7 @@ function renderURI(req, res, uris) {
         return handlers.handlePOST(req, res, _to, ws);
     }
 
-    if (uris.length < 2) {
+    if (uris.length < 2 && _to == 's') {
         if (userinfo && userinfo.id) {
             handlers.renderIndex(res);
         } else {

@@ -33,6 +33,7 @@ module.exports = (sequelize, DataTypes) => {
     state: DataTypes.INTEGER,
     isAllowedWalk: DataTypes.BOOLEAN,
     ownCountryId: DataTypes.INTEGER,
+    gameType: DataTypes.INTEGER,
   }, {
     sequelize,
     modelName: 'Map',

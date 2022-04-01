@@ -72,7 +72,8 @@ module.exports = (sequelize, DataTypes) => {
       set(val) {
         this.setDataValue('detail', typeof val != 'string' ? JSON.stringify(val) : val);
       }
-    }
+    },
+    gameId: DataTypes.INTEGER,
   }, {
     sequelize,
     modelName: 'RecordWar',

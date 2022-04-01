@@ -21,8 +21,8 @@ function init(webSocket, userSockets, map) {
     memo.map = map;
     const waitMinutes = (60 - new Date().getMinutes()) % halfHourTimer.numHalfHour;
     console.log('[Batllefields] waitMinutes: ', waitMinutes);
+    refresBattlefields();
     setTimeout(() => {
-        refresBattlefields();
         halfHourTimer.timer = setInterval(refresBattlefields, 1000 * 60 * halfHourTimer.numHalfHour);
     }, waitMinutes * 60 * 1000);
     return this;
@@ -36,8 +36,8 @@ function bindSuccessfulRBF(fn) {
 
 function refresBattlefields() {
     const now = new Date();
-    console.log('[RefresBattlefields] : ', now.toLocaleTimeString());
-    const hours = [8, 12, 15, 22];
+    console.log('[RefresBattlefields] : ', now.toLocaleTimeString(), ' now hour: ', now.getHours());
+    const hours = [8, 12, 13, 15, 16, 22, 23];
     const isInHour = hours.includes(now.getHours());
     // console.log('maps: ', Object.values(memo.map).map(m => [m.id, m.ownCountryId]).filter(e => e[1] == 8));
     if (isInHour) {
@@ -48,6 +48,8 @@ function refresBattlefields() {
                 let sumAtkSoldier = war.detail.atkSoldiers.reduce((a,b) => a+b, 0);
                 if (sumDefSoldier > sumAtkSoldier) {
                     return handleWarWinner(war, false);
+                } else if ( sumDefSoldier == 0) {
+                    return handleWarWinner(war, true);
                 }
                 return null;
             }).filter(e => !!e);

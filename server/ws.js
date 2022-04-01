@@ -21,7 +21,7 @@ const memo_ctl = {
     cityMap: {},
     countryMap: {},
     battlefieldMap: {},
-    battleRecords: [],
+    warRecords: [],
     occupationMap: {},
     eventCtl: events,
     battleCtl: battles,
@@ -73,7 +73,8 @@ function emitGlobalGneralArraies(socket, userinfo) {
     const occupationMap = memo_ctl.occupationMap;
     const notifications = memo_ctl.eventCtl.getRecords();
     const domesticMessages = memo_ctl.eventCtl.getRecords(userinfo.countryId);
-    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap, occupationMap, domesticMessages}});
+    const warRecords = algorithms.flatMap(memo_ctl.warRecords, enums.WarRecordGlobalAttributes);
+    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap, occupationMap, domesticMessages, warRecords}});
 }
 
 
@@ -91,7 +92,8 @@ function refreshByAdmin() {
         const countries = algorithms.flatMap(memo_ctl.countryMap, enums.CountryGlobalAttributes);
         const battlefieldMap = memo_ctl.battlefieldMap;
         const occupationMap = memo_ctl.occupationMap;
-        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_DATA, payload: { users, maps, cities, countries, battlefieldMap, occupationMap } });
+        const warRecords = algorithms.flatMap(memo_ctl.warRecords, enums.WarRecordGlobalAttributes);
+        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_DATA, payload: { users, maps, cities, countries, battlefieldMap, occupationMap, warRecords } });
         memo_ctl.userSockets.map(e => {
             const memoUser = memo_ctl.userMap[e.id];
             if (e.userinfo) {
@@ -175,7 +177,7 @@ function refreshBasicData(u=true, m=true, c=true, callback=null) {
             const nextary = wars.map(e => {
                 return e.toJSON();
             });
-            memo_ctl.battleRecords = nextary;
+            memo_ctl.warRecords = nextary;
             return true
         });
         promises.push(promise8);
@@ -315,7 +317,7 @@ function hookerHandleBattleFinish(battleChanges, time) {
             });
             bc.RecordWar.map(rw => {
                 const thisBattle = memo_ctl.battlefieldMap[rw.mapId];
-                memo_ctl.battleRecords.push({
+                memo_ctl.warRecords.push({
                     id: thisBattle.id,
                     timestamp: this.timestamp,
                     mapId: this.mapId,
