@@ -67,7 +67,16 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
             }
             case enums.ACT_SEARCH_WILD: {
                 const randomMoney = Math.round(Math.random() * 100) + 50;
-                return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney, actPoint: userinfo.actPoint-1,  }, act, socket);
+                const maxMoney = 150;
+                const isLucky = randomMoney / maxMoney > 0.97;
+                return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney, actPoint: userinfo.actPoint-1,  }, act, socket).then(() => {
+                    return isLucky && memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
+                        round: configs.round.value,
+                        countryId: userinfo.countryId,
+                        type: enums.CHINESE_TYPE_DOMESTIC,
+                        content: algorithms.getMsgLuckyMoney(userinfo.nickname, randomMoney),
+                    });
+                });
             }
             case enums.ACT_BUSINESS: {
                 const thisMap = memoController.mapIdMap[userinfo.mapNowId];
@@ -76,13 +85,30 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const randomMoney = Math.round(Math.random() * 100) + 50 + addMoney;
                 const construction = getCityConstruction(userinfo.mapNowId, 'market', memoController);
                 const additionalMoney = construction.lv * enums.NUM_ADDITIONAL_MARKET_MONEY;
-                return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney + additionalMoney, actPoint: userinfo.actPoint-1 }, act, socket);
+                const maxMoney = 150 + addMoney;
+                const isLucky = randomMoney / maxMoney > 0.97;
+                return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney + additionalMoney, actPoint: userinfo.actPoint-1 }, act, socket).then(() => {
+                    return isLucky && memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
+                        round: configs.round.value,
+                        countryId: userinfo.countryId,
+                        type: enums.CHINESE_TYPE_DOMESTIC,
+                        content: algorithms.getMsgLuckyMoney(userinfo.nickname, randomMoney + additionalMoney, true),
+                    });
+                });
             }
             case enums.ACT_INCREASE_SOLDIER: {
                 const randomSoldier = algorithms.randomIncreaseSoldier(userinfo.countryId);
                 const construction = getCityConstruction(userinfo.mapNowId, 'barrack', memoController);
                 const additionalSoldier = construction.lv * enums.NUM_ADDITIONAL_BARRACK_SOLDIER;
-                return asyncUpdateUserInfo(userinfo, { soldier: userinfo.soldier + randomSoldier + additionalSoldier, actPoint: userinfo.actPoint-1 }, act, socket);
+                const isLucky = randomSoldier.lucky;
+                return asyncUpdateUserInfo(userinfo, { soldier: userinfo.soldier + randomSoldier.add + additionalSoldier, actPoint: userinfo.actPoint-1 }, act, socket).then(() => {
+                    return isLucky && memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
+                        round: configs.round.value,
+                        countryId: userinfo.countryId,
+                        type: enums.CHINESE_TYPE_DOMESTIC,
+                        content: algorithms.getMsgLuckySoldier(userinfo.nickname, randomSoldier.add + additionalSoldier),
+                    });
+                });
             }
             case enums.ACT_BATTLE: {
                 const mapId = payload.mapId;
@@ -347,6 +373,12 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                         });
                     }
                 });
+            }
+            case enums.ACT_BATTLE_SELECT_GAME: {
+                const battleId = payload.battleId;
+                const mapId = payload.mapId;
+                const gameId = payload.gameId;
+
             }
             
             default:

@@ -23,6 +23,7 @@ const memo_ctl = {
     battlefieldMap: {},
     warRecords: [],
     occupationMap: {},
+    gameMap: {},
     eventCtl: events,
     battleCtl: battles,
     broadcast: broadcastSocketByte,
@@ -70,11 +71,12 @@ function emitGlobalGneralArraies(socket, userinfo) {
     const cities = algorithms.flatMap(memo_ctl.cityMap, enums.CityGlobalAttributes);
     const countries = algorithms.flatMap(memo_ctl.countryMap, enums.CountryGlobalAttributes);
     const battlefieldMap = memo_ctl.battlefieldMap;
+    const gameMap = memo_ctl.gameMap;
     const occupationMap = memo_ctl.occupationMap;
     const notifications = memo_ctl.eventCtl.getRecords();
     const domesticMessages = memo_ctl.eventCtl.getRecords(userinfo.countryId);
     const warRecords = algorithms.flatMap(memo_ctl.warRecords, enums.WarRecordGlobalAttributes);
-    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap, occupationMap, domesticMessages, warRecords}});
+    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap, occupationMap, gameMap, domesticMessages, warRecords}});
 }
 
 
@@ -181,6 +183,13 @@ function refreshBasicData(u=true, m=true, c=true, callback=null) {
             return true
         });
         promises.push(promise8);
+        const promise9 = models.Game.findAll({ attributes: {exclude: ['createdAt', 'updatedAt']} }).then(games => {
+            games.map(game => {
+                memo_ctl.gameMap[game.id] = game.toJSON();
+            });
+            return true
+        });
+        promises.push(promise9);
     }
 
     if (c) {
@@ -300,7 +309,7 @@ function hookerHandleBattleFinish(battleChanges, time) {
     try {
         const globalChangeDataset = [];
         battleChanges.map(bc => {
-            bc.User.map(usr => {
+            bc.User && bc.User.map(usr => {
                 const updateKeys = Object.keys(usr.updated);
                 updateKeys.map(k => {
                     memo_ctl.userMap[usr.id][k] = usr.updated[k];
@@ -317,47 +326,64 @@ function hookerHandleBattleFinish(battleChanges, time) {
             });
             bc.RecordWar.map(rw => {
                 const thisBattle = memo_ctl.battlefieldMap[rw.mapId];
-                memo_ctl.warRecords.push({
-                    id: thisBattle.id,
-                    timestamp: this.timestamp,
-                    mapId: this.mapId,
-                    winnerCountryId: this.winnerCountryId,
-                    attackCountryIds: this.attackCountryIds,
-                    defenceCountryId: this.defenceCountryId
-                });
-                delete memo_ctl.battlefieldMap[rw.mapId];
-                broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_BATTLE_DONE, payload: {mapId: rw.mapId}});
-                const event = rw.isAttackerWin ? enums.EVENT_WAR_WIN : enums.EVENT_WAR_DEFENCE;
-                const mapIdMap = memo_ctl.mapIdMap;
-                const hasCountryDestoried = rw.isDestoried;
-                const atkCountryName = memo_ctl.countryMap[rw.winnerCountryId].name;
-                const defCountry = memo_ctl.countryMap[rw.defenceCountryId];
-                const defCountryName = memo_ctl.countryMap[rw.defenceCountryId].name;
                 const round = globalConfigs.round.value;
-                if (rw.isAttackerWin) {
-                    mapIdMap[rw.mapId].ownCountryId = rw.winnerCountryId;
-                    algorithms.updateHash(rw.mapId, 'country', rw.winnerCountryId);
-                    globalChangeDataset.push({ depth: ['maps', rw.mapId], update: {ownCountryId: rw.winnerCountryId} });
-
-                }
-                if (hasCountryDestoried) {
-                    globalChangeDataset.push({ depth: ['countries', rw.defenceCountryId], update: {emperorId: 0, originCityId: 0} });
-                    defCountry.emperorId = 0;
-                    defCountry.originCityId = 0;
-                }
-                return memo_ctl.eventCtl.broadcastInfo(event, {
-                    round,
-                    defCountryName,
-                    atkCountryName,
-                    nicknames: (rw.isAttackerWin ? rw.atkUserIds : rw.defUserIds).filter(i => !!memo_ctl.userMap[i]).map(i => memo_ctl.userMap[i].nickname).join(','),
-                    mapName: mapIdMap[rw.mapId].name,
-                }).then(() => {
-                    return hasCountryDestoried && memo_ctl.eventCtl.broadcastInfo(enums.EVENT_DESTROY_COUNTRY, {
+                if (rw.winnerCountryId > 0) {   // 有勝敗
+                    memo_ctl.warRecords.push({
+                        id: thisBattle.id,
+                        timestamp: rw.timestamp,
+                        mapId: rw.mapId,
+                        winnerCountryId: rw.winnerCountryId,
+                        attackCountryIds: rw.attackCountryIds,
+                        defenceCountryId: rw.defenceCountryId
+                    });
+                    delete memo_ctl.battlefieldMap[rw.mapId];
+                    broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_BATTLE_DONE, payload: {mapId: rw.mapId}});
+                    const event = rw.isAttackerWin ? enums.EVENT_WAR_WIN : enums.EVENT_WAR_DEFENCE;
+                    const mapIdMap = memo_ctl.mapIdMap;
+                    const hasCountryDestoried = rw.isDestoried;
+                    const atkCountryName = memo_ctl.countryMap[rw.winnerCountryId].name;
+                    const defCountry = memo_ctl.countryMap[rw.defenceCountryId];
+                    const defCountryName = memo_ctl.countryMap[rw.defenceCountryId].name;
+                    
+                    if (rw.isAttackerWin) {
+                        mapIdMap[rw.mapId].ownCountryId = rw.winnerCountryId;
+                        algorithms.updateHash(rw.mapId, 'country', rw.winnerCountryId);
+                        globalChangeDataset.push({ depth: ['maps', rw.mapId], update: {ownCountryId: rw.winnerCountryId} });
+                    }
+                    if (hasCountryDestoried) {
+                        globalChangeDataset.push({ depth: ['countries', rw.defenceCountryId], update: {emperorId: 0, originCityId: 0} });
+                        defCountry.emperorId = 0;
+                        defCountry.originCityId = 0;
+                    }
+                    return memo_ctl.eventCtl.broadcastInfo(event, {
                         round,
                         defCountryName,
                         atkCountryName,
+                        nicknames: (rw.isAttackerWin ? rw.atkUserIds : rw.defUserIds).filter(i => !!memo_ctl.userMap[i]).map(i => memo_ctl.userMap[i].nickname).join(','),
+                        mapName: mapIdMap[rw.mapId].name,
+                    }).then(() => {
+                        return hasCountryDestoried && memo_ctl.eventCtl.broadcastInfo(enums.EVENT_DESTROY_COUNTRY, {
+                            round,
+                            defCountryName,
+                            atkCountryName,
+                        });
                     });
-                });
+                } else {    // 無勝敗
+                    if (memo_ctl.gameMap[rw.gameId]) {
+                        Object.keys(rw).map(key => {
+                            if (thisBattle.hasOwnProperty(key)) {
+                                thisBattle[key] = rw[key];
+                            }
+                        });
+                        broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_BATTLE_GAME_SELECTED, payload: rw});
+                        return memo_ctl.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
+                            round,
+                            countryId: thisBattle.defenceCountryId,
+                            type: enums.CHINESE_TYPE_BATTLE,
+                            content: algorithms.getMsgBattleGameSelected(memo_ctl.mapIdMap[rw.mapId].name, memo_ctl.gameMap[rw.gameId].name),
+                        });
+                    }
+                }
             });
         });
         emitGlobalChanges({
@@ -406,6 +432,7 @@ module.exports = {
                 session.userinfo = {
                     ...fullUserInfo,
                     loginTimestamp,
+                    address,
                 };
                 onMessage(socket, updateUserInfo, memo_ctl, globalConfigs);
                 emitGlobalGneralArraies(socket, session.userinfo);
@@ -482,7 +509,7 @@ module.exports = {
                 const insModel = models[modelName];
                 if (insModel) {
                     try {
-                        console.log('[ADMIN_CONTROL] update: ', msg.update);
+                        console.log('[ADMIN_CONTROL] update: ', msg.update,  'user address: ', userinfo.address);
                         insModel.update(msg.update, {where: msg.where}).then(refreshMemoDataUsers);
                     } catch (err) {
                         console.log('ADMIN CTL error: ', err);

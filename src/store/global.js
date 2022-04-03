@@ -9,8 +9,10 @@ const global = {
     maps: [],
     cities: [],
     countries: [],
-    battlefieldMap: {0: {id: 0, attackCountryIds: [], defenceCountryId: 0, detail: {}, judgeId: 0, mapId: 0, round: 0, timestamp: 0, winnerCountryId: 0}},
-    occupationMap: {0: {id: 0, name: '', contributionCondi: 999, addActPoint: 5, isAllowedRecurit: false, isAllowedShare: false}},
+    warRecords: [],
+    battlefieldMap: {/*0: {id: 0, attackCountryIds: [], defenceCountryId: 0, detail: {}, judgeId: 0, mapId: 0, round: 0, timestamp: 0, winnerCountryId: 0}*/},
+    occupationMap: {/*0: {id: 0, name: '', contributionCondi: 999, addActPoint: 5, isAllowedRecurit: false, isAllowedShare: false}*/},
+    gameMap: {/*0: {id: 0, name: '', type: 0, b1v1: true, b2v2: false, b3v3: false, b4v4: false,..} */},
     notifications: [],
     domesticMessages: [],
 
@@ -30,6 +32,8 @@ const global = {
           state.maps = parser.parseArraiesToObjects(payload.maps, enums.MapsGlobalAttributes)
           state.cities = parser.parseArraiesToObjects(payload.cities, enums.CityGlobalAttributes)
           state.countries = parser.parseArraiesToObjects(payload.countries, enums.CountryGlobalAttributes)
+          state.warRecords = parser.parseArraiesToObjects(payload.warRecords, enums.WarRecordGlobalAttributes)
+          state.warRecords.sort((a,b) => b.id - a.id)
           algorithm.setData(state.maps)
           if (payload.notifications) {
             state.notifications = payload.notifications.map(e => [new Date(e[0]), e[1]]);
@@ -44,6 +48,9 @@ const global = {
           }
           if (payload.occupationMap) {
             state.occupationMap = payload.occupationMap;
+          }
+          if (payload.gameMap) {
+            state.gameMap = payload.gameMap;
           }
           break
         case enums.ACT_GET_GLOBAL_CHANGE_DATA: {
@@ -96,6 +103,13 @@ const global = {
         case enums.ACT_NOTIFICATION_DOMESTIC: {
           const newmsg = [new Date(payload[0]), payload[1]]
           state.domesticMessages = [newmsg].concat(state.domesticMessages);
+        } break
+        case enums.ACT_BATTLE_GAME_SELECTED: {
+          const mapId = payload.mapId;
+          const gameId = payload.gameId;
+          const nextBattlefield = { ...state.battlefieldMap };
+          nextBattlefield[mapId].gameId = gameId;
+          state.battlefieldMap = nextBattlefield;
         } break
         case enums.ALERT: {
           window.alert(payload.msg);

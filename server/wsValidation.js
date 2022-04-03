@@ -65,6 +65,12 @@ function validate(act, payload, userinfo, memo) {
             const money = payload.money;
             res.msg = isBeCaptived(userinfo) || hasPoint(userinfo, 1) || haveMoney(userinfo, money) || isExistOriginCity(userinfo, memo);
         } break
+        case enums.ACT_BATTLE_SELECT_GAME: {
+            const battleId = payload.battleId;
+            const mapId = payload.mapId;
+            const gameId = payload.gameId;
+            res.msg = isExistMap(mapId, memo) || hasBattle(mapId, battleId, memo) || isOriginCity(mapId, memo) || isInCountryHere(userinfo, memo) || isExistGame(gameId, memo) || avalibleGameInBattle(gameId, mapId, memo);
+        } break
         default:
             console.log("Not Found Act: ", act);
             res.msg = 'Unknown Action.';
@@ -100,9 +106,19 @@ function isExistCity(cityId, memo) {
     return memo.cityMap[cityId] ? '' : 'Not Exist City';
 }
 
+function isOriginCity(mapId, memo) {
+    const map = memo.mapIdMap[mapId];
+    const country = memo.countryMap[map.ownCountryId];
+    return isExistCity(map.cityId, memo) == '' && country.originCityId == map.cityId ? '' : 'Is Not Origin City.';
+}
+
 function isExistOriginCity(userinfo, memo) {
     const country = memo.countryMap[userinfo.countryId];
-    return country && isExistCity(country.originCityId, memo) == '' ? '' : 'Not Exist Origin City';
+    return country && isExistCity(country.originCityId, memo) == '' ? '' : 'Not Exist Origin City.';
+}
+
+function isExistGame(gameId, memo) {
+    return memo.gameMap[gameId] ? '' : 'Not Exist Game.';
 }
 
 function isEnemyMap(userinfo, mapId, memo) {
@@ -252,6 +268,10 @@ function isAllowedJudgeBattleTime(mapId, memo) {
         }
     }
     return isAllowedTime ? '' : 'Time Expire Not Yet.';
+}
+
+function avalibleGameInBattle(gameId, mapId, memo) {
+    return '';
 }
 
 function isOccupationEnoughContribution(userId, occupationId, memo) {

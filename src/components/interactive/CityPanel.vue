@@ -1,7 +1,7 @@
 <template>
   <div class="city" @click="$event.stopPropagation()" >
     <div class="city-title">
-      {{cityName}}
+      {{cityName}} <dd>領地屬性: {{gameTypes.join(', ')}}</dd>
     </div>
     <div class="city-body">
       <div class="city-construct" v-if="citydata">
@@ -94,6 +94,9 @@ export default {
       // console.log('userdata: ', _next);
       return _next;
     },
+    gameTypes(self) {
+      return String(self.mapdata.gameType).split('').map(t => enums.CHINESE_GAMETYPE_NAMES[t]);
+    }
   },
   mounted() {
     // console.log('citydata: ', this.citydata);
@@ -136,6 +139,13 @@ export default {
     font-size: 32px;
     line-height: 48px;
     border-bottom: 1px solid #d5c905;
+
+    >dd {
+      font-size: 14px;
+      margin: 0px;
+      line-height: 16px;
+      color: #bbb;
+    }
   }
 
   .city-body {

@@ -167,7 +167,8 @@ module.exports = {
     randomIncreaseSoldier(countryId) {
         const numCities = mapdata.ary.filter(m => m.country == countryId && m.city > 0).length;
         const max = 200 + (numCities * 15);
-        return Math.round(Math.random() * max) + 100;
+        const add = Math.round(Math.random() * max) + 100;
+        return {add, lucky: add / (max+100) > 0.97};
         
     },
     getMsgLevelUp(nickname, came, cityName, lv) {
@@ -189,5 +190,14 @@ module.exports = {
             resource += `${item} 錦囊 `;
         }
         return `${starterName} 配給了 ${targetName} 共 ${resource}`;   
+    },
+    getMsgBattleGameSelected(mapName, gameName) {
+        return `${mapName}之戰 項目已確定為：${gameName}`;
+    },
+    getMsgLuckyMoney(nickname, money, isBusiness = false) {
+        return `${nickname} 人品爆發 ${isBusiness ? '使用商業' : ''}獲得 ${money} 黃金`;
+    },
+    getMsgLuckySoldier(nickname, soldier) {
+        return `${nickname} 人品爆發 獲得 ${soldier} 位士兵慕名而來`;
     },
 }

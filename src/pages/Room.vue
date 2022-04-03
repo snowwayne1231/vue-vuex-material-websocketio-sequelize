@@ -28,7 +28,7 @@
                 :voted="localVoteBoolean"
               />
               <div class="battlearea" v-if="p.battlearea">
-                <i class="icon">🔥🔥🔥🔥🔥🔥</i>
+                <i class="icon">🔥{{p.battlearea.gameName}}🔥</i>
                 <table class="table">
                   <tr>
                     <td colspan="2">{{p.battlearea.time}}</td>
@@ -82,6 +82,7 @@
           <button @click="onClickLevelUp('wall')">升城牆</button>
           <button @click="openSharePanel = true">配給</button>
           <button @click="onClickEscape">逃脫</button>
+          <button @click="onClickWarHistory">歷史戰役</button>
         </div>
         <div class="notifications">
           <ul>
@@ -167,7 +168,20 @@
             </table>
           </div>
         </div>
-        
+        <div class="mask" v-if="openHistoryWars" @click="openHistoryWars = false">
+          <div @click="$event.stopPropagation()" class="basic-dialog">
+            <ul class="history-wars" style="height: 500px; overflow: auto;">
+              <li v-for="war in warRecords" :key="war.id">
+                <span>{{war.time}} - {{war.map.name}}之戰</span> | 
+                <span>{{war.atkCountry.name}}</span> V.S 
+                <span>{{war.defCountry.name}}</span>
+                <span v-if="war.isAtkWin">⚔️</span>
+                <span v-else>🛡️</span>
+                <span>獲勝方：【<i :style="{color: war.winCountry.color.split(',')[0]}">{{war.winCountry.name}}</i>】 </span>
+              </li>
+            </ul>
+          </div>
+        </div>
       </md-card-content>
     </md-card>
   </div>
@@ -179,6 +193,7 @@ import Man from '@/components/interactive/Man';
 import Assignment from '@/components/interactive/Assignment';
 import CityPanel from '@/components/interactive/CityPanel';
 import mapAlgorithm from '@/unit/mapAlgorithm';
+// import enums from '../enum';
 
 export default {
   name: 'Room',
@@ -193,6 +208,7 @@ export default {
       selectedShowCityInfo: 0,
       selectedCityName: '',
       openSharePanel: false,
+      openHistoryWars: false,
       shareData: {
         userId: 0,
         money: 0,
@@ -226,6 +242,7 @@ export default {
             toolman: areaData.toolmanId > 0 ? users.find(u => u.id == areaData.toolmanId).nickname : '',
             atkUsers,
             defUsers,
+            gameName: areaData.gameId > 0 ? self.global.gameMap[areaData.gameId].name : '未定',
             detail
           }
           
@@ -280,6 +297,28 @@ export default {
           occupationId: user.occupationId,
         }
       });
+    },
+    warRecords(self) {
+      const mapMap = {}
+      self.global.maps.map(m => {
+        mapMap[m.id] = m;
+      });
+      const countryMap = {}
+      self.global.countries.map(c => {
+        countryMap[c.id] = c;
+      });
+      return self.global.warRecords.map(w => {
+        const _ = '';
+        return {
+          id: w.id,
+          time: new Date(w.timestamp).toLocaleString(),
+          map: mapMap[w.mapId],
+          winCountry: countryMap[w.winnerCountryId] || {},
+          atkCountry: countryMap[w.attackCountryIds[0]] || {},
+          defCountry: countryMap[w.defenceCountryId] || {},
+          isAtkWin: w.winnerCountryId != w.defenceCountryId,
+        };
+      })
     }
   },
   components: {
@@ -469,6 +508,10 @@ export default {
       const money = parseInt(window.prompt('請輸入要花多少黃金: ', 0));
       this.$store.dispatch('actEscape', {money});
     },
+    onClickWarHistory() {
+      this.openHistoryWars = true;
+      console.log(this.global.warRecords);
+    },
     getCheck(ary = []) {
       return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});
     },
@@ -637,11 +680,23 @@ export default {
   margin: 40px auto;
   min-height: 240px;
   color: #fff;
-  background-color: #222;
+  background-color: #22222266;
   border: 3px outset #d7cd36;
 
   table {
     width: 100%;
+  }
+}
+.history-wars {
+  list-style: none;
+  margin: 0px;
+  text-align: left;
+
+  >li {
+    cursor: pointer;
+    &:hover {
+      background-color: #666;
+    }
   }
 }
 </style>
