@@ -33,6 +33,7 @@ module.exports = {
     ACT_NOTIFICATION_DOMESTIC: 31,
     ACT_BATTLE_GAME_SELECTED: 32,
     ACT_BATTLE_SELECT_GAME: 33,
+    ACT_GET_BATTLE_DETAIL: 34,
     UserGlobalAttributes: ['id', 'code', 'nickname', 'countryId', 'loyalty', 'loyalUserId', 'contribution', 'occupationId', 'role', 'mapNowId', 'soldier', 'captiveDate', 'actPointMax'],
     MapsGlobalAttributes: ['id', 'name', 'x', 'y', 'route', 'cityId', 'ownCountryId', 'gameType'],
     CityGlobalAttributes: ['id', 'money', 'addResource', 'timeBeAttacked', 'jsonConstruction'],

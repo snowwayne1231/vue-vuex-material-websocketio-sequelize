@@ -59,5 +59,11 @@ module.exports = {
     actEscape: ({dispatch}, args) => {
         dispatch('wsEmitMessage', {act: enums.ACT_ESCAPE, payload: args});
     },
+    actSelectGame: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_BATTLE_SELECT_GAME, payload: args});
+    },
+    getWarRecord: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_GET_BATTLE_DETAIL, payload: args});
+    },
     register,
 }

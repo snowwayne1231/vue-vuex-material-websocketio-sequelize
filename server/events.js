@@ -20,7 +20,7 @@ function init(memo) {
         const promise2 = models.RecordEventDomestic.findAll({attributes: ['detail', 'timestamp', 'countryId'], limit: 200, order: [ ['id', 'DESC'] ]}).then(revts => {
             revts.map(e => {
                 if (eventRecordDomesticMap[e.countryId]) {
-                    eventRecordDomesticMap[e.countryId].push([e.timestamp, e.detail]);
+                    eventRecordDomesticMap[e.countryId].length < 32 && eventRecordDomesticMap[e.countryId].push([e.timestamp, e.detail]);
                 } else {
                     eventRecordDomesticMap[e.countryId] = [[e.timestamp, e.detail]];
                 }
@@ -69,7 +69,10 @@ async function broadcastInfo(skey, data = {}) {
                     timestamp,
                 });
                 if (eventRecordDomesticMap[countryId]) {
-                    eventRecordDomesticMap[countryId].push(payload);
+                    eventRecordDomesticMap[countryId].unshift(payload);
+                    if (eventRecordDomesticMap[countryId].length > 32) {
+                        eventRecordDomesticMap[countryId].splice(-1, 1);
+                    }
                 } else {
                     eventRecordDomesticMap[countryId] = [payload];
                 }

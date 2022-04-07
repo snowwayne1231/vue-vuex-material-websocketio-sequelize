@@ -224,6 +224,16 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
 async function handleWarLock(warModel) {
     const updated = {RecordWar: []};
     const map = await models.Map.findOne({where: {id: warModel.mapId}});
+    const country = await models.Country.findOne({where: {id: map.ownCountryId}});
+    const ifOriginCity = country.originCityId == map.cityId;
+
+    if (ifOriginCity) {
+        const time = new Date(warModel.timestamp);
+        const now = new Date();
+        if (now < time.setDate(time.getDate()-1) ) {
+            return updated;
+        }
+    }
 
     const gameTypes = String(map.gameType).split('').map(e => parseInt(e));
     const vsAry = [warModel.atkUserIds.filter(u => u > 0).length, warModel.defUserIds.filter(u => u > 0).length];
@@ -231,24 +241,20 @@ async function handleWarLock(warModel) {
     const vs = `b${vsAry.join('v')}`;
     const games = await models.Game.findAll({where: {type: {[Op.in]: gameTypes}, [vs]: true}});
 
-    const country = await models.Country.findOne({where: {id: map.ownCountryId}});
-    const ifOriginCity = country.originCityId == map.cityId;
+    
+    
 
-    if (ifOriginCity) {
-        // updated.RecordWar.push({mapId: warModel.mapId});
-    } else {
-        const randomGames = [];
-        const _tmp = games.map(g => g.id);
-        while (_tmp && _tmp.length > 0) {
-            let _drawOut = _tmp.splice(Math.floor(Math.random() * (_tmp.length -1)), 1)[0];
-            randomGames.splice(Math.floor(Math.random() * randomGames.length), 0, _drawOut);
-        }
-        const selectedGame = randomGames[Math.floor(Math.random() * (randomGames.length - 1))];
-        console.log(`[handleWarLock] ${map.name} games: ${games.map(g => g.name).join(',')} selected: ${selectedGame}`);
-        warModel.gameId = selectedGame;
-        await warModel.save();
-        updated.RecordWar.push({mapId: warModel.mapId, gameId: selectedGame});
+    const randomGames = [];
+    const _tmp = games.map(g => g.id);
+    while (_tmp && _tmp.length > 0) {
+        let _drawOut = _tmp.splice(Math.floor(Math.random() * (_tmp.length -1)), 1)[0];
+        randomGames.splice(Math.floor(Math.random() * randomGames.length), 0, _drawOut);
     }
+    const selectedGame = randomGames[Math.floor(Math.random() * (randomGames.length - 1))];
+    console.log(`[handleWarLock] ${map.name} games: ${games.map(g => g.name).join(',')} selected: ${selectedGame}`);
+    warModel.gameId = selectedGame;
+    await warModel.save();
+    updated.RecordWar.push({mapId: warModel.mapId, gameId: selectedGame});
 
     return updated;
 }

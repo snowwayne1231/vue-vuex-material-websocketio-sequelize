@@ -27,8 +27,17 @@
                 :name="user.nickname"
                 :voted="localVoteBoolean"
               />
-              <div class="battlearea" v-if="p.battlearea">
-                <i class="icon">🔥{{p.battlearea.gameName}}🔥</i>
+              <div class="battlearea" v-if="p.battlearea" @click="$event.stopPropagation()">
+                <dd v-if="p.battlearea.gameName == '' && p.battlearea.isOriginCity && p.battlearea.gameOptions.length > 0">
+                  <select v-model="selectedOriginCityGameId">
+                    <option value="0">未選擇</option>
+                    <option v-for="(op) in p.battlearea.gameOptions" :key="op.id" :value="op.id">{{op.name}}</option>
+                  </select>
+                  <button @click="onClickSelectOriginCityGame(p.id, p.battlearea.id)">選定</button>
+                </dd>
+                <dd v-else>
+                  <i class="icon">🔥{{p.battlearea.gameName || '未定'}}🔥</i>
+                </dd>
                 <table class="table">
                   <tr>
                     <td colspan="2">{{p.battlearea.time}}</td>
@@ -171,7 +180,7 @@
         <div class="mask" v-if="openHistoryWars" @click="openHistoryWars = false">
           <div @click="$event.stopPropagation()" class="basic-dialog">
             <ul class="history-wars" style="height: 500px; overflow: auto;">
-              <li v-for="war in warRecords" :key="war.id">
+              <li v-for="war in warRecords" :key="war.id" @click="onClickWarRecord(war.id)" :class="{activate: war.id == battleRecordDetails.id}">
                 <span>{{war.time}} - {{war.map.name}}之戰</span> | 
                 <span>{{war.atkCountry.name}}</span> V.S 
                 <span>{{war.defCountry.name}}</span>
@@ -180,6 +189,25 @@
                 <span>獲勝方：【<i :style="{color: war.winCountry.color.split(',')[0]}">{{war.winCountry.name}}</i>】 </span>
               </li>
             </ul>
+          </div>
+          <div class="basic-dialog show-battle-detail" v-if="battleRecordDetails.id > 0" @click="$event.stopPropagation()" style="background-color: #222;">
+            <table>
+              <tr><th colspan="2">{{battleRecordDetails.mapName}} 之戰 [ {{battleRecordDetails.winnerCountryName}} ] 獲勝</th></tr>
+              <tr v-if="battleRecordDetails.game"><th colspan="2">{{battleRecordDetails.game.name}}</th></tr>
+              <tr>
+                <th>裁判: {{battleRecordDetails.judge}}</th>
+                <th>工作人員: {{battleRecordDetails.toolman}}</th>
+              </tr>
+              <tr>
+                <th>進攻方 [ {{battleRecordDetails.atkCountryName}} ]</th>
+                <th>防守方 [ {{battleRecordDetails.defCountryName}} ]</th>
+              </tr>
+              <tr v-for="(i) in 4" :key="i">
+                <td>{{battleRecordDetails.atkUsers[i-1]}} {{battleRecordDetails.detail.atkSoldiers[i-1]}} <span>-{{battleRecordDetails.detail.atkSoldierLoses[i-1]}}</span></td>
+                <td>{{battleRecordDetails.defUsers[i-1]}} {{battleRecordDetails.detail.defSoldiers[i-1]}} <span>-{{battleRecordDetails.detail.defSoldierLoses[i-1]}}</span></td>
+              </tr>
+
+            </table>
           </div>
         </div>
       </md-card-content>
@@ -213,7 +241,8 @@ export default {
         userId: 0,
         money: 0,
         soldier: 0,
-      }
+      },
+      selectedOriginCityGameId: 0,
     }
   },
   computed: {
@@ -230,6 +259,9 @@ export default {
           let detail = areaData.detail;
           let atkUsers = areaData.atkUserIds.map(u => u > 0 ? users.find(uu => uu.id == u) : null);
           let defUsers = areaData.defUserIds.map(u => u > 0 ? users.find(uu => uu.id == u) : null);
+          let uary = [atkUsers.filter(u => u).length, defUsers.filter(u => u).length];
+          uary.sort((a,b) => a-b);
+          let vsStr = `b${uary.join('v')}`;
 
           next.battlearea = {
             id: areaData.id,
@@ -242,7 +274,9 @@ export default {
             toolman: areaData.toolmanId > 0 ? users.find(u => u.id == areaData.toolmanId).nickname : '',
             atkUsers,
             defUsers,
-            gameName: areaData.gameId > 0 ? self.global.gameMap[areaData.gameId].name : '未定',
+            gameName: areaData.gameId > 0 ? self.global.gameMap[areaData.gameId].name : '',
+            isOriginCity: country.originCityId == next.cityId,
+            gameOptions: Object.values(self.global.gameMap).filter(g => g[vsStr] && g.type == next.gameType),
             detail
           }
           
@@ -298,14 +332,24 @@ export default {
         }
       });
     },
+    countryMap(self) {
+      const countryMap = {}
+      self.global.countries.map(c => {
+        countryMap[c.id] = c;
+      });
+      return countryMap;
+    },
+    userMap(self) {
+      const map = {};
+      self.global.users.map(u => {
+        map[u.id] = u;
+      });
+      return map;
+    },
     warRecords(self) {
       const mapMap = {}
       self.global.maps.map(m => {
         mapMap[m.id] = m;
-      });
-      const countryMap = {}
-      self.global.countries.map(c => {
-        countryMap[c.id] = c;
       });
       return self.global.warRecords.map(w => {
         const _ = '';
@@ -313,13 +357,34 @@ export default {
           id: w.id,
           time: new Date(w.timestamp).toLocaleString(),
           map: mapMap[w.mapId],
-          winCountry: countryMap[w.winnerCountryId] || {},
-          atkCountry: countryMap[w.attackCountryIds[0]] || {},
-          defCountry: countryMap[w.defenceCountryId] || {},
+          winCountry: self.countryMap[w.winnerCountryId] || {},
+          atkCountry: self.countryMap[w.attackCountryIds[0]] || {},
+          defCountry: self.countryMap[w.defenceCountryId] || {},
           isAtkWin: w.winnerCountryId != w.defenceCountryId,
         };
       })
-    }
+    },
+    battleRecordDetails(self) {
+      const gbrd = self.global.battleRecordDetails;
+      // const detail = gbrd.detail;
+      const mapData = self.global.maps.find(m => m.id == gbrd.mapId) || {};
+      if (gbrd.id > 0) {
+        return {...gbrd,
+          mapName: mapData.name,
+          winnerCountryName: self.countryMap[gbrd.winnerCountryId].name,
+          atkCountryName: self.countryMap[gbrd.attackCountryIds[0]].name,
+          defCountryName: self.countryMap[gbrd.defenceCountryId].name,
+          atkUsers: gbrd.atkUserIds.map(uid => self.userMap[uid] ? self.userMap[uid].nickname : '空'),
+          defUsers: gbrd.defUserIds.map(uid => self.userMap[uid] ? self.userMap[uid].nickname : '空'),
+          judge: self.userMap[gbrd.judgeId] ? self.userMap[gbrd.judgeId].nickname : '無',
+          toolman: self.userMap[gbrd.toolmanId] ? self.userMap[gbrd.toolmanId].nickname : '無',
+          time: new Date(gbrd.timestamp),
+          game: self.global.gameMap[gbrd.gameId],
+
+        };
+      }
+      return {id: gbrd.id};
+    },
   },
   components: {
     Man, Assignment, CityPanel,
@@ -512,6 +577,13 @@ export default {
       this.openHistoryWars = true;
       console.log(this.global.warRecords);
     },
+    onClickSelectOriginCityGame(mapId, battleId) {
+      const gameId = this.selectedOriginCityGameId;
+      this.$store.dispatch('actSelectGame', {gameId, mapId, battleId});
+    },
+    onClickWarRecord(battleId) {
+      this.$store.dispatch('getWarRecord', {battleId});
+    },
     getCheck(ary = []) {
       return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});
     },
@@ -676,8 +748,8 @@ export default {
   background-color: #ccc;
 }
 .basic-dialog {
-  width: 600px;
-  margin: 40px auto;
+  width: 720px;
+  margin: 40px auto 0px;
   min-height: 240px;
   color: #fff;
   background-color: #22222266;
@@ -690,13 +762,26 @@ export default {
 .history-wars {
   list-style: none;
   margin: 0px;
+  padding: 0px;
   text-align: left;
 
   >li {
     cursor: pointer;
+    padding-left: 12px;
     &:hover {
-      background-color: #666;
+      background-color: #888;
     }
+  }
+
+  .activate {
+    color: #ffe172;
+    background-color: #777;
+  }
+}
+
+.show-battle-detail {
+  span {
+    color: red;
   }
 }
 </style>

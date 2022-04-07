@@ -20,6 +20,9 @@ const global = {
       timeOptions: [],
       mapId: 0,
     },
+    battleRecordDetails: {
+      id: 0,
+    },
   },
   mutations: {
     wsOnMESSAGE: (state, message) => {
@@ -110,6 +113,9 @@ const global = {
           const nextBattlefield = { ...state.battlefieldMap };
           nextBattlefield[mapId].gameId = gameId;
           state.battlefieldMap = nextBattlefield;
+        } break
+        case enums.ACT_GET_BATTLE_DETAIL: {
+          state.battleRecordDetails = payload;
         } break
         case enums.ALERT: {
           window.alert(payload.msg);

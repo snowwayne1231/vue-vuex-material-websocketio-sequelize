@@ -119,11 +119,12 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const usersHere = Object.values(memoController.userMap).filter(u => u.mapNowId == mapId && u.countryId > 0);
                 const isFreeWild = usersHere.length == 0 && thisMap.cityId == 0;
                 const atkCountryName = userCountry.name;
-                if (thisMap.ownCountryId == 0 || isFreeWild) { // empty or wild
+                const noCountry = thisMap.ownCountryId == 0;
+                if (noCountry || isFreeWild) { // empty or wild
                     return asyncUpdateUserInfo(userinfo, {
                         actPoint: userinfo.actPoint - enums.NUM_BATTLE_ACTION_MIN,
                         money: userinfo.money - enums.NUM_BATTLE_MONEY_MIN,
-                        soldier: userinfo.soldier - enums.NUM_BATTLE_SOLDIER_MIN,
+                        soldier: userinfo.soldier - (noCountry ? enums.NUM_BATTLE_SOLDIER_MIN : 0),
                         mapNowId: mapId,
                         contribution: userinfo.contribution + enums.NUM_BATTLE_CONTRUBUTION,
                     }, act, socket).then(() => {
@@ -378,7 +379,21 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const battleId = payload.battleId;
                 const mapId = payload.mapId;
                 const gameId = payload.gameId;
-
+                return updateRecordWar(battleId, mapId, {gameId}, memoController).then(e => {
+                    broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_BATTLE_GAME_SELECTED, payload});
+                    return memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
+                        round: configs.round.value,
+                        countryId: userinfo.countryId,
+                        type: enums.CHINESE_TYPE_BATTLE,
+                        content: algorithms.getMsgBattleGameSelected(memoController.mapIdMap[mapId].name, memoController.gameMap[gameId].name),
+                    });
+                });
+            }
+            case enums.ACT_GET_BATTLE_DETAIL: {
+                const battleId = payload.battleId;
+                return models.RecordWar.findOne({ where: {id: battleId}, attributes: {exclude:['createdAt', 'updatedAt']}}).then(w => {
+                    subEmitMessage(act, w.toJSON());
+                });
             }
             
             default:
@@ -440,7 +455,7 @@ async function updateRecordWar(id, mapId, data, memoController) {
     Object.keys(data).map(key => {
         memoController.battlefieldMap[mapId][key] = data[key];
     });
-    if (data.winnerCountryId == 1) {
+    if (data.winnerCountryId > 0) {
         broadcastSocket(memoController, {act: enums.ACT_BATTLE_DONE, payload: { mapId }});
     } else {
         const jsondata = memoController.battlefieldMap[mapId];

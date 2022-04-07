@@ -69,7 +69,11 @@ function validate(act, payload, userinfo, memo) {
             const battleId = payload.battleId;
             const mapId = payload.mapId;
             const gameId = payload.gameId;
-            res.msg = isExistMap(mapId, memo) || hasBattle(mapId, battleId, memo) || isOriginCity(mapId, memo) || isInCountryHere(userinfo, memo) || isExistGame(gameId, memo) || avalibleGameInBattle(gameId, mapId, memo);
+            res.msg = isExistMap(mapId, memo) || hasBattle(mapId, battleId, memo) || isOriginCity(mapId, memo) || isInCountryHere(userinfo, memo) || isExistGame(gameId, memo) || availableGameInBattle(gameId, mapId, memo);
+        } break
+        case enums.ACT_GET_BATTLE_DETAIL: {
+            const battleId = payload.battleId;
+            res.msg = hasRecordBattle(battleId, memo);
         } break
         default:
             console.log("Not Found Act: ", act);
@@ -225,6 +229,10 @@ function hasBattle(mapId, battleId, memo) {
     return _battle && _battle.id == battleId ? '' : 'Not Exist Battle.';
 }
 
+function hasRecordBattle(battleId, memo) {
+    return memo.warRecords.find(w => w.id == battleId) ? '' : 'Not Exist Battle.';
+}
+
 function haveSoldier(userinfo, soldier) {
     return 0 <= soldier && soldier <= userinfo.soldier ? '' : 'Do Not Have Enough Soldiers.';
 }
@@ -270,8 +278,17 @@ function isAllowedJudgeBattleTime(mapId, memo) {
     return isAllowedTime ? '' : 'Time Expire Not Yet.';
 }
 
-function avalibleGameInBattle(gameId, mapId, memo) {
-    return '';
+function availableGameInBattle(gameId, mapId, memo) {
+    const game = memo.gameMap[gameId];
+    const battle = memo.battlefieldMap[mapId];
+    const now = new Date();
+    if (now.setDate(now.getDate()+3) < new Date(battle.timestamp)) {
+        return 'Not Time Yet.';
+    }
+    const vsAry = [battle.atkUserIds.filter(u => u > 0).length, battle.defUserIds.filter(u => u > 0).length];
+    vsAry.sort((a,b) => a-b);
+    const vs = `b${vsAry.join('v')}`;
+    return battle.gameId == 0 && game[vs] ? '' : 'Not Available Game.';
 }
 
 function isOccupationEnoughContribution(userId, occupationId, memo) {

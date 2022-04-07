@@ -51,8 +51,10 @@ export default {
         cities: self.global.cities,
         countries: self.global.countries,
         notifications: self.global.notifications,
+        domesticMessages : self.global.domesticMessages ,
         battlefieldMap: self.global.battlefieldMap,
         occupationMap: self.global.occupationMap,
+        gameMap: self.global.gameMap,
       }
     }
   },
