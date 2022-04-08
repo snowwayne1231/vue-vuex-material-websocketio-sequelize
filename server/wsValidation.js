@@ -32,7 +32,7 @@ function validate(act, payload, userinfo, memo) {
             const battleId = payload.battleId;
             const position = payload.position;
             res.msg = isNoTarget(userinfo) || isNotWorking(userinfo, memo) || hasPoint(userinfo) || hasBattle(mapId, battleId, memo) || isEmptyBattlePosition(userinfo, position, mapId, memo)
-                || isNotInvolvedBattle(userinfo, position, mapId, memo) || isNotBeCaptived(userinfo) || isNearMap(userinfo.id, mapId, memo);
+                || isNotInvolvedBattle(userinfo, position, mapId, memo) || isNotBeCaptived(userinfo) || (position <= 3 ? isNearMap(userinfo.id, mapId, memo) : '');
         } break
         case enums.ACT_BATTLE_JUDGE: {
             const mapId = payload.mapId;

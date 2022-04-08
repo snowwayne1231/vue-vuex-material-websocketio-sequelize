@@ -113,14 +113,16 @@ module.exports = {
         const startDate = new Date();
         startDate.setSeconds(0);
         startDate.setMilliseconds(0);
-        startDate.setDate(startDate.getDate() + ( Math.max(0, startDate.getDay() -5 ) + afterDays));
+        const startWeekDay = startDate.getDay();
+        startDate.setDate(startDate.getDate() + afterDays + (startWeekDay == 0 ? 1 : (startWeekDay == 6 ? 2 : 0)));
         if (occupiedTimes.length > 0 && startDate.getTime() < occupiedTimes[-1]) {
             startDate.setTime(occupiedTimes[-1]);
         }
 
         let day = 0;
         while (timeOptions.length < 5 && day++ < afterDays) {
-            if (startDate.getDay() <= 5) {
+            let _weekday = startDate.getDay();
+            if (_weekday > 0 && _weekday <= 5) {
                 for(let i = 0; i < allowedHours.length; i++) {
                     let loc = allowedHours[i];
                     let hour = Math.floor(loc / 100);
