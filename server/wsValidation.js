@@ -1,3 +1,4 @@
+const { ACT_RECRUIT_CAPTIVE } = require('../src/enum');
 const enums = require('../src/enum');
 
 
@@ -75,6 +76,18 @@ function validate(act, payload, userinfo, memo) {
             const battleId = payload.battleId;
             res.msg = hasRecordBattle(battleId, memo);
         } break
+        case enums.ACT_RECRUIT: {
+            const userId = payload.userId;
+            res.msg = isAllowedRecurit(userinfo, memo) || isFreeMan(userId, memo) || hasPoint(userinfo, 3) || isExistOriginCity(userinfo, memo);
+        } break
+        case enums.ACT_RECRUIT_CAPTIVE: {
+            const userId = payload.userId;
+            res.msg = isRoleEmperor(userinfo) || hasPoint(userinfo, 3) || isExistOriginCity(userinfo, memo) || isCaptived(userId, memo) || isInMyCountry(userId, userinfo, memo) || isUserRoleNotEmperor(userId, memo);
+        } break
+        case enums.ACT_RELEASE_CAPTIVE: {
+            const userId = payload.userId;
+            res.msg = isRoleEmperor(userinfo) || hasPoint(userinfo, 1) || isCaptived(userId, memo) || isInMyCountry(userId, userinfo, memo);
+        } break
         default:
             console.log("Not Found Act: ", act);
             res.msg = 'Unknown Action.';
@@ -100,6 +113,10 @@ function isNotBeCaptived(userinfo) {
 
 function isBeCaptived(userinfo) {
     return userinfo.captiveDate ? '' : 'Not Be Catured.';
+}
+
+function isCaptived(userId, memo) {
+    return memo.userMap[userId] && memo.userMap[userId].captiveDate ? '' : 'Not A Catured User.';
 }
 
 function isExistMap(mapId, memo) {
@@ -158,8 +175,16 @@ function isRoleNotFree(userinfo) {
     return userinfo.role !== enums.ROLE_FREEMAN ? '' : 'You Are Freeman.';
 }
 
+function isFreeMan(userId, memo) {
+    return memo.userMap[userId] && memo.userMap[userId].role == enums.ROLE_FREEMAN ? '' : 'Not Freeman.';
+}
+
 function isRoleEmperor(userinfo) {
     return userinfo.role == enums.ROLE_EMPEROR ? '' : 'You Are Not Emperor.';
+}
+
+function isUserRoleNotEmperor(userId, memo) {
+    return memo.userMap[userId] && memo.userMap[userId].role != enums.ROLE_EMPEROR ? '' : 'User Is Emperor.';
 }
 
 function isSameCountryPartner(userinfo, partnerId, memo) {
@@ -190,6 +215,12 @@ function isNoCountry(userinfo) {
 function isInCountryHere(userinfo, memo) {
     const _map = memo.mapIdMap[userinfo.mapNowId];
     return _map && userinfo.countryId == _map.ownCountryId ? '' : 'Not This Country Member.';
+}
+
+function isInMyCountry(userId, userinfo, memo) {
+    const user = memo.userMap[userId];
+    const location = memo.mapIdMap[user.mapNowId];
+    return location && location.ownCountryId == userinfo.countryId ? '' : 'Not In My Country.';
 }
 
 function isMyStandMapHasCountry(userinfo, memo) {
@@ -317,6 +348,12 @@ function isAllowedShareUser(userinfo, memo) {
     if (userinfo.role == enums.ROLE_EMPEROR) return '';
     const _myOccupation = memo.occupationMap[userinfo.occupationId];
     return _myOccupation && _myOccupation.isAllowedShare ? '' : 'Not Be Allowed To Share.';
+}
+
+function isAllowedRecurit(userinfo, memo) {
+    if (userinfo.role == enums.ROLE_EMPEROR) return '';
+    const _myOccupation = memo.occupationMap[userinfo.occupationId];
+    return _myOccupation && _myOccupation.isAllowedRecurit ? '' : 'Not Be Allowed To Recurit.';
 }
 
 module.exports = {

@@ -50,7 +50,7 @@ function refresBattlefields() {
                 if (sumDefSoldier > sumAtkSoldier) {
                     return handleWarWinner(war, false);
                 } else if ( sumDefSoldier == 0) {
-                    return handleWarWinner(war, true);
+                    return handleWarWinner(war, false);
                 } else {
                     return handleWarLock(war);
                 }
@@ -67,7 +67,7 @@ function refresBattlefields() {
 
 async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false) {
     // const globalChangeDataset = [{ depth: ['users', userinfo.id], update }];
-    const updated = {RecordWar: [], User: []};
+    const updated = {RecordWar: [], User: [], Country: []};
     const detail = warModel.detail;
     const atkUserIds = warModel.atkUserIds;
     const defUserIds = warModel.defUserIds;
@@ -87,7 +87,6 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
             defSoldierRatio = formulaRatio.DEFWIN();
             isDestoried = false;
         }
-
         // 防守城池城牆抵禦率
         let finalDiscountRatio = 1;
         const map = await models.Map.findOne({where: {id: warModel.mapId}});
@@ -97,55 +96,33 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
             if (_city.jsonConstruction) {
                 const jsonConstruction = JSON.parse(_city.jsonConstruction);
                 if (jsonConstruction.wall && jsonConstruction.wall.hasOwnProperty('lv')) {
-                    finalDiscountRatio = 1 - ((jsonConstruction.wall.lv * enums.NUM_ADDITIONAL_WALL_DISCOUNT_DAMAGE_RATIO) / 100);
+                    finalDiscountRatio = Math.max(1 - ((jsonConstruction.wall.lv * enums.NUM_ADDITIONAL_WALL_DISCOUNT_DAMAGE_RATIO) / 100), 0);
                 }
             }
         }
-        // console.log('finalDiscountRatio: ', finalDiscountRatio);
         detail.finalDiscountRatio = finalDiscountRatio;
         detail.atkSoldierRatio = atkSoldierRatio;
         detail.defSoldierRatio = defSoldierRatio;
-        const involvedUserIds = (atkUserIds.concat(defUserIds)).filter(u => u>0);
-        const involvedUsers = await models.User.findAll({where: {id: {[Op.in]: involvedUserIds}}});
-        // console.log('involvedUsers length: ', involvedUsers.length);
-        // 結算 user 損耗
-        for (let i = 0; i < involvedUsers.length; i++) {
-            const user = involvedUsers[i];
-            const idxDef = defUserIds.indexOf(user.id);
-            const userUpdateData = {};
-            let decentSoldier;
-            
-            if (idxDef >= 0) {  // is defence user
-                decentSoldier = Math.round(detail.defSoldiers[idxDef] * defSoldierRatio * finalDiscountRatio);
-                detail.defSoldierLoses[idxDef] = decentSoldier;
-            } else {
-                const idxAtk = atkUserIds.indexOf(user.id);
-                decentSoldier = Math.round(detail.atkSoldiers[idxAtk] * atkSoldierRatio);
-                detail.atkSoldierLoses[idxAtk] = decentSoldier;
-                if (isAttackerWin) { // attacker go to the battle map
-                    userUpdateData.mapNowId = warModel.mapId;
-                }
-            }
-            userUpdateData.mapTargetId = 0;
-            userUpdateData.soldier = Math.max(user.soldier - decentSoldier, 0);
-            updated.User.push({id: user.id, updated: userUpdateData });
-            await user.update(userUpdateData);
-        }
 
         // 發生滅國
         if (isDestoried) {
+            let totalMoney = 0;
+            let totalSoldier = 0;
             const destoriedUsers = await models.User.findAll({where: {countryId: warModel.defenceCountryId}});
             for (let i = 0; i < destoriedUsers.length; i++) {
                 let user = destoriedUsers[i];
                 let userUpdateData = {};
+                totalMoney += user.money;
+                totalSoldier += user.soldier;
                 userUpdateData.money = 0;
                 userUpdateData.soldier = 0;
                 userUpdateData.countryId = 0;
                 userUpdateData.role = enums.ROLE_FREEMAN;
                 userUpdateData.actPointMax = 3;
                 userUpdateData.occupationId = 0;
+                userUpdateData.mapTargetId = 0;
                 userUpdateData.captiveDate = null;
-                userUpdateData.mapNowId = Math.round(Math.random() * 120)+1;
+                userUpdateData.mapNowId = user.captiveDate ? user.mapNowId : Math.round(Math.random() * 120)+1;
                 if (user.destoryByCountryIds && user.destoryByCountryIds.length > 0) {
                     userUpdateData.destoryByCountryIds = JSON.parse(user.destoryByCountryIds);
                     userUpdateData.destoryByCountryIds.push(warModel.winnerCountryId);
@@ -163,53 +140,103 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
                     timestamp: new Date()
                 });
             }
+            detail.defSoldierLoses = detail.defSoldiers;
 
             await models.Country.update({
                 emperorId: 0,
                 originCityId: 0,
             }, {where: {id: warModel.defenceCountryId}});
-        }
 
-        if (isAttackerWin) {
-            // 被打下的在城人 要換位置或被俘虜
-            const routes = memo.map[warModel.mapId].route;
-            const nextMapIds = [];
-            routes.map(r => {
-                if (memo.map[r].ownCountryId == warModel.defenceCountryId) { nextMapIds.push(r); }
-            });
-            const getoutUsers = await models.User.findAll({where: {mapNowId: warModel.mapId}});
-            for (let i = 0; i < getoutUsers.length; i++) {
-                let user = getoutUsers[i];
+            // 累積的黃金兵力給主公
+            const winUsers = await models.User.findAll({where: {countryId: warModel.winnerCountryId}});
+            for (let i = 0; i < winUsers.length; i++) {
+                let user = winUsers[i];
                 let userUpdateData = {};
-                if (user.countryId == warModel.defenceCountryId) {
-                    if (nextMapIds.length==0) {
-                        userUpdateData.captiveDate = new Date();
-                    } else {
-                        userUpdateData.mapNowId = nextMapIds[Math.floor(Math.random() * nextMapIds.length)];
-                    }
-                } else if (user.captiveDate) {
-                    userUpdateData.captiveDate = null;
-                } else {
-                    continue
+                userUpdateData.contribution = user.contribution + 50;
+                if (user.role == enums.ROLE_EMPEROR) {
+                    userUpdateData.soldier = user.soldier + totalSoldier;
+                    userUpdateData.money = user.money + totalMoney;
                 }
+                // 出征者移到
+                if (atkUserIds.includes(user.id)) {
+                    userUpdateData.mapNowId = warModel.mapId;
+                    userUpdateData.mapTargetId = 0;
+                }
+                
                 updated.User.push({id: user.id, updated: userUpdateData });
                 await user.update(userUpdateData);
+            }
+            
+        } else {
+            // 損兵
+            const involvedUserIds = (atkUserIds.concat(defUserIds)).filter(u => u>0);
+            const involvedUsers = await models.User.findAll({where: {id: {[Op.in]: involvedUserIds}}});
+            // console.log('involvedUsers length: ', involvedUsers.length);
+            // 結算 user 損耗
+            for (let i = 0; i < involvedUsers.length; i++) {
+                const user = involvedUsers[i];
+                const idxDef = defUserIds.indexOf(user.id);
+                const userUpdateData = {};
+                let decentSoldier;
+                
+                if (idxDef >= 0) {  // is defence user
+                    decentSoldier = Math.round(detail.defSoldiers[idxDef] * defSoldierRatio * finalDiscountRatio);
+                    detail.defSoldierLoses[idxDef] = decentSoldier;
+                } else {
+                    const idxAtk = atkUserIds.indexOf(user.id);
+                    decentSoldier = Math.round(detail.atkSoldiers[idxAtk] * atkSoldierRatio);
+                    detail.atkSoldierLoses[idxAtk] = decentSoldier;
+                    if (isAttackerWin) { // attacker go to the battle map
+                        userUpdateData.mapNowId = warModel.mapId;
+                    }
+                }
+                userUpdateData.mapTargetId = 0;
+                userUpdateData.soldier = Math.max(user.soldier - decentSoldier, 0);
+                updated.User.push({id: user.id, updated: userUpdateData });
+                await user.update(userUpdateData);
+            }
+            // 被打下的在城人 要換位置或被俘虜
+            if (isAttackerWin) {
+                const routes = memo.map[warModel.mapId].route;
+                const nextMapIds = [];
+                routes.map(r => {
+                    if (memo.map[r].ownCountryId == warModel.defenceCountryId) { nextMapIds.push(r); }
+                });
+                const getoutUsers = await models.User.findAll({where: {mapNowId: warModel.mapId}});
+                for (let i = 0; i < getoutUsers.length; i++) {
+                    let user = getoutUsers[i];
+                    let userUpdateData = {};
+                    if (user.countryId == warModel.defenceCountryId) {
+                        if (nextMapIds.length==0) {
+                            userUpdateData.captiveDate = new Date();
+                        } else {
+                            userUpdateData.mapNowId = nextMapIds[Math.floor(Math.random() * nextMapIds.length)];
+                        }
+                    } else if (user.captiveDate) {
+                        userUpdateData.captiveDate = null;
+                    } else {
+                        continue
+                    }
+                    updated.User.push({id: user.id, updated: userUpdateData });
+                    await user.update(userUpdateData);
+                }
+                if (city) { // 陷落是城市 
+                    const country = await models.Country.findByPk(warModel.defenceCountryId);
+                    if (country.originCityId == city.id) { // 是主城
+                        country.originCityId = 0;
+                        updated.Country.push({id: country.id, updated: {originCityId: 0}});
+                        await country.save();
+                    }
+                }
             }
         }
 
         warModel.detail = detail;
 
-        updated.RecordWar.push({ id: warModel.id, mapId: warModel.mapId, isAttackerWin, isDestoried, winnerCountryId: warModel.winnerCountryId, detail: detail, defenceCountryId: warModel.defenceCountryId, atkUserIds: warModel.atkUserIds, defUserIds: warModel.defUserIds });
+        updated.RecordWar.push({ id: warModel.id, mapId: warModel.mapId, isAttackerWin, isDestoried, winnerCountryId: warModel.winnerCountryId, detail: detail, defenceCountryId: warModel.defenceCountryId, atkUserIds: warModel.atkUserIds, defUserIds: warModel.defUserIds, timestamp: warModel.timestamp, attackCountryIds: warModel.attackCountryIds });
         await warModel.save();
         if (isAttackerWin) {
             await models.Map.update({ownCountryId: warModel.winnerCountryId}, {where: {id: warModel.mapId}});
-            if (city && !isDestoried) { // 陷落是城市 
-                const country = await models.Country.findByPk(warModel.defenceCountryId);
-                if (country.originCityId == city.id) { // 是主城
-                    country.originCityId = 0;
-                    await country.save();
-                }
-            }
         }
         if (autoApply) {
             halfHourTimer.binds.map(fn => fn.apply(null, [[updated], new Date()]));

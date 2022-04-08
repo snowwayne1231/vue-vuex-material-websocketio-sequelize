@@ -65,5 +65,15 @@ module.exports = {
     getWarRecord: ({dispatch}, args) => {
         dispatch('wsEmitMessage', {act: enums.ACT_GET_BATTLE_DETAIL, payload: args});
     },
+    actRecruit: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_RECRUIT, payload: args});
+    },
+    actRecruitCaptive: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_RECRUIT_CAPTIVE, payload: args});
+    },
+    actReleaseCaptive: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_RELEASE_CAPTIVE, payload: args});
+    },
+    
     register,
 }

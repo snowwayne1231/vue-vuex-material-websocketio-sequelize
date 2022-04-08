@@ -395,6 +395,87 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                     subEmitMessage(act, w.toJSON());
                 });
             }
+            case enums.ACT_RECRUIT: {
+                const userId = payload.userId;
+                const user = memoController.userMap[userId];
+                const map = memoController.mapIdMap[user.mapNowId] || {};
+                const inMyCountrySide = map.ownCountryId == userinfo.countryId;
+                const successRatio = inMyCountrySide ? 2 : 1;
+                const randomResult = Math.floor(Math.random() * 10);
+                const success = randomResult <= successRatio;
+                console.log(`[ACT_RECRUIT] successRatio: ${successRatio} randomResult: ${randomResult} / 10`);
+                return asyncUpdateUserInfo(userinfo, { actPoint: userinfo.actPoint - 3 }, act, socket).then(e => {
+                    const round = configs.round.value;
+                    const nickname = user.nickname;
+                    if (success) {
+                        const country = memoController.countryMap[userinfo.countryId];
+                        const countryName = country.name;
+                        const originCityMap = Object.values(memoController.mapIdMap).find(m => m.cityId == country.originCityId);
+                        memoController.eventCtl.broadcastInfo(enums.EVENT_RECRUIT, {nickname, countryName, round});
+                        return updateSingleUser(userId, {countryId: userinfo.countryId, role: enums.ROLE_GENERMAN , actPointMax: 7, captiveDate: null, mapNowId: originCityMap.id, mapTargetId: 0, occupationId: 0}, userinfo, memoController);
+                    } else {
+                        return memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
+                            round,
+                            countryId: userinfo.countryId,
+                            type: enums.CHINESE_TYPE_DOMESTIC,
+                            content: algorithms.getMsgRecruitFail(userinfo.nickname, nickname),
+                        });
+                    }
+                });
+            }
+            case enums.ACT_RECRUIT_CAPTIVE: {
+                const userId = payload.userId;
+                const user = memoController.userMap[userId];
+                const nowDate = new Date();
+                const captiveDate = new Date(user.captiveDate);
+                const gapDays = Math.ceil((nowDate.getTime() - captiveDate.getTime()) / 1000 / 60 / 60 / 24);
+                const basicLine = 25 + gapDays * 2.5;
+                const randomResult = Math.floor(Math.random() * 100);
+                console.log(`[ACT_RECRUIT_CAPTIVE] basicLine: ${basicLine} randomResult: ${randomResult} / 100`);
+                const success = randomResult <= basicLine;
+                return asyncUpdateUserInfo(userinfo, { actPoint: userinfo.actPoint - 3 }, act, socket).then(e => {
+                    const round = configs.round.value;
+                    const nickname = user.nickname;
+                    if (success) {
+                        const country = memoController.countryMap[userinfo.countryId];
+                        const emperor = userinfo.nickname;
+                        const originCityMap = Object.values(memoController.mapIdMap).find(m => m.cityId == country.originCityId);
+                        memoController.eventCtl.broadcastInfo(enums.EVENT_CAPTIVE_RECRUIT, {nickname, emperor, round});
+                        return updateSingleUser(userId, {countryId: userinfo.countryId, role: enums.ROLE_GENERMAN , actPointMax: 7, captiveDate: null, mapNowId: originCityMap.id, mapTargetId: 0, occupationId: 0}, userinfo, memoController);
+                    } else {
+                        const backCountry = memoController.countryMap[user.countryId];
+                        const originCityMap = backCountry.originCityId > 0 ? Object.values(memoController.mapIdMap).find(m => m.cityId == backCountry.originCityId) : null;
+                        if (originCityMap) {
+                            memoController.eventCtl.broadcastInfo(enums.EVENT_CAPTIVE_ESCAPE, { round, nickname });
+                            return updateSingleUser(userId, {captiveDate: null, mapNowId: originCityMap.id, mapTargetId: 0}, userinfo, memoController);
+                        } else {
+                            return memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
+                                round,
+                                countryId: userinfo.countryId,
+                                type: enums.CHINESE_TYPE_DOMESTIC,
+                                content: algorithms.getMsgRecruitFail(userinfo.nickname, nickname, true),
+                            });
+                        }
+                    }
+                });
+            }
+            case enums.ACT_RELEASE_CAPTIVE: {
+                const userId = payload.userId;
+                const user = memoController.userMap[userId];
+                const money = userinfo.money + user.money;
+                const soldier = userinfo.soldier + user.soldier;
+                return asyncUpdateUserInfo(userinfo, { actPoint: userinfo.actPoint - 1, money, soldier }, act, socket).then(e => {
+                    const round = configs.round.value;
+                    const nickname = user.nickname;
+                    const emperor = userinfo.nickname;
+                    const backCountry = memoController.countryMap[user.countryId];
+                    const maps = Object.values(memoController.mapIdMap);
+                    const originCityMap = backCountry.originCityId > 0 ? maps.find(m => m.cityId == backCountry.originCityId) : null;
+                    memoController.eventCtl.broadcastInfo(enums.EVENT_CAPTIVE_RELEASE, { round, nickname, emperor });
+                    const mapNowId = originCityMap ? originCityMap.id : maps.find(m => m.ownCountryId == user.countryId).id;
+                    return updateSingleUser(userId, {captiveDate: null, mapNowId, mapTargetId: 0, money: 0, soldier: 0}, userinfo, memoController);
+                });
+            }
             
             default:
                 console.log("Not Found Act: ", act);
@@ -466,13 +547,21 @@ async function updateRecordWar(id, mapId, data, memoController) {
 
 async function updateSingleUser(id, update, userinfo, memoController) {
     const user = await models.User.update(update, {where: {id}});
-    Object.keys(update).map(key => {
+    const updateKeys = Object.keys(update);
+    updateKeys.map(key => {
         memoController.userMap[id][key] = update[key];
     });
     broadcastSocket(memoController, {act: enums.ACT_GET_GLOBAL_CHANGE_DATA, payload: { dataset: [ { depth: ['users', id], update } ] }});
     memoController.userSockets.map(user => {
-        if (user.socket) {
-            memoController.emitSocketByte(user.socket,  enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: update},);
+        if (user.id == id) {
+            if (user.socket) {
+                memoController.emitSocketByte(user.socket,  enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: update},);
+            }
+            if (user.userinfo) {
+                updateKeys.map(key => {
+                    user.userinfo[key] = update[key];
+                });
+            }
         }
     });
     await models.RecordApi.create({

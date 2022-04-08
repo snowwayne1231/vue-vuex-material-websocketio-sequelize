@@ -200,4 +200,9 @@ module.exports = {
     getMsgLuckySoldier(nickname, soldier) {
         return `${nickname} 人品爆發 獲得 ${soldier} 位士兵慕名而來`;
     },
+    getMsgRecruitFail(selfname, nickname, isCaptiveTarget = false) {
+        return isCaptiveTarget ?
+            `${selfname} 招募失敗 ${nickname} 已無歸屬可回,繼續待在地牢`:
+            `${selfname} 招募 ${nickname} 失敗`;
+    },
 }

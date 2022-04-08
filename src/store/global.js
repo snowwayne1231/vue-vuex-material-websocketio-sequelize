@@ -102,6 +102,8 @@ const global = {
           const nextBattlefield = { ...state.battlefieldMap };
           delete nextBattlefield[mapId];
           state.battlefieldMap = nextBattlefield;
+          state.warRecords = state.warRecords.concat([payload]);
+          state.warRecords.sort((a,b) => b.id - a.id);
         } break
         case enums.ACT_NOTIFICATION_DOMESTIC: {
           const newmsg = [new Date(payload[0]), payload[1]]

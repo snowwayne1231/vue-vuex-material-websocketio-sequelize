@@ -328,16 +328,17 @@ function hookerHandleBattleFinish(battleChanges, time) {
                 const thisBattle = memo_ctl.battlefieldMap[rw.mapId];
                 const round = globalConfigs.round.value;
                 if (rw.winnerCountryId > 0) {   // 有勝敗
-                    memo_ctl.warRecords.push({
+                    const warRecord = {
                         id: thisBattle.id,
                         timestamp: rw.timestamp,
                         mapId: rw.mapId,
                         winnerCountryId: rw.winnerCountryId,
                         attackCountryIds: rw.attackCountryIds,
                         defenceCountryId: rw.defenceCountryId
-                    });
+                    }
+                    memo_ctl.warRecords.push(warRecord);
                     delete memo_ctl.battlefieldMap[rw.mapId];
-                    broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_BATTLE_DONE, payload: {mapId: rw.mapId}});
+                    broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_BATTLE_DONE, payload: warRecord});
                     const event = rw.isAttackerWin ? enums.EVENT_WAR_WIN : enums.EVENT_WAR_DEFENCE;
                     const mapIdMap = memo_ctl.mapIdMap;
                     const hasCountryDestoried = rw.isDestoried;
@@ -384,6 +385,14 @@ function hookerHandleBattleFinish(battleChanges, time) {
                         });
                     }
                 }
+            });
+            bc.Country.map(c => {
+                Object.keys(c.updated).map(key => {
+                    if (memo_ctl.countryMap[c.id].hasOwnProperty(key)) {
+                        memo_ctl.countryMap[c.id][key] = c.updated[key];
+                    }
+                });
+                globalChangeDataset.push({ depth: ['countries', c.id], update: c.updated });
             });
         });
         emitGlobalChanges({

@@ -92,6 +92,9 @@
           <button @click="openSharePanel = true">配給</button>
           <button @click="onClickEscape">逃脫</button>
           <button @click="onClickWarHistory">歷史戰役</button>
+          <button @click="onClickRecruit">招募</button>
+          <button @click="onClickRecruitCaptive">招募俘虜</button>
+          <button @click="onClickReleaseCaptive">釋放俘虜</button>
         </div>
         <div class="notifications">
           <ul>
@@ -583,6 +586,30 @@ export default {
     },
     onClickWarRecord(battleId) {
       this.$store.dispatch('getWarRecord', {battleId});
+    },
+    onClickRecruit() {
+      const freemans = this.global.users.filter(u => u.role == 3);
+      freemans.sort((a,b) => b.id - a.id);
+      const enterTheNumber = parseInt(window.prompt(freemans.map(f => `${f.id} -> ${f.nickname}`).join('\r\n')));
+      if (enterTheNumber && enterTheNumber > 0) {
+        this.$store.dispatch('actRecruit', {userId: enterTheNumber});
+      }
+    },
+    onClickRecruitCaptive() {
+      const countrysides = this.global.maps.filter(m => m.ownCountryId == this.user.countryId).map(m => m.id);
+      const captived = this.global.users.filter(u => u.captiveDate && countrysides.includes(u.mapNowId));
+      const enterTheNumber = parseInt(window.prompt(captived.map(f => `${f.id} -> ${f.nickname}`).join('\r\n')));
+      if (enterTheNumber && enterTheNumber > 0) {
+        this.$store.dispatch('actRecruitCaptive', {userId: enterTheNumber});
+      }
+    },
+    onClickReleaseCaptive() {
+      const countrysides = this.global.maps.filter(m => m.ownCountryId == this.user.countryId).map(m => m.id);
+      const captived = this.global.users.filter(u => u.captiveDate && countrysides.includes(u.mapNowId));
+      const enterTheNumber = parseInt(window.prompt(captived.map(f => `${f.id} -> ${f.nickname}  [⚔️ ${f.soldier}]`).join('\r\n')));
+      if (enterTheNumber && enterTheNumber > 0) {
+        this.$store.dispatch('actReleaseCaptive', {userId: enterTheNumber});
+      }
     },
     getCheck(ary = []) {
       return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});
