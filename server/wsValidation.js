@@ -1,6 +1,4 @@
-const { ACT_RECRUIT_CAPTIVE } = require('../src/enum');
 const enums = require('../src/enum');
-
 
 function validate(act, payload, userinfo, memo) {
     const res = { ok: false, msg: '' };
@@ -27,13 +25,14 @@ function validate(act, payload, userinfo, memo) {
         case enums.ACT_BATTLE: {
             const mapId = payload.mapId;
             res.msg = isNoTarget(userinfo) || isExistMap(mapId, memo) || isEnemyMap(userinfo, mapId, memo) || isInCountry(userinfo, memo) || isNotExistBattlefield(mapId, memo)
-                || isNotWorking(userinfo, memo) || hasPoint(userinfo) || haveBasicBattleResource(userinfo) || isNotBeCaptived(userinfo);
+                || isNotWorking(userinfo, memo) || hasPoint(userinfo) || haveBasicBattleResource(userinfo) || isNotBeCaptived(userinfo) || isNearMap(userinfo.id, mapId, memo);
         } break
         case enums.ACT_BATTLE_JOIN: {
             const mapId = payload.mapId;
             const battleId = payload.battleId;
             const position = payload.position;
-            res.msg = isNoTarget(userinfo) || isNotWorking(userinfo, memo) || hasPoint(userinfo) || hasBattle(mapId, battleId, memo) || isEmptyBattlePosition(userinfo, position, mapId, memo) || isNotInvolvedBattle(userinfo, position, mapId, memo) || isNotBeCaptived(userinfo);
+            res.msg = isNoTarget(userinfo) || isNotWorking(userinfo, memo) || hasPoint(userinfo) || hasBattle(mapId, battleId, memo) || isEmptyBattlePosition(userinfo, position, mapId, memo)
+                || isNotInvolvedBattle(userinfo, position, mapId, memo) || isNotBeCaptived(userinfo) || isNearMap(userinfo.id, mapId, memo);
         } break
         case enums.ACT_BATTLE_JUDGE: {
             const mapId = payload.mapId;
@@ -313,7 +312,8 @@ function availableGameInBattle(gameId, mapId, memo) {
     const game = memo.gameMap[gameId];
     const battle = memo.battlefieldMap[mapId];
     const now = new Date();
-    if (now.setDate(now.getDate()+3) < new Date(battle.timestamp)) {
+    now.setDate(now.getDate()+3);
+    if (now < new Date(battle.timestamp)) {
         return 'Not Time Yet.';
     }
     const vsAry = [battle.atkUserIds.filter(u => u > 0).length, battle.defUserIds.filter(u => u > 0).length];
@@ -354,6 +354,13 @@ function isAllowedRecurit(userinfo, memo) {
     if (userinfo.role == enums.ROLE_EMPEROR) return '';
     const _myOccupation = memo.occupationMap[userinfo.occupationId];
     return _myOccupation && _myOccupation.isAllowedRecurit ? '' : 'Not Be Allowed To Recurit.';
+}
+
+function isNearMap(userId, mapId, memo) {
+    const user = memo.userMap[userId];
+    const now = user ? user.mapNowId : 0;
+    const map = memo.mapIdMap[now];
+    return map && (now == mapId || map.route.includes(mapId)) ? '' : 'Not Near Map.';
 }
 
 module.exports = {
