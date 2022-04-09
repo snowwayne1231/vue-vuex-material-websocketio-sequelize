@@ -74,6 +74,9 @@ module.exports = {
     actReleaseCaptive: ({dispatch}, args) => {
         dispatch('wsEmitMessage', {act: enums.ACT_RELEASE_CAPTIVE, payload: args});
     },
+    actSetOriginCity: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_SET_ORIGIN_CITY, payload: args});
+    },
     
     register,
 }

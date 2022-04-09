@@ -95,6 +95,7 @@
           <button @click="onClickRecruit">招募</button>
           <button @click="onClickRecruitCaptive">招募俘虜</button>
           <button @click="onClickReleaseCaptive">釋放俘虜</button>
+          <button @click="onClickSetOriginCity">遷都</button>
         </div>
         <div class="notifications">
           <ul>
@@ -224,7 +225,7 @@ import Man from '@/components/interactive/Man';
 import Assignment from '@/components/interactive/Assignment';
 import CityPanel from '@/components/interactive/CityPanel';
 import mapAlgorithm from '@/unit/mapAlgorithm';
-// import enums from '../enum';
+import enums from '../enum';
 
 export default {
   name: 'Room',
@@ -609,6 +610,16 @@ export default {
       const enterTheNumber = parseInt(window.prompt(captived.map(f => `${f.id} -> ${f.nickname}  [⚔️ ${f.soldier}]`).join('\r\n')));
       if (enterTheNumber && enterTheNumber > 0) {
         this.$store.dispatch('actReleaseCaptive', {userId: enterTheNumber});
+      }
+    },
+    onClickSetOriginCity() {
+      const cities = this.global.maps.filter(m => m.ownCountryId == this.user.countryId && m.cityId > 0);
+      const gameTypes = Object.keys(enums.CHINESE_GAMETYPE_NAMES).map(key => [parseInt(key), enums.CHINESE_GAMETYPE_NAMES[key]]);
+      console.log(cities);
+      const enterTheNumber = parseInt(window.prompt(cities.map(f => `${f.cityId} -> ${f.name}`).join('\r\n')));
+      const enterGameId = parseInt(window.prompt(gameTypes.map(f => `${f[0]} -> ${f[1]}`).join('\r\n')));
+      if (enterTheNumber > 0 && enterGameId > 0) {
+        this.$store.dispatch('actSetOriginCity', {cityId: enterTheNumber, gameTypeId: enterGameId});
       }
     },
     getCheck(ary = []) {

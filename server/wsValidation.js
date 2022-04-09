@@ -87,6 +87,11 @@ function validate(act, payload, userinfo, memo) {
             const userId = payload.userId;
             res.msg = isRoleEmperor(userinfo) || hasPoint(userinfo, 1) || isCaptived(userId, memo) || isInMyCountry(userId, userinfo, memo);
         } break
+        case enums.ACT_SET_ORIGIN_CITY: {
+            const cityId = payload.cityId;
+            const gameTypeId = payload.gameTypeId;
+            res.msg = isRoleEmperor(userinfo) || hasPoint(userinfo, 1) || isNoOriginCity(userinfo, memo) || isCityInMyCountry(cityId, userinfo, memo) || isExistGameType(gameTypeId);
+        } break
         default:
             console.log("Not Found Act: ", act);
             res.msg = 'Unknown Action.';
@@ -137,8 +142,17 @@ function isExistOriginCity(userinfo, memo) {
     return country && isExistCity(country.originCityId, memo) == '' ? '' : 'Not Exist Origin City.';
 }
 
+function isNoOriginCity(userinfo, memo) {
+    const country = memo.countryMap[userinfo.countryId];
+    return country && country.originCityId == 0 ? '' : 'Have Origin City.';
+}
+
 function isExistGame(gameId, memo) {
     return memo.gameMap[gameId] ? '' : 'Not Exist Game.';
+}
+
+function isExistGameType(gameTypeId) {
+    return enums.CHINESE_GAMETYPE_NAMES[String(gameTypeId)] ? '' : 'Not Exsit Game Type.';
 }
 
 function isEnemyMap(userinfo, mapId, memo) {
@@ -220,6 +234,11 @@ function isInMyCountry(userId, userinfo, memo) {
     const user = memo.userMap[userId];
     const location = memo.mapIdMap[user.mapNowId];
     return location && location.ownCountryId == userinfo.countryId ? '' : 'Not In My Country.';
+}
+
+function isCityInMyCountry(cityId, userinfo, memo) {
+    const map = Object.values(memo.mapIdMap).find(m => m.cityId == cityId);
+    return cityId > 0 && map && map.ownCountryId == userinfo.countryId ? '' : 'City Not In My Country.';
 }
 
 function isMyStandMapHasCountry(userinfo, memo) {
@@ -361,6 +380,10 @@ function isNearMap(userId, mapId, memo) {
     const now = user ? user.mapNowId : 0;
     const map = memo.mapIdMap[now];
     return map && (now == mapId || map.route.includes(mapId)) ? '' : 'Not Near Map.';
+}
+
+function isNoOriginCity(userinfo, memo) {
+    userinfo.mapNowId
 }
 
 module.exports = {

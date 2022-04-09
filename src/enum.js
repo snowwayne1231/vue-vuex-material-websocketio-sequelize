@@ -37,6 +37,7 @@ module.exports = {
     ACT_RECRUIT: 35,
     ACT_RECRUIT_CAPTIVE: 36,
     ACT_RELEASE_CAPTIVE: 37,
+    ACT_SET_ORIGIN_CITY: 38,
     UserGlobalAttributes: ['id', 'code', 'nickname', 'countryId', 'loyalty', 'loyalUserId', 'contribution', 'occupationId', 'role', 'mapNowId', 'soldier', 'captiveDate', 'actPointMax'],
     MapsGlobalAttributes: ['id', 'name', 'x', 'y', 'route', 'cityId', 'ownCountryId', 'gameType'],
     CityGlobalAttributes: ['id', 'money', 'addResource', 'timeBeAttacked', 'jsonConstruction'],

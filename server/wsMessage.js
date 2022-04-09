@@ -476,6 +476,18 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                     return updateSingleUser(userId, {captiveDate: null, mapNowId, mapTargetId: 0, money: 0, soldier: 0}, userinfo, memoController);
                 });
             }
+            case enums.ACT_SET_ORIGIN_CITY: {
+                const cityId = payload.cityId;
+                const gameTypeId = payload.gameTypeId;
+                return asyncUpdateUserInfo(userinfo, { actPoint: userinfo.actPoint - 1 }, act, socket).then(e => {
+                    const round = configs.round.value;
+                    const countryName = memoController.countryMap[userinfo.countryId].name;
+                    const map = Object.values(memoController.mapIdMap).find(m => m.cityId == cityId);
+                    const mapName = map.name;
+                    memoController.eventCtl.broadcastInfo(enums.EVENT_MIGRATE_MAIN_CITY, { round, countryName, mapName });
+                    return updateOriginCity(cityId, map.id, gameTypeId, userinfo, memoController);
+                });
+            }
             
             default:
                 console.log("Not Found Act: ", act);
@@ -586,6 +598,25 @@ async function updateCity(id, update, userinfo, memoController) {
         curd: 2,
     });
     return city;
+}
+
+async function updateOriginCity(originCityId, mapId, gameType, userinfo, memoController) {
+    await models.Country.update({originCityId}, {where: {id: userinfo.countryId}});
+    await models.Map.update({gameType}, {where: {id: mapId}});
+    memoController.countryMap[userinfo.countryId].originCityId = originCityId;
+    memoController.mapIdMap[mapId].gameType = gameType;
+    const dataset = [
+        { depth: ['countries', userinfo.countryId], update: {originCityId} },
+        { depth: ['maps', mapId], update: {gameType} },
+    ];
+    broadcastSocket(memoController, {act: enums.ACT_GET_GLOBAL_CHANGE_DATA, payload: { dataset }});
+    await models.RecordApi.create({
+        userId: userinfo.id,
+        model: 'Country',
+        payload: JSON.stringify({originCityId}),
+        curd: 2,
+    });
+    return true;
 }
 
 function getCityConstruction(mapId, name, memoController) {
