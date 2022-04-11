@@ -23,6 +23,7 @@ const global = {
     battleRecordDetails: {
       id: 0,
     },
+    rewards: [],
   },
   mutations: {
     wsOnMESSAGE: (state, message) => {
@@ -119,6 +120,9 @@ const global = {
         case enums.ACT_GET_BATTLE_DETAIL: {
           state.battleRecordDetails = payload;
         } break
+        case enums.ADMIN_CONTROL: {
+          console.log(payload);
+        } break
         case enums.ALERT: {
           window.alert(payload.msg);
         }
@@ -138,6 +142,21 @@ const global = {
     wsEmitMessage: () => {
     },
     wsEmitADMINCTL: () => {
+    },
+    wsOnADMINCTL: (content, buffer) => {
+      const msg = parser.arrayBufferToJSON(buffer);
+      console.log('msg: ' , msg);
+      if (Array.isArray(msg)) {
+        content.commit('updateGlobal', {
+          rewards: msg
+        });
+      } else if (msg && msg.id > 0) {
+        const nextRewards = content.state.rewards.slice();
+        nextRewards.push(msg);
+        content.commit('updateGlobal', {
+          rewards: nextRewards,
+        });
+      }
     },
     ...actions
   },

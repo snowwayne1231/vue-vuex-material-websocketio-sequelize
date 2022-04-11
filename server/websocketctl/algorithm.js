@@ -166,12 +166,13 @@ module.exports = {
         const bm = memo.battlefieldMap;
         return userId > 0 && Object.keys(bm).map(k => bm[k].judgeId == userId || bm[k].toolmanId == userId).filter(e => e).length > 0;
     },
-    randomIncreaseSoldier(countryId) {
+    randomIncreaseSoldier(countryId, constructlv = 0) {
         const numCities = mapdata.ary.filter(m => m.country == countryId && m.city > 0).length;
         const max = 200 + (numCities * 15);
-        const add = Math.round(Math.random() * max) + 100;
-        return {add, lucky: add / (max+100) > 0.97};
-        
+        const additionalConstruct = constructlv * enums.NUM_ADDITIONAL_BARRACK_SOLDIER;
+        const maxRes = max + 100 + additionalConstruct;
+        const add = Math.min(Math.round(Math.random() * max) + 100 + additionalConstruct + constructlv, maxRes);
+        return {add, lucky: add / maxRes > 0.97};
     },
     getMsgLevelUp(nickname, came, cityName, lv) {
         const chiName = enums.CHINESE_CONSTRUCTION_NAMES[came];

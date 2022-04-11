@@ -382,10 +382,6 @@ function isNearMap(userId, mapId, memo) {
     return map && (now == mapId || map.route.includes(mapId)) ? '' : 'Not Near Map.';
 }
 
-function isNoOriginCity(userinfo, memo) {
-    userinfo.mapNowId
-}
-
 module.exports = {
     validate,
 }

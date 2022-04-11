@@ -38,6 +38,8 @@ function getInfo(key, data = {}) {
             return data[m1] || '?';
         });
         return detail;
+    } else if (typeof key == 'string') {
+        return key;
     }
     return null
 }

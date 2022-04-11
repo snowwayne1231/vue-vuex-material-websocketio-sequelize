@@ -65,12 +65,13 @@ module.exports = {
                 attributes: ['id', 'nickname', 'pwd', 'code'],
                 where: { code: code }
             });
-            if (user) {
+            if (user && user.pwd == '') {
                 user.pwd = md5(pwd);
+                console.log('[Register Success] md5: ', user.pwd);
                 await user.save();
                 return {done: true};
             }
-            return {done: false, msg: 'Code Not Found.'}
+            return {done: false, msg: 'Code Not Allowed Register.'}
         } else {
             return {done: false, msg: 'Password has difference.', register: true};
         }
@@ -119,13 +120,16 @@ module.exports = {
                         const gapMinutes = 60*24*5;
                         const nowMinutes = Math.floor(now.getTime() / 60000);
                         if ((nowMinutes - configs.recover) > gapMinutes){
-                            self.recoverPoint(ws, configs, nowMinutes).then((updated) => {
+                            return self.rewardPeople(ws, configs).then(() => {
+                                return self.recoverPoint(ws, configs, nowMinutes);
+                            }).then((updated) => {
                                 res.status(200).send(updated ? 'done' : 'nothing');
                             }).catch(err => {
+                                console.log(err);
                                 res.status(403).send(err);
                             });
                         } else {
-                            res.status(201).send('nothing');
+                            return res.status(201).send('nothing');
                         }
                     });
                 } else {
@@ -158,6 +162,32 @@ module.exports = {
             })
         }
         return true
+    },
+    rewardPeople: async function(ws, configs) {
+        const round = configs.round;
+        const rewards = await models.Reward.findAll({where: {datetime: {[sequelize.Op.lte]: new Date()}, status: 1}});
+        const memo = ws.getMemo();
+        for (let i = 0; i < rewards.length; i++) {
+            const users = await models.User.findAll({attributes: ['id', 'money', 'soldier', 'contribution']});
+            const userMap = {};
+            users.map(user => {
+                userMap[user.id] = user;
+            });
+            const reward = rewards[i];
+            const json = JSON.parse(reward.json);
+            for (let j = 0; j < json.length; j++) {
+                const loc = json[j];
+                const locUser = userMap[loc.id];
+                if (locUser) {
+                    await locUser.update({money: locUser.money + loc.money, soldier: locUser.soldier + loc.soldier, contribution: locUser.contribution + loc.contribution});
+                }
+            }
+            await reward.update({status: 2});
+            
+            if (memo) {
+                memo.eventCtl.broadcastInfo(`【${reward.title}】${reward.content}`, { round });
+            }
+        }
     },
     getUserTimes: async function() {
         const userts = await models.UserTime.findAll({where: {utype: enums.TYPE_USERTIME_FREE}});

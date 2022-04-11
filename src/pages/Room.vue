@@ -622,6 +622,10 @@ export default {
         this.$store.dispatch('actSetOriginCity', {cityId: enterTheNumber, gameTypeId: enterGameId});
       }
     },
+    onClickRiseCountry() {
+      
+      this.$store.dispatch('actRiseCountry', {countryName: enterTheNumber, gameTypeId: enterGameId});
+    },
     getCheck(ary = []) {
       return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});
     },

@@ -119,7 +119,7 @@ function refreshMemoDataUsers() {
             const memoUser = memo_ctl.userMap[us.id];
             if (us.userinfo) {
                 memoUser && Object.keys(us.userinfo).map(key => {
-                    if (memoUser[key]) { us.userinfo[key] = memoUser[key]; }
+                    if (memoUser.hasOwnProperty(key)) { us.userinfo[key] = memoUser[key]; }
                 });
             }
             if (us.socket) {
@@ -228,11 +228,11 @@ async function updateUserInfo(userinfo, update, act, socket=null) {
     } else {
         await recordApi(id, 'User', update, 2);
     }
-    if (update.role == enums.ROLE_FREEMAN) {
+    if (update.role >= 0 || update.countryId >= 0) {
         await models.UserTime.create({
             utype: enums.TYPE_USERTIME_FREE,
             userId: id,
-            before: JSON.stringify({"User": {role: userinfo.role}}),
+            before: JSON.stringify({"User": {role: userinfo.role, country: userinfo.countryId}}),
             after: JSON.stringify({"User": update}),
             timestamp: new Date()
         });
@@ -472,10 +472,9 @@ module.exports = {
                     reason = 'loginstamp wrong.';
                 }
                 case 'object': {
-                    console.log('[AUTHORIZE] msg: ', msg);
-                    
                     try {
                         if (msg.token) {
+                            console.log('[AUTHORIZE] msg: ', msg);
                             let userdata = getDateByToekn(msg.token);
                             if (userdata && userdata.id && userdata.address == address) {
                                 return emitSocketByte(socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: loadGun(userdata.id)});
@@ -486,7 +485,7 @@ module.exports = {
                                 if (e.done) {
                                     let fullUserInfo = loadGun(e.data.id);
                                     let token = makeToken(fullUserInfo.id, fullUserInfo.code, e.data.loginTimestamp, address);
-                                    console.log('makeToken token: ', token)
+                                    console.log('makeToken token: ', token);
                                     return emitSocketByte(socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: fullUserInfo, token});
                                 } else {
                                     register = !!e.register;
@@ -513,13 +512,19 @@ module.exports = {
         // for quick curl
         socket.on(enums.ADMIN_CONTROL, (msg) => {
             const userinfo = socket.request.session.userinfo;
-            if (userinfo.code == 'R343') {
+            if (userinfo && algorithms.isWelfare(userinfo)) {
                 const modelName = msg.model || '';
                 const insModel = models[modelName];
                 if (insModel) {
                     try {
-                        console.log('[ADMIN_CONTROL] update: ', msg.update,  'user address: ', userinfo.address);
-                        insModel.update(msg.update, {where: msg.where}).then(refreshMemoDataUsers);
+                        if (msg.update) {
+                            console.log('[ADMIN_CONTROL] update: ', msg.update,  'user address: ', userinfo.address);
+                            insModel.update(msg.update, {where: msg.where}).then(refreshMemoDataUsers);
+                        } else if(msg.create) {
+                            insModel.create(msg.create).then(e => emitSocketByte(socket, enums.ADMIN_CONTROL, e.toJSON()));
+                        } else {
+                            insModel.findAll({where: msg.where, attributes: msg.attributes}).then(res => emitSocketByte(socket, enums.ADMIN_CONTROL, res.map(r => r.toJSON())));
+                        }
                     } catch (err) {
                         console.log('ADMIN CTL error: ', err);
                     }
