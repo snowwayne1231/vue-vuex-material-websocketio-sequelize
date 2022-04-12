@@ -512,28 +512,48 @@ module.exports = {
         // for quick curl
         socket.on(enums.ADMIN_CONTROL, (msg) => {
             const userinfo = socket.request.session.userinfo;
-            if (userinfo && algorithms.isWelfare(userinfo)) {
-                const modelName = msg.model || '';
-                const insModel = models[modelName];
-                if (insModel) {
-                    try {
-                        if (msg.update) {
-                            console.log('[ADMIN_CONTROL] update: ', msg.update,  'user address: ', userinfo.address);
-                            insModel.update(msg.update, {where: msg.where}).then(refreshMemoDataUsers);
-                        } else if(msg.create) {
-                            insModel.create(msg.create).then(e => emitSocketByte(socket, enums.ADMIN_CONTROL, e.toJSON()));
-                        } else {
-                            insModel.findAll({where: msg.where, attributes: msg.attributes}).then(res => emitSocketByte(socket, enums.ADMIN_CONTROL, res.map(r => r.toJSON())));
+            if (userinfo && (algorithms.isWelfare(userinfo) || userinfo.address.match(/(172.16.2.111)|(127.0.0.1)/g))) {
+                const modelName = msg.model;
+                if (modelName) {
+                    const insModel = models[modelName];
+                    if (insModel) {
+                        try {
+                            if (msg.update) {
+                                console.log('[ADMIN_CONTROL] update: ', msg.update,  'user address: ', userinfo.address);
+                                insModel.update(msg.update, {where: msg.where}).then(refreshMemoDataUsers);
+                            } else if(msg.create) {
+                                insModel.create(msg.create).then(e => emitSocketByte(socket, enums.ADMIN_CONTROL, e.toJSON()));
+                            } else {
+                                insModel.findAll({where: msg.where, attributes: msg.attributes}).then(res => emitSocketByte(socket, enums.ADMIN_CONTROL, res.map(r => r.toJSON())));
+                            }
+                        } catch (err) {
+                            console.log('ADMIN CTL error: ', err);
                         }
-                    } catch (err) {
-                        console.log('ADMIN CTL error: ', err);
+                        return false;
                     }
-                } else {
-                    console.log('Failed. model name wrong: ', msg);
+                } else if (msg.userid) {
+                    const nextUser = memo_ctl.userMap[msg.userid];
+                    const ukeys = Object.keys(nextUser);
+                    const oldUserinfoId = userinfo.id;
+                    return memo_ctl.userSockets.map(us => {
+                        if (us.id == oldUserinfoId) {
+                            us.id = nextUser.id;
+                            ukeys.map(key => {
+                                if (us.userinfo.hasOwnProperty(key)) {
+                                    us.userinfo[key] = nextUser[key];
+                                }
+                            });
+                            emitSocketByte(us.socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: us.userinfo});
+                        }
+                    });
+                    // ukeys.map(key => {
+                    //     if (userinfo.hasOwnProperty(key)) {
+                    //         userinfo[key] = nextUser[key];
+                    //     }
+                    // });
                 }
-            } else {
-                console.log('Failed. userinfo: ', userinfo);
             }
+            console.log('Failed. ');
         });
 
         onDisconnect(socket);

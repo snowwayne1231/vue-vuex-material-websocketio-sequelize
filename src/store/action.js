@@ -77,8 +77,8 @@ module.exports = {
     actSetOriginCity: ({dispatch}, args) => {
         dispatch('wsEmitMessage', {act: enums.ACT_SET_ORIGIN_CITY, payload: args});
     },
-    actRiseCountry: ({dispatch}, args) => {
-        dispatch('wsEmitMessage', {act: enums.ACT_RISE_COUNTRY, payload: args});
+    actRaiseCountry: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_RAISE_COUNTRY, payload: args});
     },
     
     register,

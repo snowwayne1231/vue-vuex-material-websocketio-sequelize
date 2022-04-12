@@ -28,8 +28,6 @@
             <td>
               <li>
                 {{uu.nickname}} ( {{uu.soldier}} )
-                <i v-if="user.code=='R343'" class="plus-point" @click="onClickPlusPeople(uu)">+</i>
-                <i v-if="user.code=='R343'">{{uu.code}}</i>
               </li>
             </td>
           </tr>
@@ -102,13 +100,6 @@ export default {
     // console.log('citydata: ', this.citydata);
   },
   methods: {
-    onClickPlusPeople(user) {
-      var where = {id: user.id};
-      var update = {actPoint: 100};
-      var model = 'User';
-      var sendto = {model, where, update};
-      return window.confirm(`確定儲給 ${user.nickname} ${100}行動嗎`) && this.$store.dispatch('wsEmitADMINCTL', sendto);
-    },
     getUserOccupation(user) {
       let ext = (user.captiveDate) ? '(俘虜)' : '';
       switch (user.role) {

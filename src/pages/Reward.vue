@@ -55,7 +55,8 @@
               <td>{{new Date(reward.datetime).toLocaleString()}}</td>
               <td>{{reward.status == 1 ? '未發送' : '已發送'}}</td>
               <td>
-                <span v-if="reward.status == 1" class="md-icon close" @click="onClickDeleteReward(reward)">close</span>
+                <span v-if="reward.status == 1" class="md-icon save" @click="onClickSaveReward(reward, $event)">save</span>
+                <span v-if="reward.status == 1" class="md-icon close" @click="onClickDeleteReward(reward, $event)">close</span>
                 <span v-if="reward.status == 2" class="md-icon check">check</span>
                 <span v-if="reward.status == 4" class="md-icon delete">delete_forever</span>
               </td>
@@ -100,6 +101,10 @@ export default {
     },
   },
   mounted() {
+    if (!['R343', 'R307', 'R064'].includes(this.user.code)) {
+      window.alert('福委用的');
+      return this.$router.push('/');
+    }
     this.reload();
   },
   methods: {
@@ -147,10 +152,34 @@ export default {
         }
       });
     },
-    onClickDeleteReward(reward) {
+    onClickDeleteReward(reward, evt) {
+      evt.stopPropagation();
       if (window.confirm(`確定刪除 ${reward.title} 嗎?`)) {
         const update = {
           status: 4,
+        }
+        const where = {id: reward.id}
+        var sendto = {model: 'Reward', update, where}
+        this.$store.dispatch('wsEmitADMINCTL', sendto);
+        const reload = this.reload;
+        window.setTimeout(reload, 1000);
+      }
+    },
+    onClickSaveReward(reward, evt) {
+      evt.stopPropagation();
+      if (window.confirm(`儲存 ${reward.title} 嗎?`)) {
+        const result = [];
+        const rl = this.rewardList;
+        this.listUsers.map((user, idx) => {
+          const res = {...rl[idx], id: user.id, nn: user.nickname};
+          result.push(res);
+        });
+        
+        const update = {
+          title: this.title,
+          content: this.content,
+          datetime: this.activeDate,
+          json: JSON.stringify(result),
         }
         const where = {id: reward.id}
         var sendto = {model: 'Reward', update, where}

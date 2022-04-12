@@ -5,6 +5,7 @@
         <md-card-header-text>
           <div class="md-title">
             <span>{{user.nickname}} </span>
+            <span class="md-icon btn" @click="openHeroRanking = true">description</span>
           </div>
           <div class="md-subhead">
             <span>行動力: ( {{user.actPoint}} ) | </span>
@@ -96,6 +97,7 @@
           <button @click="onClickRecruitCaptive">招募俘虜</button>
           <button @click="onClickReleaseCaptive">釋放俘虜</button>
           <button @click="onClickSetOriginCity">遷都</button>
+          <button @click="onClickRaiseCountry">起義</button>
         </div>
         <div class="notifications">
           <ul>
@@ -214,6 +216,29 @@
             </table>
           </div>
         </div>
+        <div class="mask" v-if="openHeroRanking" @click="openHeroRanking = false">
+          <div @click="$event.stopPropagation()" class="basic-dialog hero-ranking">
+            <ul class="header">
+              <li>
+                <span>編號</span>
+                <span>武將</span>
+                <span>所在地</span>
+                <span>功能</span>
+              </li>
+            </ul>
+            <ul>
+              <li v-for="user in global.users" :key="user.id">
+                <span>{{user.code}} <i v-if="countryMap[user.countryId]" :style="{color: countryMap[user.countryId].color.split(',')[0]}" class="md-icon">flag</i></span>
+                <span>{{user.nickname}}</span>
+                <span>{{mapHash[user.mapNowId].name}}</span>
+                <span>
+                  <i class="md-icon btn" @click="onClickPlusPeople(user)">add_alarm</i>
+                  <i class="md-icon btn" @click="onClickChangeUser(user)">assignment_ind</i>
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
       </md-card-content>
     </md-card>
   </div>
@@ -241,6 +266,7 @@ export default {
       selectedCityName: '',
       openSharePanel: false,
       openHistoryWars: false,
+      openHeroRanking: false,
       shareData: {
         userId: 0,
         money: 0,
@@ -347,6 +373,13 @@ export default {
       const map = {};
       self.global.users.map(u => {
         map[u.id] = u;
+      });
+      return map;
+    },
+    mapHash(self) {
+      const map = {'0': 'unknown'};
+      self.global.maps.map(m => {
+        map[m.id] = m;
       });
       return map;
     },
@@ -622,9 +655,29 @@ export default {
         this.$store.dispatch('actSetOriginCity', {cityId: enterTheNumber, gameTypeId: enterGameId});
       }
     },
-    onClickRiseCountry() {
-      
-      this.$store.dispatch('actRiseCountry', {countryName: enterTheNumber, gameTypeId: enterGameId});
+    onClickRaiseCountry() {
+      const me = this.user;
+      if (me.role == enums.ROLE_FREEMAN && this.global.users.filter(user => user.mapNowId == me.mapNowId).length > 4) {
+        if (window.confirm('確定在此起義嗎?')) {
+          const countryName = window.prompt('輸入國家名稱(兩中文字內): ');
+          const colorBg = window.prompt('輸入國家背景色(RGB,例如#ff00ff): ');
+          const colorText = window.prompt('輸入國家字色(RGB,例如#ffff00): ');
+          const gameTypeId = parseInt(window.prompt(gameTypes.map(f => `${f[0]} -> ${f[1]}`).join('\r\n')));
+          this.$store.dispatch('actRaiseCountry', {countryName, gameTypeId, colorBg, colorText});
+        }
+      } else {
+        window.alert('不能起義');
+      }
+    },
+    onClickPlusPeople(user) {
+      var where = {id: user.id};
+      var update = {actPoint: 100};
+      var model = 'User';
+      var sendto = {model, where, update};
+      return window.confirm(`確定儲給 ${user.nickname} ${100}行動嗎`) && this.$store.dispatch('wsEmitADMINCTL', sendto);
+    },
+    onClickChangeUser(user) {
+      this.$store.dispatch('wsEmitADMINCTL', {userid: user.id});
     },
     getCheck(ary = []) {
       return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});
@@ -824,6 +877,36 @@ export default {
 .show-battle-detail {
   span {
     color: red;
+  }
+}
+
+.hero-ranking {
+  max-height: 600px;
+  ul {
+    list-style: none;
+    padding: 0px;
+    margin: 0px;
+    overflow: auto;
+    max-height: 540px;
+    &.header {
+      li {
+        color: #f1e425;
+        background-color: #424242;
+        font-size: 16px;
+        font-weight: 700;
+      }
+    }
+  }
+  li {
+    display: flex;
+    text-align: left;
+    padding: 0px 6px;
+    &:nth-child(odd) {
+      background-color: #767676;
+    }
+    span {
+      flex: 1;
+    }
   }
 }
 </style>

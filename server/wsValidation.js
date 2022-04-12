@@ -92,6 +92,14 @@ function validate(act, payload, userinfo, memo) {
             const gameTypeId = payload.gameTypeId;
             res.msg = isRoleEmperor(userinfo) || hasPoint(userinfo, 1) || isNoOriginCity(userinfo, memo) || isCityInMyCountry(cityId, userinfo, memo) || isExistGameType(gameTypeId);
         } break
+        case enums.ACT_RAISE_COUNTRY: {
+            const countryName = payload.countryName;
+            const gameTypeId = payload.gameTypeId;
+            const colorBg = payload.colorBg;
+            const colorText = payload.colorText;
+            res.msg = isAllowedCountryName(countryName) || isExistGameType(gameTypeId) || hasPoint(userinfo, 1) || isFreeMan(userinfo.id, memo) || isFiveFreeManHere(userinfo, memo)
+                    || isRGBFormat(colorBg) || isRGBFormat(colorText) || isExistMap(userinfo.mapNowId, memo) || isHereCityMap(userinfo.mapNowId, memo);
+        } break
         default:
             console.log("Not Found Act: ", act);
             res.msg = 'Unknown Action.';
@@ -190,6 +198,11 @@ function isRoleNotFree(userinfo) {
 
 function isFreeMan(userId, memo) {
     return memo.userMap[userId] && memo.userMap[userId].role == enums.ROLE_FREEMAN ? '' : 'Not Freeman.';
+}
+
+function isFiveFreeManHere(userinfo, memo) {
+    const imhere = userinfo.mapNowId;
+    return Object.values(memo.userMap).filter(user => user.mapNowId == imhere && user.role == enums.ROLE_FREEMAN).length >= 5 ? '' : '';
 }
 
 function isRoleEmperor(userinfo) {
@@ -380,6 +393,14 @@ function isNearMap(userId, mapId, memo) {
     const now = user ? user.mapNowId : 0;
     const map = memo.mapIdMap[now];
     return map && (now == mapId || map.route.includes(mapId)) ? '' : 'Not Near Map.';
+}
+
+function isAllowedCountryName(name) {
+    return name && name.length <= 2 && !name.match(/[\w\s]+/g) ? '' : 'Not Allowed Name.';
+}
+
+function isRGBFormat(color) {
+    return typeof color == 'string' && color.match(/^\#[\w]{6}$/i) ? '' : 'Color Format Not Match.';
 }
 
 module.exports = {

@@ -488,6 +488,12 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                     return updateOriginCity(cityId, map.id, gameTypeId, userinfo, memoController);
                 });
             }
+            case enums.ACT_RAISE_COUNTRY: {
+                return createCountry(payload, userinfo, memoController).then((data) => {
+                    const round = configs.round.value;
+                    return memoController.eventCtl.broadcastInfo(enums.EVENT_GROUP_UP, { round, users: data.users, mapName: data.mapName });
+                });
+            }
             
             default:
                 console.log("Not Found Act: ", act);
@@ -623,6 +629,48 @@ function getCityConstruction(mapId, name, memoController) {
     const map = memoController.mapIdMap[mapId];
     const city = map.cityId > 0 ? memoController.cityMap[map.cityId] : null;
     return city && city.jsonConstruction && city.jsonConstruction.hasOwnProperty(name) ? city.jsonConstruction[name] : {lv: 0, value: 0};
+}
+
+async function createCountry(payload, userinfo, memoController) {
+    const countryName = payload.countryName;
+    const gameTypeId = payload.gameTypeId;
+    const colorBg = payload.colorBg;
+    const colorText = payload.colorText;
+    const thisMap = memoController.mapIdMap[userinfo.mapNowId];
+    const newCountry = await models.Country.create({
+        name: countryName,
+        money: 1,
+        emperorId: userinfo.id,
+        peopleMax: 15,
+        color: `${colorBg},${colorText}`,
+        originCityId: thisMap.cityId,
+    });
+    const jsonCountry = newCountry.toJSON();
+    memoController.countryMap[jsonCountry.id] = jsonCountry;
+
+    await models.Map.update({
+        gameType: gameTypeId,
+    },{where: {id: thisMap.id}});
+    memoController.mapIdMap[userinfo.mapNowId].gameType = gameTypeId;
+
+    const freeusers = Object.values(memoController.userMap).filter(user => user.mapNowId == thisMap.id && user.role == enums.ROLE_FREEMAN);
+    let users = `${userinfo.nickname}`;
+    for (let i = 0; i < freeusers.length; i++) {
+        let user = freeusers[i];
+        await updateSingleUser(user.id, {countryId: jsonCountry.id, role: enums.ROLE_GENERMAN, actPointMax: 7, occupationId: 0, loyalUserId: userinfo.id}, userinfo, memoController);
+        if (user.id != userinfo.id) {
+            users += `,${user.nickname}`;
+        }
+    }
+    broadcastSocket(memoController, {act: enums.ACT_RAISE_COUNTRY, payload: {newCountry: jsonCountry, mapId: thisMap.id}});
+
+    await models.RecordApi.create({
+        userId: userinfo.id,
+        model: 'Country',
+        payload: JSON.stringify(jsonCountry),
+        curd: 1,
+    });
+    return {users, mapName: thisMap.name};
 }
 
 module.exports = onMessage
