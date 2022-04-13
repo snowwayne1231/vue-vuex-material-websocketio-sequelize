@@ -202,7 +202,9 @@ function isFreeMan(userId, memo) {
 
 function isFiveFreeManHere(userinfo, memo) {
     const imhere = userinfo.mapNowId;
-    return Object.values(memo.userMap).filter(user => user.mapNowId == imhere && user.role == enums.ROLE_FREEMAN).length >= 5 ? '' : '';
+    const users = Object.values(memo.userMap).filter(user => user.mapNowId == imhere);
+    const freemans = users.filter(user => user.role == enums.ROLE_FREEMAN);
+    return freemans.length >= 5 && users.length == freemans.length ? '' : 'Not Just >= 5 Freeman In Here.';
 }
 
 function isRoleEmperor(userinfo) {

@@ -8,6 +8,7 @@
             <span class="md-icon btn" @click="openHeroRanking = true">description</span>
           </div>
           <div class="md-subhead">
+            <i class="md-icon btn" @click="onClickPlusPeople(user)">add_alarm</i>
             <span>行動力: ( {{user.actPoint}} ) | </span>
             <span>國家: ⚑[ {{myCountry.name}} ]⚑ | </span>
             <span>金: {{user.money}} 💰 | </span>
@@ -482,7 +483,7 @@ export default {
       }
     },
     onClickPoint(dataset) {
-      console.log('onClickPoint: ', dataset);
+      // console.log('onClickPoint: ', dataset);
       if (this.showLights.includes(dataset.id)) {
         let yes = window.confirm('確定移動這此嗎?');
         if (yes) {
@@ -662,6 +663,10 @@ export default {
           const countryName = window.prompt('輸入國家名稱(兩中文字內): ');
           const colorBg = window.prompt('輸入國家背景色(RGB,例如#ff00ff): ');
           const colorText = window.prompt('輸入國家字色(RGB,例如#ffff00): ');
+          // const countryName = '測試';
+          // const colorBg = '#00ffff';
+          // const colorText = '#00FF00';
+          const gameTypes = Object.keys(enums.CHINESE_GAMETYPE_NAMES).map(key => [parseInt(key), enums.CHINESE_GAMETYPE_NAMES[key]]);
           const gameTypeId = parseInt(window.prompt(gameTypes.map(f => `${f[0]} -> ${f[1]}`).join('\r\n')));
           this.$store.dispatch('actRaiseCountry', {countryName, gameTypeId, colorBg, colorText});
         }

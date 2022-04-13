@@ -120,6 +120,17 @@ const global = {
         case enums.ACT_GET_BATTLE_DETAIL: {
           state.battleRecordDetails = payload;
         } break
+        case enums.ACT_RAISE_COUNTRY: {
+          const newCountry = payload.newCountry;
+          const mapId = payload.mapId;
+          const gameType = payload.gameType;
+          const idx = state.maps.findIndex(m => m.id == mapId);
+          state.maps[idx].gameType = gameType;
+          state.maps[idx].ownCountryId = newCountry.id;
+          const newCountries = state.countries.slice();
+          newCountries.push(newCountry);
+          state.countries = newCountries;
+        } break
         case enums.ADMIN_CONTROL: {
           console.log(payload);
         } break

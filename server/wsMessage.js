@@ -2,7 +2,7 @@ const enums = require('../src/enum');
 const models = require('./models');
 const algorithms = require('./websocketctl/algorithm');
 const validation = require('./wsValidation');
-const { Op } = require("sequelize");
+const sequelize = require('sequelize');
 
 
 function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
@@ -139,7 +139,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 }
 
                 return models.RecordWar.findAll({
-                    where: { winnerCountryId: 0, timestamp: { [Op.gte]: new Date() } },
+                    where: { winnerCountryId: 0, timestamp: { [sequelize.Op.gte]: new Date() } },
                     attributes: ['timestamp', 'detail', 'round', 'mapId'],
                     order: [['timestamp', 'DESC']]
                 }).then(wars => {
@@ -638,6 +638,7 @@ async function createCountry(payload, userinfo, memoController) {
     const colorText = payload.colorText;
     const thisMap = memoController.mapIdMap[userinfo.mapNowId];
     const newCountry = await models.Country.create({
+        id: Object.keys(memoController.countryMap).length + 1,
         name: countryName,
         money: 1,
         emperorId: userinfo.id,
@@ -650,8 +651,11 @@ async function createCountry(payload, userinfo, memoController) {
 
     await models.Map.update({
         gameType: gameTypeId,
+        ownCountryId: jsonCountry.id,
     },{where: {id: thisMap.id}});
-    memoController.mapIdMap[userinfo.mapNowId].gameType = gameTypeId;
+    memoController.mapIdMap[thisMap.id].gameType = gameTypeId;
+    memoController.mapIdMap[thisMap.id].ownCountryId = jsonCountry.id;
+    algorithms.updateHash(thisMap.id, 'country', jsonCountry.id);
 
     const freeusers = Object.values(memoController.userMap).filter(user => user.mapNowId == thisMap.id && user.role == enums.ROLE_FREEMAN);
     let users = `${userinfo.nickname}`;
@@ -662,7 +666,7 @@ async function createCountry(payload, userinfo, memoController) {
             users += `,${user.nickname}`;
         }
     }
-    broadcastSocket(memoController, {act: enums.ACT_RAISE_COUNTRY, payload: {newCountry: jsonCountry, mapId: thisMap.id}});
+    broadcastSocket(memoController, {act: enums.ACT_RAISE_COUNTRY, payload: {newCountry: jsonCountry, mapId: thisMap.id, gameType: gameTypeId}});
 
     await models.RecordApi.create({
         userId: userinfo.id,
