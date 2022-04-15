@@ -4,7 +4,6 @@ const algorithms = require('./websocketctl/algorithm');
 const validation = require('./wsValidation');
 const sequelize = require('sequelize');
 
-
 function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
     
     socket.on(enums.MESSAGE, (msg) => {
@@ -23,7 +22,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
 
 
     function subSwitchOnMessage(act, payload, userinfo) {
-        
+        // console.log('subSwitchOnMessage: act: ', act);
         switch (act) {
             case enums.ACT_GET_GLOBAL_USERS_INFO: {
                 const ugAttributes = enums.UserGlobalAttributes;
@@ -120,6 +119,13 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const isFreeWild = usersHere.length == 0 && thisMap.cityId == 0;
                 const atkCountryName = userCountry.name;
                 const noCountry = thisMap.ownCountryId == 0;
+
+                const now = new Date();
+                const nowMap = memoController.mapIdMap[userinfo.mapNowId];
+                const nowTimeMinutes = Math.floor(now.getTime() / 1000 / 60);
+                if (nowTimeMinutes < nowMap.adventureId) {
+                    return subEmitMessage(enums.ALERT, {deadline: new Date(nowMap.adventureId*60*1000), map: nowMap.name, act});
+                }
                 if (noCountry || isFreeWild) { // empty or wild
                     return asyncUpdateUserInfo(userinfo, {
                         actPoint: userinfo.actPoint - enums.NUM_BATTLE_ACTION_MIN,
@@ -524,11 +530,16 @@ function broadcastSocket(memoctl, data) {
 
 
 async function updateMapOwner(mapId, countryId, userinfo, memoController=null) {
+    const now = new Date();
+    now.setDate(now.getDate() + 1);
+    const timeMinutes = Math.floor(now.getTime() / 1000 / 60);
     await models.Map.update({
         ownCountryId: countryId,
+        adventureId: timeMinutes,
     }, {where: { id: mapId }});
     if (memoController) {
         memoController.mapIdMap[mapId].ownCountryId = countryId;
+        memoController.mapIdMap[mapId].adventureId = timeMinutes;
         algorithms.updateHash(mapId, 'country', countryId);
     }
     await models.RecordApi.create({
@@ -536,7 +547,7 @@ async function updateMapOwner(mapId, countryId, userinfo, memoController=null) {
         model: 'Map',
         payload: JSON.stringify({id: mapId, ownCountryId: countryId}),
         curd: 2,
-    })
+    });
     return true
 }
 
@@ -637,9 +648,11 @@ async function createCountry(payload, userinfo, memoController) {
     const colorBg = payload.colorBg;
     const colorText = payload.colorText;
     const thisMap = memoController.mapIdMap[userinfo.mapNowId];
+    console.log('createCountry: ', countryName, colorBg);
     const newCountry = await models.Country.create({
         id: Object.keys(memoController.countryMap).length + 1,
         name: countryName,
+        sign: countryName,
         money: 1,
         emperorId: userinfo.id,
         peopleMax: 15,
@@ -661,7 +674,7 @@ async function createCountry(payload, userinfo, memoController) {
     let users = `${userinfo.nickname}`;
     for (let i = 0; i < freeusers.length; i++) {
         let user = freeusers[i];
-        await updateSingleUser(user.id, {countryId: jsonCountry.id, role: enums.ROLE_GENERMAN, actPointMax: 7, occupationId: 0, loyalUserId: userinfo.id}, userinfo, memoController);
+        await updateSingleUser(user.id, {countryId: jsonCountry.id, role: enums.ROLE_GENERMAN, actPointMax: 7, occupationId: 0, loyalUserId: user.id == userinfo.id ? 0 : userinfo.id}, userinfo, memoController);
         if (user.id != userinfo.id) {
             users += `,${user.nickname}`;
         }

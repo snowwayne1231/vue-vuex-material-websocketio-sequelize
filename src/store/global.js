@@ -135,7 +135,11 @@ const global = {
           console.log(payload);
         } break
         case enums.ALERT: {
-          window.alert(payload.msg);
+          let errorMsg =payload.msg;
+          if (payload.act == enums.ACT_BATTLE) {
+            errorMsg = `${payload.map} 正在修整剛佔領的據點 於 ${new Date(payload.deadline).toLocaleString()} 修整完畢`;
+          }
+          window.alert(errorMsg);
         }
         default:
       }

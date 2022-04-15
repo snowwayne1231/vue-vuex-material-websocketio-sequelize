@@ -33,15 +33,15 @@ function init(memo) {
 
 function getInfo(key, data = {}) {
     const event = hash[key];
+    let detail = event.detail;
     if (event) {
-        let detail = event.detail.replace(/\{(.+?)\}/gi, function(m, m1) {
-            return data[m1] || '?';
-        });
-        return detail;
+        
     } else if (typeof key == 'string') {
-        return key;
+        detail = key;
     }
-    return null
+    return detail.replace(/\{(.+?)\}/gi, function(m, m1) {
+        return data[m1] || '?';
+    });
 }
 
 function getId(key) {

@@ -145,7 +145,7 @@ function refreshBasicData(u=true, m=true, c=true, callback=null) {
     }
     
     if (m) {
-        const promise2 = models.Map.findAll({attributes: {exclude: ['adventureId', 'createdAt', 'updatedAt']}}).then(maps => {
+        const promise2 = models.Map.findAll({attributes: {exclude: ['createdAt']}}).then(maps => {
             const _maps = maps.map(m => {
                 let _m = m.toJSON();
                 _m.type = _m.cityId > 0 ? enums.TYPE_CITY : enums.TYPE_WILD;
@@ -512,8 +512,9 @@ module.exports = {
         // for quick curl
         socket.on(enums.ADMIN_CONTROL, (msg) => {
             const userinfo = socket.request.session.userinfo;
-            // console.log('socket.request.headers: ', socket.request.headers)
-            const isQAsizePort = !!socket.request.headers.origin.match(/\:12022.?$/g);
+            // console.log('socket.request.headers: ', socket.request.headers);
+            const headerInfo = socket.request.headers.origin ? socket.request.headers.origin : socket.request.headers.host;
+            const isQAsizePort = headerInfo && !!headerInfo.match(/\:12022.?$/g);
             if (userinfo && ((algorithms.isWelfare(userinfo) && isQAsizePort) || userinfo.address.match(/(172.16.2.111)|(127.0.0.1)/g))) {
                 const modelName = msg.model;
                 if (modelName) {

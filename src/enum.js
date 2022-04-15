@@ -42,6 +42,7 @@ module.exports = {
     ACT_REBELLION: 40,
     ACT_USE_ITEM: 41,
     ACT_TRADE: 42,
+    MSG_BATTLE_STOP: 'BATTLE_STOP',
     UserGlobalAttributes: ['id', 'code', 'nickname', 'countryId', 'loyalty', 'loyalUserId', 'contribution', 'occupationId', 'role', 'mapNowId', 'soldier', 'captiveDate', 'actPointMax'],
     MapsGlobalAttributes: ['id', 'name', 'x', 'y', 'route', 'cityId', 'ownCountryId', 'gameType'],
     CityGlobalAttributes: ['id', 'money', 'addResource', 'timeBeAttacked', 'jsonConstruction'],

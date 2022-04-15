@@ -14,9 +14,9 @@ module.exports = (sequelize, DataTypes) => {
       Map.belongsTo(models.City, {
         foreignKey: 'cityId',
       });
-      Map.belongsTo(models.Adventure, {
-        foreignKey: 'adventureId',
-      });
+      // Map.belongsTo(models.Adventure, {
+      //   foreignKey: 'adventureId',
+      // });
       Map.belongsTo(models.Country, {
         foreignKey: 'ownCountryId',
       });

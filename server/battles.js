@@ -63,6 +63,9 @@ function refresBattlefields() {
             console.log('err: ', err);
         });
     }
+    if (now.getHours() == 15) {
+        // check map can use battle
+    }
 }
 
 async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false) {
@@ -212,7 +215,7 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
                         } else {
                             userUpdateData.mapNowId = nextMapIds[Math.floor(Math.random() * nextMapIds.length)];
                         }
-                    } else if (user.captiveDate) {
+                    } else if (user.captiveDate && user.countryId == warModel.winnerCountryId) {
                         userUpdateData.captiveDate = null;
                     } else {
                         continue
