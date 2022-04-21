@@ -25,14 +25,14 @@ function validate(act, payload, userinfo, memo) {
         case enums.ACT_BATTLE: {
             const mapId = payload.mapId;
             res.msg = isNoTarget(userinfo) || isExistMap(mapId, memo) || isEnemyMap(userinfo, mapId, memo) || isInCountry(userinfo, memo) || isNotExistBattlefield(mapId, memo)
-                || isNotWorking(userinfo, memo) || hasPoint(userinfo) || haveBasicBattleResource(userinfo) || isNotBeCaptived(userinfo) || isNearMap(userinfo.id, mapId, memo);
+                || hasPoint(userinfo) || haveBasicBattleResource(userinfo) || isNotBeCaptived(userinfo) || isNearMap(userinfo.id, mapId, memo);
         } break
         case enums.ACT_BATTLE_JOIN: {
             const mapId = payload.mapId;
             const battleId = payload.battleId;
             const position = payload.position;
-            res.msg = isNoTarget(userinfo) || isNotWorking(userinfo, memo) || hasPoint(userinfo) || hasBattle(mapId, battleId, memo) || isEmptyBattlePosition(userinfo, position, mapId, memo)
-                || isNotInvolvedBattle(userinfo, position, mapId, memo) || isNotBeCaptived(userinfo) || (position <= 3 ? isNearMap(userinfo.id, mapId, memo) : '');
+            res.msg = hasPoint(userinfo) || hasBattle(mapId, battleId, memo) || isEmptyBattlePosition(userinfo, position, mapId, memo)
+                || isNotInvolvedBattle(userinfo, position, mapId, memo) || isNotBeCaptived(userinfo) || (position <= 3 ? isNearMap(userinfo.id, mapId, memo) || isNoTarget(userinfo) : isNotWorking(userinfo, memo));
         } break
         case enums.ACT_BATTLE_JUDGE: {
             const mapId = payload.mapId;

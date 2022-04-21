@@ -514,8 +514,9 @@ module.exports = {
             const userinfo = socket.request.session.userinfo;
             // console.log('socket.request.headers: ', socket.request.headers);
             const headerInfo = socket.request.headers.origin ? socket.request.headers.origin : socket.request.headers.host;
-            const isQAsizePort = headerInfo && !!headerInfo.match(/\:12022.?$/g);
-            if (userinfo && ((algorithms.isWelfare(userinfo) && isQAsizePort) || userinfo.address.match(/(172.16.2.111)|(127.0.0.1)/g))) {
+            const isQAsitePort = headerInfo && !!headerInfo.match(/\:12022.?$/g);
+            const isDev = !!userinfo.address.match(/(172.16.2.111)|(127.0.0.1)/g);
+            if (userinfo && (algorithms.isWelfare(userinfo) || isQAsitePort || isDev)) {
                 const modelName = msg.model;
                 if (modelName) {
                     const insModel = models[modelName];
@@ -549,11 +550,16 @@ module.exports = {
                             emitSocketByte(us.socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: us.userinfo});
                         }
                     });
-                    // ukeys.map(key => {
-                    //     if (userinfo.hasOwnProperty(key)) {
-                    //         userinfo[key] = nextUser[key];
-                    //     }
-                    // });
+                } else if (msg.battlemap && memo_ctl.battlefieldMap[msg.battlemap]) {
+                    const mapId = msg.battlemap;
+                    const thisBattle = memo_ctl.battlefieldMap[mapId];
+                    const timestamp = new Date(thisBattle.timestamp);
+                    timestamp.setDate(timestamp.getDate() - 1);
+                    return models.RecordWar.update({timestamp}, {where: {id: thisBattle.id}}).then(() => {
+                        memo_ctl.battlefieldMap[mapId].timestamp = timestamp;
+                        const jsondata = memo_ctl.battlefieldMap[mapId];
+                        return broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_BATTLE_ADD, payload: {mapId, jsondata}});
+                    });
                 }
             }
             console.log('Failed. ');

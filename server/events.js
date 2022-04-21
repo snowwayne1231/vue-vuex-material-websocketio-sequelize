@@ -33,9 +33,9 @@ function init(memo) {
 
 function getInfo(key, data = {}) {
     const event = hash[key];
-    let detail = event.detail;
+    let detail = '';
     if (event) {
-        
+        detail = event.detail;
     } else if (typeof key == 'string') {
         detail = key;
     }

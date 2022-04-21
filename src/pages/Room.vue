@@ -42,7 +42,7 @@
                 </dd>
                 <table class="table">
                   <tr>
-                    <td colspan="2">{{p.battlearea.time}}</td>
+                    <td colspan="2">{{p.battlearea.time}}<i class="md-icon alarm" @click="onClickDecreaseBattleDay(p.id)">alarm</i></td>
                   </tr>
                   <tr>
                     <th width="50%">{{p.battlearea.atkCountry}}</th>
@@ -683,6 +683,9 @@ export default {
     },
     onClickChangeUser(user) {
       this.$store.dispatch('wsEmitADMINCTL', {userid: user.id});
+    },
+    onClickDecreaseBattleDay(mapId) {
+      this.$store.dispatch('wsEmitADMINCTL', {battlemap: mapId});
     },
     getCheck(ary = []) {
       return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});

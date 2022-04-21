@@ -111,13 +111,15 @@ module.exports = {
             case 'checkweek': {
                 const recoverDay = 1;
                 const now = new Date();
+                const headerInfo = req.headers.origin ? req.headers.origin : req.headers.host;
+                const isQAsitePort = headerInfo && !!headerInfo.match(/\:12022.?$/g);
                 console.log('[System][CheckWeek]: ', now.toLocaleString());
-                if (now.getDay()==recoverDay) {
+                if (now.getDay()==recoverDay || isQAsitePort) {
                     const self = this;
                     const configs = {round: 0, recover: 0};
                     return models.Config.findAll({attributes: ['name', 'status'], where: {open: true}}).then(cs => {
                         cs.map(c => { if (configs[c.name] >= 0) { configs[c.name] = c.status; } });
-                        const gapMinutes = 60*24*5;
+                        const gapMinutes = 60*23;
                         const nowMinutes = Math.floor(now.getTime() / 60000);
                         if ((nowMinutes - configs.recover) > gapMinutes){
                             return self.rewardPeople(ws, configs).then(() => {
@@ -166,26 +168,28 @@ module.exports = {
     rewardPeople: async function(ws, configs) {
         const round = configs.round;
         const rewards = await models.Reward.findAll({where: {datetime: {[sequelize.Op.lte]: new Date()}, status: 1}});
-        const memo = ws.getMemo();
-        for (let i = 0; i < rewards.length; i++) {
+        if (rewards.length > 0) {
+            const memo = ws.getMemo();
             const users = await models.User.findAll({attributes: ['id', 'money', 'soldier', 'contribution']});
             const userMap = {};
             users.map(user => {
                 userMap[user.id] = user;
             });
-            const reward = rewards[i];
-            const json = JSON.parse(reward.json);
-            for (let j = 0; j < json.length; j++) {
-                const loc = json[j];
-                const locUser = userMap[loc.id];
-                if (locUser) {
-                    await locUser.update({money: locUser.money + loc.money, soldier: locUser.soldier + loc.soldier, contribution: locUser.contribution + loc.contribution});
+            for (let i = 0; i < rewards.length; i++) {
+                const reward = rewards[i];
+                const json = JSON.parse(reward.json);
+                for (let j = 0; j < json.length; j++) {
+                    const loc = json[j];
+                    const locUser = userMap[loc.id];
+                    if (locUser) {
+                        await locUser.update({money: locUser.money + loc.money, soldier: locUser.soldier + loc.soldier, contribution: locUser.contribution + loc.contribution});
+                    }
                 }
-            }
-            await reward.update({status: 2});
-            
-            if (memo) {
-                memo.eventCtl.broadcastInfo(`【${reward.title}】${reward.content}`, { round });
+                await reward.update({status: 2});
+                
+                if (memo) {
+                    memo.eventCtl.broadcastInfo(`【${reward.title}】${reward.content}`, { round });
+                }
             }
         }
     },

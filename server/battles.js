@@ -50,7 +50,7 @@ function refresBattlefields() {
                 if (sumDefSoldier > sumAtkSoldier) {
                     return handleWarWinner(war, false);
                 } else if ( sumDefSoldier == 0) {
-                    return handleWarWinner(war, false);
+                    return handleWarWinner(war, true);
                 } else {
                     return handleWarLock(war);
                 }
@@ -62,9 +62,6 @@ function refresBattlefields() {
         }).catch(err => {
             console.log('err: ', err);
         });
-    }
-    if (now.getHours() == 15) {
-        // check map can use battle
     }
 }
 
