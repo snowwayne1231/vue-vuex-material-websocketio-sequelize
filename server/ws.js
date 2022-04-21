@@ -520,28 +520,28 @@ module.exports = {
             const isDevsite = !!userinfo.address.match(/(172.16.2.111)|(127.0.0.1)/g);
             const canQA = userinfo && (algorithms.isWelfare(userinfo) || isQAsitePort || isDevsite);
             const canFix = isPRODsite ? userinfo && userinfo.code == 'R343' : canQA;
-            if (canFix) {
+            if (canQA) {
                 const modelName = msg.model;
                 if (modelName) {
                     const insModel = models[modelName];
                     if (insModel) {
                         try {
-                            if (msg.update) {
+                            if (msg.update && canFix) {
                                 console.log('[ADMIN_CONTROL] update.  user address: ', userinfo.address);
                                 insModel.update(msg.update, {where: msg.where}).then(refreshMemoDataUsers);
                                 return recordApi(userinfo.id, modelName, msg.update, 2);
                             } else if(msg.create) {
                                 insModel.create(msg.create).then(e => emitSocketByte(socket, enums.ADMIN_CONTROL, e.toJSON()));
                                 return recordApi(userinfo.id, modelName, msg.create, 1);
-                            } else {
-                                insModel.findAll({where: msg.where, attributes: msg.attributes}).then(res => emitSocketByte(socket, enums.ADMIN_CONTROL, res.map(r => r.toJSON())));
+                            } else if(msg.attributes) {
+                                return insModel.findAll({where: msg.where, attributes: msg.attributes}).then(res => emitSocketByte(socket, enums.ADMIN_CONTROL, res.map(r => r.toJSON())));
                             }
                         } catch (err) {
                             console.log('ADMIN CTL error: ', err);
                         }
                         return false;
                     }
-                } else if (msg.userid) {
+                } else if (msg.userid && canFix) {
                     const nextUser = memo_ctl.userMap[msg.userid];
                     const ukeys = Object.keys(nextUser);
                     const oldUserinfoId = userinfo.id;
@@ -556,7 +556,7 @@ module.exports = {
                             emitSocketByte(us.socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: us.userinfo});
                         }
                     });
-                } else if (msg.battlemap && memo_ctl.battlefieldMap[msg.battlemap]) {
+                } else if (canFix && msg.battlemap && memo_ctl.battlefieldMap[msg.battlemap]) {
                     const mapId = msg.battlemap;
                     const thisBattle = memo_ctl.battlefieldMap[mapId];
                     const timestamp = new Date(thisBattle.timestamp);
