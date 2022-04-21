@@ -285,10 +285,11 @@ async function initConfig() {
 
 
 async function recordApi(userId, model='', payload={}, curd=0) {
+    const _payload = JSON.stringify(payload);
     await models.RecordApi.create({
         userId,
         model,
-        payload: JSON.stringify(payload),
+        payload: _payload.length > 100 ? _payload.substring(0, 100) : _payload,
         curd,
     });
 }
@@ -386,7 +387,7 @@ function hookerHandleBattleFinish(battleChanges, time) {
                     }
                 }
             });
-            bc.Country.map(c => {
+            bc.Country && bc.Country.map(c => {
                 Object.keys(c.updated).map(key => {
                     if (memo_ctl.countryMap[c.id].hasOwnProperty(key)) {
                         memo_ctl.countryMap[c.id][key] = c.updated[key];
@@ -515,18 +516,23 @@ module.exports = {
             // console.log('socket.request.headers: ', socket.request.headers);
             const headerInfo = socket.request.headers.origin ? socket.request.headers.origin : socket.request.headers.host;
             const isQAsitePort = headerInfo && !!headerInfo.match(/\:12022.?$/g);
-            const isDev = !!userinfo.address.match(/(172.16.2.111)|(127.0.0.1)/g);
-            if (userinfo && (algorithms.isWelfare(userinfo) || isQAsitePort || isDev)) {
+            const isPRODsite = headerInfo && !!headerInfo.match(/\:20221.?$/g);
+            const isDevsite = !!userinfo.address.match(/(172.16.2.111)|(127.0.0.1)/g);
+            const canQA = userinfo && (algorithms.isWelfare(userinfo) || isQAsitePort || isDevsite);
+            const canFix = isPRODsite ? userinfo && userinfo.code == 'R343' : canQA;
+            if (canFix) {
                 const modelName = msg.model;
                 if (modelName) {
                     const insModel = models[modelName];
                     if (insModel) {
                         try {
                             if (msg.update) {
-                                console.log('[ADMIN_CONTROL] update: ', msg.update,  'user address: ', userinfo.address);
+                                console.log('[ADMIN_CONTROL] update.  user address: ', userinfo.address);
                                 insModel.update(msg.update, {where: msg.where}).then(refreshMemoDataUsers);
+                                return recordApi(userinfo.id, modelName, msg.update, 2);
                             } else if(msg.create) {
                                 insModel.create(msg.create).then(e => emitSocketByte(socket, enums.ADMIN_CONTROL, e.toJSON()));
+                                return recordApi(userinfo.id, modelName, msg.create, 1);
                             } else {
                                 insModel.findAll({where: msg.where, attributes: msg.attributes}).then(res => emitSocketByte(socket, enums.ADMIN_CONTROL, res.map(r => r.toJSON())));
                             }

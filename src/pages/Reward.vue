@@ -23,7 +23,7 @@
               <th colspan="2"><button @click="onClickAdd">Add</button></th>
             </tr>
           </table>
-          <div class="contain-reward-list">
+          <div class="contain-reward-list" @paste="onPaste">
             <table class="reward-list-table">
               <tr>
                 <th>User</th>
@@ -186,6 +186,32 @@ export default {
         this.$store.dispatch('wsEmitADMINCTL', sendto);
         const reload = this.reload;
         window.setTimeout(reload, 1000);
+      }
+    },
+    onPaste(evt) {
+      const self = this;
+      const cliphoardText = evt.clipboardData.getData('Text');
+      const list = cliphoardText.split(/[\r\n]+/g).map(e => e.split(/[\t\r]+/g));
+      // console.log('cliphoardText: ', cliphoardText);
+      console.log('list: ', list);
+      if (list[0] && list[0][0] == 'User' && list[0][1] == 'add Money') {
+        evt.target.blur();
+        evt.stopPropagation();
+        evt.preventDefault();
+        const rewardMap = {};
+        list.slice(1).map(loc => {
+          rewardMap[loc[0].trim()] = { money: parseInt(loc[1]), soldier: parseInt(loc[2]), contribution: parseInt(loc[3]) }
+        });
+        self.listUsers.map((user, idx) => {
+          const rewd = rewardMap[user.nickname];
+          if (rewd) {
+            self.rewardList[idx] = rewd;
+          }
+        });
+        console.log('done.');
+        
+      } else {
+        console.log('wrong format.');
       }
     }
   },

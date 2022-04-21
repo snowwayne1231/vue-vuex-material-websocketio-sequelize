@@ -136,7 +136,7 @@ const global = {
         } break
         case enums.ALERT: {
           let errorMsg =payload.msg;
-          if (payload.act == enums.ACT_BATTLE) {
+          if (payload.act == enums.ACT_BATTLE && payload.deadline) {
             errorMsg = `${payload.map} 正在修整剛佔領的據點 於 ${new Date(payload.deadline).toLocaleString()} 修整完畢`;
           }
           window.alert(errorMsg);
