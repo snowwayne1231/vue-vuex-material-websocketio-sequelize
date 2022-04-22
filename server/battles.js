@@ -42,8 +42,8 @@ function refresBattlefields() {
     const isInHour = hours.includes(now.getHours());
     // console.log('maps: ', Object.values(memo.map).map(m => [m.id, m.ownCountryId]).filter(e => e[1] == 8));
     if (isInHour || isTest) {
-        const prepareTimestamp = now.setDate(now.getDate() +(isTest ? 8 : 3));
-        models.RecordWar.findAll({where: { winnerCountryId: 0, gameId: 0, timestamp: {[Op.lte]: prepareTimestamp} }}).then(wars => {
+        const prepareTimestamp = now.setDate(now.getDate() +(isTest ? 10 : 3));
+        models.RecordWar.findAll({where: { winnerCountryId: 0, timestamp: {[Op.lte]: prepareTimestamp} }}).then(wars => {
             return wars.map(war => {
                 let sumDefSoldier = war.detail.defSoldiers.reduce((a,b) => a+b, 0);
                 let sumAtkSoldier = war.detail.atkSoldiers.reduce((a,b) => a+b, 0);
@@ -255,9 +255,12 @@ async function handleWarLock(warModel) {
     const ifOriginCity = country.originCityId == map.cityId;
 
     if (ifOriginCity) {
-        const time = new Date(warModel.timestamp);
-        const now = new Date();
-        if (now < time.setDate(time.getDate()-1) ) {
+        // const time = new Date(warModel.timestamp);
+        // const now = new Date();
+        // if (now < time.setDate(time.getDate()-1) ) {
+        //     return updated;
+        // }
+        if (warModel.gameId > 0) {  // game already set
             return updated;
         }
     }
@@ -268,8 +271,6 @@ async function handleWarLock(warModel) {
     const vs = `b${vsAry.join('v')}`;
     const games = await models.Game.findAll({where: {type: {[Op.in]: gameTypes}, [vs]: true}});
 
-    
-    
 
     const randomGames = [];
     const _tmp = games.map(g => g.id);

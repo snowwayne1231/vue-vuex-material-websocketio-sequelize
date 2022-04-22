@@ -239,19 +239,22 @@ async function updateUserInfo(userinfo, update, act, socket=null) {
     }
     updatedKeys.map(key => {
         const val = update[key];
-        userinfo[key] = val;
         if (memo_ctl.userMap[id] && memo_ctl.userMap[id].hasOwnProperty(key)) {
             memo_ctl.userMap[id][key] = val;
         }
     });
     if (socket) {
         // emitSocketByte(socket, enums.AUTHORIZE, {act, payload: update});
-        memo_ctl.userSockets.map(us => {
-            if (us.id == id) {
-                emitSocketByte(us.socket, enums.AUTHORIZE, {act, payload: update});
-            }
-        });
     }
+    memo_ctl.userSockets.map(us => {
+        if (us.id == id) {
+            emitSocketByte(us.socket, enums.AUTHORIZE, {act, payload: update});
+            updatedKeys.map(key => {
+                const val = update[key];
+                us.userinfo[key] = val;
+            });
+        }
+    });
     if (updatedKeys.some(key => { return userGlobalAttrs.includes(key) })) {
         emitGlobalChanges({
             act,
@@ -526,8 +529,9 @@ module.exports = {
                     const insModel = models[modelName];
                     if (insModel) {
                         try {
-                            if (msg.update && canFix) {
-                                console.log('[ADMIN_CONTROL] update.  user address: ', userinfo.address);
+                            if (msg.update) {
+                                console.log('[ADMIN_CONTROL] update.  user : ', userinfo.nickname , ' address: ', userinfo.address);
+                                if (modelName != 'Reward' && !canFix) { return false }
                                 insModel.update(msg.update, {where: msg.where}).then(refreshMemoDataUsers);
                                 return recordApi(userinfo.id, modelName, msg.update, 2);
                             } else if(msg.create) {

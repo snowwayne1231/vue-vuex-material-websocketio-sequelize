@@ -386,7 +386,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const mapId = payload.mapId;
                 const gameId = payload.gameId;
                 return updateRecordWar(battleId, mapId, {gameId}, memoController).then(e => {
-                    broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_BATTLE_GAME_SELECTED, payload});
+                    broadcastSocket(memoController, {act: enums.ACT_BATTLE_GAME_SELECTED, payload});
                     return memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
                         round: configs.round.value,
                         countryId: userinfo.countryId,
@@ -674,7 +674,14 @@ async function createCountry(payload, userinfo, memoController) {
     let users = `${userinfo.nickname}`;
     for (let i = 0; i < freeusers.length; i++) {
         let user = freeusers[i];
-        await updateSingleUser(user.id, {countryId: jsonCountry.id, role: enums.ROLE_GENERMAN, actPointMax: 7, occupationId: 0, loyalUserId: user.id == userinfo.id ? 0 : userinfo.id}, userinfo, memoController);
+        let ismydo = user.id == userinfo.id;
+        await updateSingleUser(user.id, {
+            countryId: jsonCountry.id,
+            role: ismydo ? enums.ROLE_EMPEROR : enums.ROLE_GENERMAN,
+            actPointMax: ismydo ? 10 : 7,
+            occupationId: 0,
+            loyalUserId: ismydo ? 0 : userinfo.id
+        }, userinfo, memoController);
         if (user.id != userinfo.id) {
             users += `,${user.nickname}`;
         }

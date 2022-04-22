@@ -31,8 +31,8 @@ function validate(act, payload, userinfo, memo) {
             const mapId = payload.mapId;
             const battleId = payload.battleId;
             const position = payload.position;
-            res.msg = hasPoint(userinfo) || hasBattle(mapId, battleId, memo) || isEmptyBattlePosition(userinfo, position, mapId, memo)
-                || isNotInvolvedBattle(userinfo, position, mapId, memo) || isNotBeCaptived(userinfo) || (position <= 3 ? isNearMap(userinfo.id, mapId, memo) || isNoTarget(userinfo) : isNotWorking(userinfo, memo));
+            res.msg = hasBattle(mapId, battleId, memo) || isEmptyBattlePosition(userinfo, position, mapId, memo) || isNotInvolvedBattle(userinfo, position, mapId, memo) || isNotBeCaptived(userinfo)
+                || (position <= 3 ? isNearMap(userinfo.id, mapId, memo) || isNoTarget(userinfo) : hasPoint(userinfo, 1) || isNotWorking(userinfo, memo));
         } break
         case enums.ACT_BATTLE_JUDGE: {
             const mapId = payload.mapId;
@@ -69,7 +69,7 @@ function validate(act, payload, userinfo, memo) {
             const battleId = payload.battleId;
             const mapId = payload.mapId;
             const gameId = payload.gameId;
-            res.msg = isExistMap(mapId, memo) || hasBattle(mapId, battleId, memo) || isOriginCity(mapId, memo) || isInCountryHere(userinfo, memo) || isExistGame(gameId, memo) || availableGameInBattle(gameId, mapId, memo);
+            res.msg = isExistMap(mapId, memo) || hasBattle(mapId, battleId, memo) || isOriginCity(mapId, memo) || isMyOwnCountryMap(mapId, userinfo, memo) || isExistGame(gameId, memo) || availableGameInBattle(gameId, mapId, memo);
         } break
         case enums.ACT_GET_BATTLE_DETAIL: {
             const battleId = payload.battleId;
@@ -245,6 +245,11 @@ function isInCountryHere(userinfo, memo) {
     return _map && userinfo.countryId == _map.ownCountryId ? '' : 'Not This Country Member.';
 }
 
+function isMyOwnCountryMap(mapId, userinfo, memo) {
+    const _map = memo.mapIdMap[mapId];
+    return _map && _map.ownCountryId == userinfo.countryId ? '' : 'Not Own Map.';
+}
+
 function isInMyCountry(userId, userinfo, memo) {
     const user = memo.userMap[userId];
     const location = memo.mapIdMap[user.mapNowId];
@@ -345,11 +350,11 @@ function isAllowedJudgeBattleTime(mapId, memo) {
 function availableGameInBattle(gameId, mapId, memo) {
     const game = memo.gameMap[gameId];
     const battle = memo.battlefieldMap[mapId];
-    const now = new Date();
-    now.setDate(now.getDate()+3);
-    if (now < new Date(battle.timestamp)) {
-        return 'Not Time Yet.';
-    }
+    // const now = new Date();
+    // now.setDate(now.getDate()+3);
+    // if (now < new Date(battle.timestamp)) {
+    //     return 'Not Time Yet.';
+    // }
     const vsAry = [battle.atkUserIds.filter(u => u > 0).length, battle.defUserIds.filter(u => u > 0).length];
     vsAry.sort((a,b) => a-b);
     const vs = `b${vsAry.join('v')}`;
