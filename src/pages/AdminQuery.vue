@@ -124,12 +124,18 @@ export default {
     },
     onClickUpdateSubmit() {
         var where = this.parseStrToObject(this.where);
-        var update = this.parseStrToObject(this.updatedata);
         var model = this.selectedTable.trim();
         if (this.selectedId > 0) {
             where = {id: this.selectedId};
         }
-        var sendto = {model, where, update}
+        if (this.updatedata.trim().length > 2) {
+          var update = this.parseStrToObject(this.updatedata);
+          var sendto = {model, where, update};
+        } else {
+          var attributes = {};
+          var sendto = {model, where, attributes};
+        }
+        
         console.log('sendto: ', sendto);
         this.$store.dispatch('wsEmitADMINCTL', sendto);
     }

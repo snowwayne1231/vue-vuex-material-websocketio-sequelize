@@ -37,7 +37,7 @@ function onDisconnect(socket) {
     socket.on('disconnect', (msg) => {
         var userinfo = socket.request.session.userinfo;
         var address = socket.handshake.address;
-        console.log(`disconnected: [${userinfo ? userinfo.nickname : 'unknown'}] address: ${address}`);
+        console.log(`disconnected: [${userinfo ? userinfo.nickname : 'unknown'}] address: [${address}]`);
         if (userinfo && userinfo.id) {
             let i = 0;
             while (i++ <3) {
@@ -448,6 +448,7 @@ module.exports = {
             memo_ctl.userSockets.map(us => {
                 if (us.id == userId) {
                     emitSocketByte(us.socket, enums.AUTHORIZE, {logout: true});
+                    us.socket.disconnect();
                 }
             });
             let fullUserInfo = memo_ctl.userMap[userId];
@@ -548,10 +549,13 @@ module.exports = {
                                 insModel.update(msg.update, {where: msg.where}).then(refreshMemoDataUsers);
                                 return recordApi(userinfo.id, modelName, msg.update, 2);
                             } else if(msg.create) {
-                                insModel.create(msg.create).then(e => emitSocketByte(socket, enums.ADMIN_CONTROL, e.toJSON()));
+                                insModel.create(msg.create).then(e => {
+                                    const data = e.toJSON();
+                                    emitSocketByte(socket, enums.ADMIN_CONTROL, {id: data.id, data, model: msg.model})
+                                });
                                 return recordApi(userinfo.id, modelName, msg.create, 1);
                             } else if(msg.attributes) {
-                                return insModel.findAll({where: msg.where, attributes: msg.attributes}).then(res => emitSocketByte(socket, enums.ADMIN_CONTROL, res.map(r => r.toJSON())));
+                                return insModel.findAll({where: msg.where, attributes: msg.attributes}).then(res => emitSocketByte(socket, enums.ADMIN_CONTROL, {model: msg.model, data: res.map(r => r.toJSON())}));
                             }
                         } catch (err) {
                             console.log('ADMIN CTL error: ', err);

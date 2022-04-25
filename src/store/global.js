@@ -24,6 +24,7 @@ const global = {
       id: 0,
     },
     rewards: [],
+    results: [],
   },
   mutations: {
     wsOnMESSAGE: (state, message) => {
@@ -164,16 +165,26 @@ const global = {
     wsOnADMINCTL: (content, buffer) => {
       const msg = parser.arrayBufferToJSON(buffer);
       console.log('msg: ' , msg);
-      if (Array.isArray(msg)) {
-        content.commit('updateGlobal', {
-          rewards: msg
-        });
-      } else if (msg && msg.id > 0) {
-        const nextRewards = content.state.rewards.slice();
-        nextRewards.push(msg);
-        content.commit('updateGlobal', {
-          rewards: nextRewards,
-        });
+      switch (msg.model) {
+        case 'Reward': {
+          if (Array.isArray(msg.data)) {
+            content.commit('updateGlobal', {
+              rewards: msg.data
+            });
+          } else if (msg.id > 0) {
+            const nextRewards = content.state.rewards.slice();
+            nextRewards.push(msg.data);
+            content.commit('updateGlobal', {
+              rewards: nextRewards,
+            });
+          }
+        } break
+        default:
+          if (Array.isArray(msg.data)) {
+            content.commit('updateGlobal', {
+              results: msg.data,
+            });
+          }
       }
     },
     ...actions
