@@ -203,7 +203,7 @@ module.exports = {
         const now = new Date(); // 俘虜30天下野
         for( let i = 0; i < users.length; i++) {
             let user = users[i];
-            if (user.captiveDate) {
+            if (user.captiveDate && user.role == enums.ROLE_GENERMAN) {
                 let captiveDate = new Date(user.captiveDate);
                 let gapDays = (now.getTime() - captiveDate.getTime()) / 1000 / 60 / 60 / 24;
                 if (gapDays >= 30) {

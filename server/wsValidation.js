@@ -359,7 +359,10 @@ function availableGameInBattle(gameId, mapId, memo) {
     const vsAry = [battle.atkUserIds.filter(u => u > 0).length, battle.defUserIds.filter(u => u > 0).length];
     vsAry.sort((a,b) => a-b);
     const vs = `b${vsAry.join('v')}`;
-    const gameTypes = String(map.gameType).split('')
+    let gameTypes = String(map.gameType).split('');
+    if (gameTypes.length > 0) {
+        gameTypes = gameTypes.map(gt => parseInt(gt));
+    }
     return battle.gameId == 0 && game && game[vs] && gameTypes.includes(game.type) ? '' : 'Not Available Game.';
 }
 
