@@ -25,12 +25,8 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
         // console.log('subSwitchOnMessage: act: ', act);
         switch (act) {
             case enums.ACT_GET_GLOBAL_USERS_INFO: {
-                const ugAttributes = enums.UserGlobalAttributes;
-                let users = Object.values(memoController.userMap).map(user => {
-                    let _ = [];
-                    ugAttributes.map(col => { _.push(user[col]); });
-                    return _;
-                });
+                const actMaxIdx = enums.UserGlobalAttributes.indexOf('actPointMax');
+                const users = algorithms.flatMap(memoController.userMap, enums.UserGlobalAttributes).filter(u => u[actMaxIdx] > 0);
                 return subEmitMessage(act, {users});
             }
             case enums.ACT_MOVE: {
@@ -40,13 +36,13 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 if (dis > 0 && dis <= userinfo.actPoint) {
                     const discount = getCityConstruction(nowId, 'stable', memoController).lv;
                     const spendPoint = Math.max(1, dis - discount);
-                    return asyncUpdateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - spendPoint}, act, socket);
+                    return asyncUpdateUserInfo(userinfo, {mapNowId: targetId, actPoint: userinfo.actPoint - spendPoint}, act);
                 } else {
                     console.log('[ACT_MOVE] Distance wrong: ', dis)
                 }
             } break
             case enums.ACT_LEAVE_COUNTRY: {
-                return asyncUpdateUserInfo(userinfo, { countryId: 0, role: enums.ROLE_FREEMAN, actPoint: 0, money: 0, soldier: 0, actPointMax: 3, occupationId: 0 }, act, socket).then(e => {
+                return asyncUpdateUserInfo(userinfo, { countryId: 0, role: enums.ROLE_FREEMAN, actPoint: 0, money: 0, soldier: 0, actPointMax: 3, occupationId: 0 }, act).then(e => {
                     return memoController.eventCtl.broadcastInfo(enums.EVENT_LEAVE_COUNTRY, {nickname: userinfo.nickname, round: configs.round.value});
                 });
             }
@@ -57,18 +53,18 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const ratio = Math.round(Math.random() * 10) / 10;
                 console.log('[ACT_ENTER_COUNTRY]: ratio: ', ratio, ' nickname: ', userinfo.nickname);
                 if (ratio > 0.45) {
-                    return asyncUpdateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 0, actPointMax: 7, loyalUserId: 0 }, act, socket).then(e => {
+                    return asyncUpdateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 0, actPointMax: 7, loyalUserId: 0 }, act).then(e => {
                         return memoController.eventCtl.broadcastInfo(enums.EVENT_ENTER_COUNTRY, {nickname: userinfo.nickname, countryName: thisCountry.name, round: configs.round.value});
                     });
                 } else {
-                    return asyncUpdateUserInfo(userinfo, { actPoint: 0 }, act, socket);
+                    return asyncUpdateUserInfo(userinfo, { actPoint: 0 }, act);
                 }
             }
             case enums.ACT_SEARCH_WILD: {
                 const randomMoney = Math.round(Math.random() * 100) + 50;
                 const maxMoney = 150;
                 const isLucky = randomMoney / maxMoney > 0.97;
-                return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney, actPoint: userinfo.actPoint-1,  }, act, socket).then(() => {
+                return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney, actPoint: userinfo.actPoint-1,  }, act).then(() => {
                     return isLucky && memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
                         round: configs.round.value,
                         countryId: userinfo.countryId,
@@ -87,7 +83,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const maxMoney = 150 + addMoney + additionalMoney;
                 const plus = Math.min(randomMoney + additionalMoney + construction.lv, maxMoney);
                 const isLucky = plus / maxMoney > 0.97;
-                return asyncUpdateUserInfo(userinfo, { money: userinfo.money + plus, actPoint: userinfo.actPoint-1 }, act, socket).then(() => {
+                return asyncUpdateUserInfo(userinfo, { money: userinfo.money + plus, actPoint: userinfo.actPoint-1 }, act).then(() => {
                     return isLucky && memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
                         round: configs.round.value,
                         countryId: userinfo.countryId,
@@ -100,7 +96,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const construction = getCityConstruction(userinfo.mapNowId, 'barrack', memoController);
                 const randomSoldier = algorithms.randomIncreaseSoldier(userinfo.countryId, construction.lv);
                 const isLucky = randomSoldier.lucky;
-                return asyncUpdateUserInfo(userinfo, { soldier: userinfo.soldier + randomSoldier.add, actPoint: userinfo.actPoint-1 }, act, socket).then(() => {
+                return asyncUpdateUserInfo(userinfo, { soldier: userinfo.soldier + randomSoldier.add, actPoint: userinfo.actPoint-1 }, act).then(() => {
                     return isLucky && memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
                         round: configs.round.value,
                         countryId: userinfo.countryId,
@@ -133,7 +129,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                         soldier: userinfo.soldier - (noCountry ? enums.NUM_BATTLE_SOLDIER_MIN : 0),
                         mapNowId: mapId,
                         contribution: userinfo.contribution + enums.NUM_BATTLE_CONTRUBUTION,
-                    }, act, socket).then(() => {
+                    }, act).then(() => {
                         const update = { ownCountryId: userinfo.countryId };
                         subEmitGlobalChanges({
                             dataset: [ { depth: ['maps', mapId], update } ]
@@ -193,7 +189,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                             // soldier: userinfo.soldier - involvedSoldiers,
                             contribution: userinfo.contribution + enums.NUM_BATTLE_CONTRUBUTION,
                             mapTargetId: mapId,
-                        }, act, socket).then(() => {
+                        }, act).then(() => {
                             const event = thisMap.cityId > 0 ? enums.EVENT_WAR_CITY : enums.EVENT_WAR_WILD;
                             return memoController.eventCtl.broadcastInfo(event, {atkCountryName, mapName: `${thisMap.name}`, defCountryName, round: configs.round.value});
                         });
@@ -221,7 +217,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                         return e ? asyncUpdateUserInfo(userinfo, {
                             actPoint: userinfo.actPoint - 1,
                             contribution: userinfo.contribution + enums.NUM_BATTLE_TOOLMANS_CONTRUBUTION
-                        }, act, socket) : null;
+                        }, act) : null;
                     });
                 } else if (position >= 0 && userinfo.role != enums.ROLE_FREEMAN && involvedSoldiers > 0 && involvedSoldiers <= userinfo.soldier) {
                     const bdata = {detail: thisBattle.detail};
@@ -250,7 +246,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                             // soldier: userinfo.soldier - soldierSpend,
                             mapTargetId: mapId,
                             mapNowId: isDefenceSite ? mapId : userinfo.mapNowId,
-                        }, act, socket) : null;
+                        }, act) : null;
                     }).then(() => {
                         return memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
                             round: configs.round.value,
@@ -289,7 +285,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                         const occupationName = occupation.name;
                         return asyncUpdateUserInfo(userinfo, {
                             actPoint: userinfo.actPoint - 3,
-                        }, act, socket).then(() => {
+                        }, act).then(() => {
                             return memoController.eventCtl.broadcastInfo(enums.EVENT_OCCUPATION, {
                                 round: configs.round.value,
                                 countryId: user.countryId,
@@ -307,7 +303,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 return updateSingleUser(userId, {occupationId: 0, actPointMax: 7}, userinfo, memoController).then(e => {
                     return e ? asyncUpdateUserInfo(userinfo, {
                         actPoint: userinfo.actPoint - 1,
-                    }, act, socket) : null;
+                    }, act) : null;
                 });
             }
             case enums.ACT_LEVELUP_CITY: {
@@ -325,7 +321,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                         actPoint: userinfo.actPoint - 1,
                         money: userinfo.money - pirce,
                         contribution: userinfo.contribution + enums.NUM_BATTLE_CONTRUBUTION,
-                    }, act, socket) : null;
+                    }, act) : null;
                 }).then(() => {
                     return memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
                         round: configs.round.value,
@@ -346,7 +342,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                         actPoint: userinfo.actPoint - 1,
                         soldier: userinfo.soldier - soldier,
                         money: userinfo.money - money,
-                    }, act, socket).then(() => {
+                    }, act).then(() => {
                         return memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
                             round: configs.round.value,
                             countryId: userinfo.countryId,
@@ -372,7 +368,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                     updateData.mapNowId = mapId;
                     updateData.captiveDate = null;
                 }
-                return asyncUpdateUserInfo(userinfo, updateData, act, socket).then(user => {
+                return asyncUpdateUserInfo(userinfo, updateData, act).then(user => {
                     if (successful) {
                         memoController.eventCtl.broadcastInfo(enums.EVENT_CAPTIVE_ESCAPE, {
                             nickname: user.nickname,
@@ -410,7 +406,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const randomResult = Math.floor(Math.random() * 10);
                 const success = randomResult <= successRatio;
                 console.log(`[ACT_RECRUIT] successRatio: ${successRatio} randomResult: ${randomResult} / 10`);
-                return asyncUpdateUserInfo(userinfo, { actPoint: userinfo.actPoint - 3 }, act, socket).then(e => {
+                return asyncUpdateUserInfo(userinfo, { actPoint: userinfo.actPoint - 3 }, act, {success}).then(e => {
                     const round = configs.round.value;
                     const nickname = user.nickname;
                     if (success) {
@@ -435,11 +431,11 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const nowDate = new Date();
                 const captiveDate = new Date(user.captiveDate);
                 const gapDays = Math.ceil((nowDate.getTime() - captiveDate.getTime()) / 1000 / 60 / 60 / 24);
-                const basicLine = 25 + gapDays * 2.5;
+                const basicLine = 25 + ((gapDays+1) * 2.5);
                 const randomResult = Math.floor(Math.random() * 100);
                 console.log(`[ACT_RECRUIT_CAPTIVE] basicLine: ${basicLine} randomResult: ${randomResult} / 100`);
                 const success = randomResult <= basicLine;
-                return asyncUpdateUserInfo(userinfo, { actPoint: userinfo.actPoint - 3 }, act, socket).then(e => {
+                return asyncUpdateUserInfo(userinfo, { actPoint: userinfo.actPoint - 3 }, act, {success}).then(e => {
                     const round = configs.round.value;
                     const nickname = user.nickname;
                     if (success) {
@@ -470,7 +466,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const user = memoController.userMap[userId];
                 const money = userinfo.money + user.money;
                 const soldier = userinfo.soldier + user.soldier;
-                return asyncUpdateUserInfo(userinfo, { actPoint: userinfo.actPoint - 1, money, soldier }, act, socket).then(e => {
+                return asyncUpdateUserInfo(userinfo, { actPoint: userinfo.actPoint - 1, money, soldier }, act).then(e => {
                     const round = configs.round.value;
                     const nickname = user.nickname;
                     const emperor = userinfo.nickname;
@@ -485,7 +481,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
             case enums.ACT_SET_ORIGIN_CITY: {
                 const cityId = payload.cityId;
                 const gameTypeId = payload.gameTypeId;
-                return asyncUpdateUserInfo(userinfo, { actPoint: userinfo.actPoint - 1 }, act, socket).then(e => {
+                return asyncUpdateUserInfo(userinfo, { actPoint: userinfo.actPoint - 1 }, act).then(e => {
                     const round = configs.round.value;
                     const countryName = memoController.countryMap[userinfo.countryId].name;
                     const map = Object.values(memoController.mapIdMap).find(m => m.cityId == cityId);

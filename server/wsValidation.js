@@ -350,6 +350,7 @@ function isAllowedJudgeBattleTime(mapId, memo) {
 function availableGameInBattle(gameId, mapId, memo) {
     const game = memo.gameMap[gameId];
     const battle = memo.battlefieldMap[mapId];
+    const map = memo.mapIdMap[mapId];
     // const now = new Date();
     // now.setDate(now.getDate()+3);
     // if (now < new Date(battle.timestamp)) {
@@ -358,7 +359,8 @@ function availableGameInBattle(gameId, mapId, memo) {
     const vsAry = [battle.atkUserIds.filter(u => u > 0).length, battle.defUserIds.filter(u => u > 0).length];
     vsAry.sort((a,b) => a-b);
     const vs = `b${vsAry.join('v')}`;
-    return battle.gameId == 0 && game[vs] ? '' : 'Not Available Game.';
+    const gameTypes = String(map.gameType).split('')
+    return battle.gameId == 0 && game && game[vs] && gameTypes.includes(game.type) ? '' : 'Not Available Game.';
 }
 
 function isOccupationEnoughContribution(userId, occupationId, memo) {

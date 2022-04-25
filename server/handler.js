@@ -109,20 +109,22 @@ module.exports = {
                 }
             }
             case 'checkweek': {
+                const self = this;
                 const recoverDay = 1;
                 const now = new Date();
                 const headerInfo = req.headers.origin ? req.headers.origin : req.headers.host;
-                const isQAsitePort = headerInfo && !!headerInfo.match(/\:12022.?$/g);
+                const isQAsitePort = headerInfo && !!headerInfo.match(/\:(12022|81).?$/g);
                 console.log('[System][CheckWeek]: ', now.toLocaleString());
                 if (now.getDay()==recoverDay || isQAsitePort) {
-                    const self = this;
                     const configs = {round: 0, recover: 0};
                     return models.Config.findAll({attributes: ['name', 'status'], where: {open: true}}).then(cs => {
                         cs.map(c => { if (configs[c.name] >= 0) { configs[c.name] = c.status; } });
-                        const gapMinutes = 60*23;
+                        const gapMinutes = isQAsitePort ? 0 : 60*23;
                         const nowMinutes = Math.floor(now.getTime() / 60000);
                         if ((nowMinutes - configs.recover) > gapMinutes){
-                            return self.rewardPeople(ws, configs).then(() => {
+                            return self.checkPeopleStatus(ws).then(ok => {
+                                return self.rewardPeople(ws, configs)
+                            }).then(ok => {
                                 return self.recoverPoint(ws, configs, nowMinutes);
                             }).then((updated) => {
                                 res.status(200).send(updated ? 'done' : 'nothing');
@@ -193,8 +195,25 @@ module.exports = {
             }
         }
     },
-    getUserTimes: async function() {
-        const userts = await models.UserTime.findAll({where: {utype: enums.TYPE_USERTIME_FREE}});
-        return userts;
+    checkPeopleStatus: async function(ws) {
+        let hasChange = false;
+        const memo = ws.getMemo();
+        const users = await models.User.findAll();
+        // const usertimes = await models.UserTime.findAll({where: {utype: enums.TYPE_USERTIME_FREE}});
+        const now = new Date(); // 俘虜30天下野
+        for( let i = 0; i < users.length; i++) {
+            let user = users[i];
+            if (user.captiveDate) {
+                let captiveDate = new Date(user.captiveDate);
+                let gapDays = (now.getTime() - captiveDate.getTime()) / 1000 / 60 / 60 / 24;
+                if (gapDays >= 30) {
+                    hasChange = true;
+                    await user.update({captiveDate: null, countryId: 0, role: enums.ROLE_FREEMAN, actPointMax: 3, occupationId: 0, mapTargetId: 0});
+                    memo.eventCtl.broadcastInfo(enums.EVENT_LEAVE_COUNTRY, {nickname: user.nickname, round: 0});
+                }
+            }
+        }
+        hasChange && await ws.refreshMemoDataUsers();
+        return true;
     },
 };

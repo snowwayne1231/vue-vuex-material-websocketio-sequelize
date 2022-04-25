@@ -115,6 +115,9 @@ function refreshByAdmin() {
 
 function refreshMemoDataUsers() {
     return refreshBasicData(true, false, false).then(() => {
+        const actMaxIdx = enums.UserGlobalAttributes.indexOf('actPointMax');
+        const users = algorithms.flatMap(memo_ctl.userMap, enums.UserGlobalAttributes).filter(u => u[actMaxIdx] > 0);
+        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_USERS_INFO, payload: { users } });
         return memo_ctl.userSockets.map(us => {
             const memoUser = memo_ctl.userMap[us.id];
             if (us.userinfo) {
@@ -218,7 +221,7 @@ function refreshBasicData(u=true, m=true, c=true, callback=null) {
 
 
 
-async function updateUserInfo(userinfo, update, act, socket=null) {
+async function updateUserInfo(userinfo, update, act, socketappend=null) {
     const id = userinfo.id;
     const updatedKeys = Object.keys(update);
     const userGlobalAttrs = enums.UserGlobalAttributes;
@@ -243,12 +246,9 @@ async function updateUserInfo(userinfo, update, act, socket=null) {
             memo_ctl.userMap[id][key] = val;
         }
     });
-    if (socket) {
-        // emitSocketByte(socket, enums.AUTHORIZE, {act, payload: update});
-    }
     memo_ctl.userSockets.map(us => {
         if (us.id == id) {
-            emitSocketByte(us.socket, enums.AUTHORIZE, {act, payload: update});
+            emitSocketByte(us.socket, enums.AUTHORIZE, {act, payload: socketappend ? {...update, ...socketappend} : update});
             updatedKeys.map(key => {
                 const val = update[key];
                 us.userinfo[key] = val;

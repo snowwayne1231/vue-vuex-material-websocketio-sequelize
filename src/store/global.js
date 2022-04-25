@@ -77,6 +77,9 @@ const global = {
             });
           })
         } break
+        case enums.ACT_GET_GLOBAL_USERS_INFO: {
+          state.users = parser.parseArraiesToObjects(payload.users, enums.UserGlobalAttributes)
+        } break
         case enums.ACT_NOTIFICATION: {
           const new_noti = [new Date(payload[0]), payload[1]]
           state.notifications = [new_noti].concat(state.notifications);
