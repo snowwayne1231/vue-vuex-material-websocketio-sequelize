@@ -36,11 +36,18 @@ const globalConfigs = { round: { value: -1, staticKey: '' }, season: { value: -1
 function onDisconnect(socket) {
     socket.on('disconnect', (msg) => {
         var userinfo = socket.request.session.userinfo;
-        if (!userinfo) { return; }
-        console.log('disconnected: ', userinfo ? userinfo.nickname : 'unknown');
-        var userIdx = memo_ctl.userSockets.findIndex(e => e.id == userinfo.id);
-        if (userIdx >= 0) {
-            memo_ctl.userSockets.splice(userIdx, 1);
+        var address = socket.handshake.address;
+        console.log(`disconnected: [${userinfo ? userinfo.nickname : 'unknown'}] address: ${address}`);
+        if (userinfo && userinfo.id) {
+            let i = 0;
+            while (i++ <3) {
+                var userIdx = memo_ctl.userSockets.findIndex(e => e.socket == socket);
+                if (userIdx >= 0) {
+                    memo_ctl.userSockets.splice(userIdx, 1);
+                } else {
+                    break
+                }
+            }
         }
     });
 }
@@ -438,6 +445,11 @@ module.exports = {
         var authorized = false;
         var binded = false;
         const loadGun = (userId) => {
+            memo_ctl.userSockets.map(us => {
+                if (us.id == userId) {
+                    emitSocketByte(us.socket, enums.AUTHORIZE, {logout: true});
+                }
+            });
             let fullUserInfo = memo_ctl.userMap[userId];
             authorized = true;
             if (binded == false) {
@@ -447,6 +459,7 @@ module.exports = {
                     loginTimestamp,
                     address,
                 };
+                
                 onMessage(socket, updateUserInfo, memo_ctl, globalConfigs);
                 emitGlobalGneralArraies(socket, session.userinfo);
                 console.log(`A user [${fullUserInfo.nickname}] loaded socket connection.`);

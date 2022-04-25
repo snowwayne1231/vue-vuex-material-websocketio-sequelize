@@ -58,6 +58,9 @@ const moduleUser = {
         wsOnAuthorize: (state, message) => {
             let parsedMsg = arrayBufferToJSON(message);    // byte array 轉回 json
             clog('Socket On Authorize Parsed: ', parsedMsg);
+            if (parsedMsg.logout) {
+                window.location.href = '/logout'
+            }
             if (parsedMsg.redirect) {
                 window.location.href = parsedMsg.redirect;
                 return;

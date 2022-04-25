@@ -2,6 +2,7 @@ const enums = require('../src/enum');
 
 function validate(act, payload, userinfo, memo) {
     const res = { ok: false, msg: '' };
+    if (!(userinfo && userinfo.id > 0)) { return res; }
 
     switch (act) {
         case enums.ACT_MOVE: {
