@@ -10,7 +10,10 @@ const path = require('path');
 // const { Op } = require("sequelize");
 // pares command line parameter
 const argvv = process.argv.slice(2);
+const whiteIps = ['172.16.2.111', '127.0.0.1'];
 let port = 81;
+let isEnvDev = true;
+
 if (argvv.length > 0) {
     argvv.forEach((a, idx) => {
         switch (idx) {
@@ -19,13 +22,14 @@ if (argvv.length > 0) {
                 break
             case 1:
                 process.env.NODE_ENV = `${a}`;
+                isEnvDev = a == 'development';
                 break
             default:
         }
     });
 }
 //
-console.log('NODE_ENV : ', process.env.NODE_ENV);
+console.log('NODE_ENV : ', process.env.NODE_ENV, '  isEnvDev: ', isEnvDev);
 
 const adminbro = require('./admin');
 const ws = require('./ws');
@@ -61,8 +65,12 @@ const staticFrontendDirectory = (port > 20000) ? path.join(__dirname, '..', 'dis
 //     res.status(203).send('qq.');
 //     return res;
 // });
-app.use('/' + productKeyword, express.static(staticFrontendDirectory, {maxAge: 1000*60*60*24}));
-app.use(express.static(staticFrontendDirectory, {maxAge: 1000*60*60}));
+if (isEnvDev) {
+    app.use('/', express.static(path.join(__dirname, '..', 'maintain'), {maxAge: 1000*60*60}));
+} else {
+    app.use('/' + productKeyword, express.static(staticFrontendDirectory, {maxAge: 1000*60*60*24}));
+    app.use(express.static(staticFrontendDirectory, {maxAge: 1000*60*60}));
+}
 app.use(express.static(path.join(__dirname, '..', 'dist'), {maxAge: 1000*60*60*24}));
 app.use((req, res) => { // basic 
     const _ary = req.url.split(/[\/\\]+/g).filter(e=>e.length > 0);
@@ -80,7 +88,13 @@ http.listen(port, () => {
 
 function renderURI(req, res, uris) {
     const userinfo = req.session.userinfo || {};
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress 
     const _to = uris[0];
+    
+    if (isEnvDev && whiteIps.findIndex(w => ip.match(new RegExp(w, 'g')))<0) {
+        console.log('Not Allowed ip: ', ip);
+        return res.status(403).send('Not Allowed.');
+    }
 
     if (_to == 'logout') {
         // 登出

@@ -86,3 +86,8 @@ docker cp [filename] [id]:/[filename]
 docker exec -it [id] bash
 psql -U postgres -d welfare2022 < [filename]
 ```
+
+PROD backup
+``` Shell
+sudo docker exec -it 7c38f pg_dump welfare2022 -c --if-exists -U postgres -f /bak_`date +%m%d`.sql
+```

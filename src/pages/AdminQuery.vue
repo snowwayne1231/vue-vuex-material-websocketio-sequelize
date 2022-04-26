@@ -108,9 +108,17 @@ export default {
         })
     },
     parseStrToObject(str) {
+        var res = {};
+        if (str.match(/^[\{\[\s]+/)) {
+          try {
+            return JSON.parse(str)
+          } catch (err) {
+            console.log(err);
+          }
+        }
         var splitedLine = str.split(/[\r\n]+/gi);
         var eq = /[\=\:]/ig;
-        var res = {};
+        
         splitedLine.map(line => {
             if (line.match(eq)) {
                 var ary = line.split(/\s*[\=]+?\s*/i);
@@ -119,7 +127,6 @@ export default {
                 res[key] = val;
             }
         });
-        console.log(res);
         return res;
     },
     onClickUpdateSubmit() {
