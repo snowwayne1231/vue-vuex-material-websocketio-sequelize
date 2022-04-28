@@ -20,7 +20,11 @@
       <md-card-content>
         <div class="map" @mousedown="onMouseDown($event)" @mousemove="onMouseMove($event)" @mouseup="onMouseUp()" @mouseleave="onMouseUp()">
           <div class="render" :style="{ transform: `translate(${viewX}px, ${viewY}px)` }">
-            <li v-for="(p, idx) in mapData" :key="p.id+idx" class="point" :style="{left: `${p.x / 1.4}px`, top: `${p.y / 1.4}px`}" @click="onClickPoint(p)">
+            <!-- <canvas id="map-canvas"></canvas> -->
+            <svg width="2800" height="2200" xmlns="http://www.w3.org/2000/svg">
+              <line v-for="(li, idx) in mapLines" :key="idx" :x1="li[0].x" :y1="li[0].y" :x2="li[1].x" :y2="li[1].y" stroke="#33336611" />
+            </svg>
+            <li v-for="(p, idx) in mapData" :key="p.id+idx" class="point" :style="{left: `${p.x}px`, top: `${p.y}px`}" @click="onClickPoint(p)">
               <span :class="{light: showLights.includes(p.id), now: showNow==p.id, battle: showBattle.includes(p.id)}">🏠{{p.name}}</span>
               <dd class="person-zone" v-if="p.users.length > 0"><span class="md-icon person">person</span><i>{{p.users.length}}</i></dd>
               <span v-if="p.color" class="md-icon flag" :style="{color: p.color}">flag</span>
@@ -77,6 +81,7 @@
                 </table>
               </div>
             </li>
+            <p class="step-point" v-for="(st) in mapSteps" :key="`${st.id}_${st.x}`" :style="{left: `${st.x}px`, top: `${st.y}px`}">{{st.point}}</p>
           </div>
         </div>
         <div class="nav">
@@ -99,6 +104,7 @@
           <button @click="onClickReleaseCaptive">釋放俘虜</button>
           <button @click="onClickSetOriginCity">遷都</button>
           <button @click="onClickRaiseCountry">起義</button>
+          <button @click="onClickRebellion">叛亂</button>
         </div>
         <div class="notifications">
           <ul>
@@ -274,12 +280,14 @@ export default {
         soldier: 0,
       },
       selectedOriginCityGameId: 0,
+      mapSteps: [],
     }
   },
   computed: {
     ...mapState(['global', 'user']),
     mapData(self) {
-      let mpas = self.global.maps.map(m => {
+      const mapHash = {};
+      const mpas = self.global.maps.map(m => {
         let next = {...m};
         let areaData = self.global.battlefieldMap[next.id];
         let country = next.ownCountryId > 0 ? self.global.countries.find(c => c.id == next.ownCountryId) : null;
@@ -316,6 +324,7 @@ export default {
           next.color = country.color.split(',')[0];
         }
         next.users = users && users.length > 0 ? users : [];
+        mapHash[next.id] = next;
         return next;
       });
       return mpas;
@@ -423,6 +432,18 @@ export default {
       }
       return {id: gbrd.id};
     },
+    mapLines() {
+      const lines = [];
+      const hash = this.mapHash;
+      this.mapData.map(m => {
+        const origin = {x: m.x, y: m.y};
+        m.route.map(r => {
+          const mm = hash[r];
+          lines.push([origin, {x: mm.x, y: mm.y}]);
+        });
+      });
+      return lines;
+    }
   },
   components: {
     Man, Assignment, CityPanel,
@@ -466,20 +487,28 @@ export default {
       if (this.user.mapTargetId != 0) {return false;}
       if (this.localVoteBoolean) {
         const routes = mapAlgorithm.getAllowedPosition(this.user.mapNowId, this.user.actPoint, this.user.countryId);
-        const maps = this.global.maps;
+        // const maps = this.global.maps;
+        const mapHash = this.mapHash;
+        const mapSteps = [];
         routes.names = {};
         Object.keys(routes.steps).map(key => {
           let loc = routes.steps[key];
-          let res = loc.map(mid => maps.find(e => e.id == mid)).map(e => e.name);
+          let res = loc.map(mid => {
+            const _ = mapHash[mid];
+            mapSteps.push({point: key, id: mid, x:_.x, y:_.y});
+            return _;
+          }).map(e => e.name);
           routes.names[key] = res;
         })
         clog('Routes : ', routes);
         this.showLights = routes.all;
         const battleIds = mapAlgorithm.getBattlePosition(this.user.mapNowId, this.user.countryId);
         this.showBattle = battleIds;
+        this.mapSteps = mapSteps;
       } else {
         this.showLights = [];
         this.showBattle = [];
+        this.mapSteps = [];
       }
     },
     onClickPoint(dataset) {
@@ -489,6 +518,7 @@ export default {
         if (yes) {
           this.showLights = [];
           this.showBattle = [];
+          this.mapSteps = [];
           return this.$store.dispatch('actMove', dataset.id);
         }
       } else if (this.showBattle.includes(dataset.id)) {
@@ -496,6 +526,7 @@ export default {
         if (yes) {
           this.showLights = [];
           this.showBattle = [];
+          this.mapSteps = [];
           return this.$store.dispatch('actBattle', { mapId: dataset.id });
         }
       }
@@ -687,6 +718,23 @@ export default {
     onClickDecreaseBattleDay(mapId) {
       this.$store.dispatch('wsEmitADMINCTL', {battlemap: mapId});
     },
+    onClickRebellion() {
+      const me = this.user;
+      const occMap = this.global.occupationMap;
+      const myocc = occMap[me.occupationId];
+      if (myocc && myocc.name == '軍師') {
+        if (window.confirm('確定在此叛亂嗎?')) {
+          const countryName = window.prompt('輸入國家名稱(兩中文字內): ');
+          const colorBg = window.prompt('輸入國家背景色(RGB,例如#ff00ff): ');
+          const colorText = window.prompt('輸入國家字色(RGB,例如#ffff00): ');
+          const gameTypes = Object.keys(enums.CHINESE_GAMETYPE_NAMES).map(key => [parseInt(key), enums.CHINESE_GAMETYPE_NAMES[key]]);
+          const gameTypeId = parseInt(window.prompt(gameTypes.map(f => `${f[0]} -> ${f[1]}`).join('\r\n')));
+          this.$store.dispatch('actRebellion', {countryName, gameTypeId, colorBg, colorText});
+        }
+      } else {
+        window.alert('不能叛亂');
+      }
+    },
     getCheck(ary = []) {
       return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});
     },
@@ -725,6 +773,24 @@ export default {
   // transition: all 0.2s linear;
   background: #f4ffe9;
   font-size: 12px;
+  .step-point {
+    position: absolute;
+    margin: -18px;
+    font-size: 26px;
+    line-height: 26px;
+    width: 25px;
+    color: #2c261e;
+    background-color: #fff;
+    border-radius: 50%;
+    box-shadow: 1px 1px 2px #000;
+  }
+}
+#map-canvas {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: 100%;
 }
 .point {
   list-style: none;

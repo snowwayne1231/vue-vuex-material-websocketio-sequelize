@@ -12,7 +12,7 @@ const path = require('path');
 const argvv = process.argv.slice(2);
 const whiteIps = ['172.16.2.111', '127.0.0.1'];
 let port = 81;
-let isEnvDev = true;
+let isEnvDev = false;
 
 if (argvv.length > 0) {
     argvv.forEach((a, idx) => {

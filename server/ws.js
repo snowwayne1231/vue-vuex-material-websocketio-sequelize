@@ -359,6 +359,7 @@ function hookerHandleBattleFinish(battleChanges, time) {
                     
                     if (rw.isAttackerWin) {
                         mapIdMap[rw.mapId].ownCountryId = rw.winnerCountryId;
+                        mapIdMap[rw.mapId].adventureId = rw.nextDayTimeMinutes;
                         algorithms.updateHash(rw.mapId, 'country', rw.winnerCountryId);
                         globalChangeDataset.push({ depth: ['maps', rw.mapId], update: {ownCountryId: rw.winnerCountryId} });
                     }

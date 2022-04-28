@@ -80,6 +80,9 @@ module.exports = {
     actRaiseCountry: ({dispatch}, args) => {
         dispatch('wsEmitMessage', {act: enums.ACT_RAISE_COUNTRY, payload: args});
     },
-    
+    actRebellion: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_REBELLION, payload: args});
+    },
+
     register,
 }

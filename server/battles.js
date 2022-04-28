@@ -231,12 +231,29 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
             }
         }
 
+        const now = new Date();
+        now.setDate(now.getDate() + 1);
+        const nextDayTimeMinutes = Math.floor(now.getTime() / 1000 / 60);
+
         warModel.detail = detail;
 
-        updated.RecordWar.push({ id: warModel.id, mapId: warModel.mapId, isAttackerWin, isDestoried, winnerCountryId: warModel.winnerCountryId, detail: detail, defenceCountryId: warModel.defenceCountryId, atkUserIds: warModel.atkUserIds, defUserIds: warModel.defUserIds, timestamp: warModel.timestamp, attackCountryIds: warModel.attackCountryIds });
+        updated.RecordWar.push({
+            id: warModel.id,
+            mapId: warModel.mapId,
+            isAttackerWin,
+            isDestoried,
+            winnerCountryId: warModel.winnerCountryId,
+            detail: detail,
+            defenceCountryId: warModel.defenceCountryId,
+            atkUserIds: warModel.atkUserIds,
+            defUserIds: warModel.defUserIds,
+            timestamp: warModel.timestamp,
+            attackCountryIds: warModel.attackCountryIds,
+            nextDayTimeMinutes,
+        });
         await warModel.save();
         if (isAttackerWin) {
-            await models.Map.update({ownCountryId: warModel.winnerCountryId}, {where: {id: warModel.mapId}});
+            await models.Map.update({ ownCountryId: warModel.winnerCountryId, adventureId: nextDayTimeMinutes }, {where: {id: warModel.mapId}});
         }
         if (autoApply) {
             halfHourTimer.binds.map(fn => fn.apply(null, [[updated], new Date()]));

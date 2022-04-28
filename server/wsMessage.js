@@ -126,10 +126,11 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                     return asyncUpdateUserInfo(userinfo, {
                         actPoint: userinfo.actPoint - enums.NUM_BATTLE_ACTION_MIN,
                         money: userinfo.money - enums.NUM_BATTLE_MONEY_MIN,
-                        soldier: userinfo.soldier - (noCountry ? enums.NUM_BATTLE_SOLDIER_MIN : 0),
+                        // soldier: userinfo.soldier - (noCountry ? enums.NUM_BATTLE_SOLDIER_MIN : 0),
+                        soldier: userinfo.soldier - enums.NUM_BATTLE_SOLDIER_MIN,
                         mapNowId: mapId,
                         contribution: userinfo.contribution + enums.NUM_BATTLE_CONTRUBUTION,
-                    }, act).then(() => {
+                    }, act).then((user) => {
                         const update = { ownCountryId: userinfo.countryId };
                         subEmitGlobalChanges({
                             dataset: [ { depth: ['maps', mapId], update } ]
@@ -496,6 +497,13 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                     return memoController.eventCtl.broadcastInfo(enums.EVENT_GROUP_UP, { round, users: data.users, mapName: data.mapName });
                 });
             }
+            case enums.ACT_REBELLION: {
+                return createCountry(payload, userinfo, memoController, false).then((data) => {
+                    const round = configs.round.value;
+                    // {nickname} 位於 {mapName} 叛亂 {whether}
+                    return memoController.eventCtl.broadcastInfo(enums.EVENT_CHAOS, { round, nickname: userinfo.nickname, mapName: data.mapName, whether: `舉國為 ${data.countryName}` });
+                });
+            }
             
             default:
                 console.log("Not Found Act: ", act);
@@ -638,7 +646,7 @@ function getCityConstruction(mapId, name, memoController) {
     return city && city.jsonConstruction && city.jsonConstruction.hasOwnProperty(name) ? city.jsonConstruction[name] : {lv: 0, value: 0};
 }
 
-async function createCountry(payload, userinfo, memoController) {
+async function createCountry(payload, userinfo, memoController, hireFreeman = true) {
     const countryName = payload.countryName;
     const gameTypeId = payload.gameTypeId;
     const colorBg = payload.colorBg;
@@ -665,23 +673,35 @@ async function createCountry(payload, userinfo, memoController) {
     memoController.mapIdMap[thisMap.id].gameType = gameTypeId;
     memoController.mapIdMap[thisMap.id].ownCountryId = jsonCountry.id;
     algorithms.updateHash(thisMap.id, 'country', jsonCountry.id);
-
-    const freeusers = Object.values(memoController.userMap).filter(user => user.mapNowId == thisMap.id && user.role == enums.ROLE_FREEMAN);
     let users = `${userinfo.nickname}`;
-    for (let i = 0; i < freeusers.length; i++) {
-        let user = freeusers[i];
-        let ismydo = user.id == userinfo.id;
-        await updateSingleUser(user.id, {
-            countryId: jsonCountry.id,
-            role: ismydo ? enums.ROLE_EMPEROR : enums.ROLE_GENERMAN,
-            actPointMax: ismydo ? 10 : 7,
-            occupationId: 0,
-            loyalUserId: ismydo ? 0 : userinfo.id
-        }, userinfo, memoController);
-        if (user.id != userinfo.id) {
-            users += `,${user.nickname}`;
+    if (hireFreeman) {
+        const freeusers = Object.values(memoController.userMap).filter(user => user.mapNowId == thisMap.id && user.role == enums.ROLE_FREEMAN);
+        for (let i = 0; i < freeusers.length; i++) {
+            let user = freeusers[i];
+            let ismydo = user.id == userinfo.id;
+            await updateSingleUser(user.id, {
+                countryId: jsonCountry.id,
+                role: ismydo ? enums.ROLE_EMPEROR : enums.ROLE_GENERMAN,
+                actPointMax: ismydo ? 10 : 7,
+                occupationId: 0,
+                loyalUserId: ismydo ? 0 : userinfo.id
+            }, userinfo, memoController);
+            if (user.id != userinfo.id) {
+                users += `,${user.nickname}`;
+            }
         }
+    } else {
+        await updateSingleUser(userinfo.id, {
+            countryId: jsonCountry.id,
+            role: enums.ROLE_EMPEROR,
+            actPoint: 15,
+            actPointMax: 10,
+            occupationId: 0,
+            loyalUserId: 0,
+            mapNextId: Math.floor(new Date().getTime() / 1000 / 60),    // save minutes for now
+        }, userinfo, memoController);
     }
+    
     broadcastSocket(memoController, {act: enums.ACT_RAISE_COUNTRY, payload: {newCountry: jsonCountry, mapId: thisMap.id, gameType: gameTypeId}});
 
     await models.RecordApi.create({
@@ -690,7 +710,7 @@ async function createCountry(payload, userinfo, memoController) {
         payload: JSON.stringify(jsonCountry),
         curd: 1,
     });
-    return {users, mapName: thisMap.name};
+    return {users, mapName: thisMap.name, countryName};
 }
 
 module.exports = onMessage

@@ -101,6 +101,14 @@ function validate(act, payload, userinfo, memo) {
             res.msg = isAllowedCountryName(countryName) || isExistGameType(gameTypeId) || hasPoint(userinfo, 1) || isFreeMan(userinfo.id, memo) || isFiveFreeManHere(userinfo, memo)
                     || isRGBFormat(colorBg) || isRGBFormat(colorText) || isExistMap(userinfo.mapNowId, memo) || isHereCityMap(userinfo.mapNowId, memo);
         } break
+        case enums.ACT_REBELLION: {
+            const countryName = payload.countryName;
+            const colorBg = payload.colorBg;
+            const colorText = payload.colorText;
+            const gameTypeId = payload.gameTypeId;
+            res.msg = isExistMap(userinfo.mapNowId, memo) || isAllowedRecurit(userinfo, memo) || isAllowedShareUser(userinfo, memo) || isHereCityMap(userinfo.mapNowId, memo)
+                    || isNotOriginCity(userinfo.mapNowId, memo) || isAllowedCountryName(countryName) || isRGBFormat(colorBg) || isRGBFormat(colorText) || isExistGameType(gameTypeId) ;
+        } break
         default:
             console.log("Not Found Act: ", act);
             res.msg = 'Unknown Action.';
@@ -144,6 +152,13 @@ function isOriginCity(mapId, memo) {
     const map = memo.mapIdMap[mapId];
     const country = memo.countryMap[map.ownCountryId];
     return isExistCity(map.cityId, memo) == '' && country.originCityId == map.cityId ? '' : 'Is Not Origin City.';
+}
+
+function isNotOriginCity(mapId, memo) {
+    const map = memo.mapIdMap[mapId];
+    const cityId = map.cityId;
+    const country = memo.countryMap[map.ownCountryId];
+    return country && country.originCityId != cityId ? '' : 'This is Origin City.';
 }
 
 function isExistOriginCity(userinfo, memo) {
