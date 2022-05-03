@@ -10,7 +10,7 @@ const path = require('path');
 // const { Op } = require("sequelize");
 // pares command line parameter
 const argvv = process.argv.slice(2);
-const whiteIps = ['172.16.2.111', '127.0.0.1'];
+const whiteIps = ['172.16.2.111'];
 let port = 81;
 let isEnvDev = false;
 

@@ -7,7 +7,7 @@
   "scripts": {
     "qa": "NODE_ENV=qa && server/service.js 12022",
     "test": "webpack --config build/webpack.dev.conf.js",
-    "service": "node server/service.js 9898",
+    "service": "node server/service.js 9898 development",
     "watch-service": "nodemon server/service.js",
     "watch": "webpack --watch --config build/webpack.prod.conf.js",
     "dev": "webpack-dev-server --config build/webpack.dev.conf.js",
