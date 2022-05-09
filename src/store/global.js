@@ -13,8 +13,10 @@ const global = {
     battlefieldMap: {/*0: {id: 0, attackCountryIds: [], defenceCountryId: 0, detail: {}, judgeId: 0, mapId: 0, round: 0, timestamp: 0, winnerCountryId: 0}*/},
     occupationMap: {/*0: {id: 0, name: '', contributionCondi: 999, addActPoint: 5, isAllowedRecurit: false, isAllowedShare: false}*/},
     gameMap: {/*0: {id: 0, name: '', type: 0, b1v1: true, b2v2: false, b3v3: false, b4v4: false,..} */},
+    itemMap: {/* */},
     notifications: [],
     domesticMessages: [],
+    items: [],
 
     battlefield: {
       timeOptions: [],
@@ -56,6 +58,9 @@ const global = {
           }
           if (payload.gameMap) {
             state.gameMap = payload.gameMap;
+          }
+          if (payload.itemMap) {
+            state.itemMap = payload.itemMap;
           }
           break
         case enums.ACT_GET_GLOBAL_CHANGE_DATA: {
@@ -134,6 +139,9 @@ const global = {
           const newCountries = state.countries.slice();
           newCountries.push(newCountry);
           state.countries = newCountries;
+        } break
+        case enums.ACT_GET_ITEMS: {
+          state.items = payload;
         } break
         case enums.ADMIN_CONTROL: {
           console.log(payload);

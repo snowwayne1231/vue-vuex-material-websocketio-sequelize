@@ -83,6 +83,14 @@ module.exports = {
     actRebellion: ({dispatch}, args) => {
         dispatch('wsEmitMessage', {act: enums.ACT_REBELLION, payload: args});
     },
-
+    getItems: ({dispatch}) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_GET_ITEMS});
+    },
+    clearItems: ({commit}) => {
+        commit('updateGlobal', {items: []});
+    },
+    actUseItem: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_USE_ITEM, payload: args});
+    },
     register,
 }

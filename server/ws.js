@@ -24,6 +24,8 @@ const memo_ctl = {
     warRecords: [],
     occupationMap: {},
     gameMap: {},
+    itemMap: {},
+    userPacketItemMap: {},
     eventCtl: events,
     battleCtl: battles,
     broadcast: broadcastSocketByte,
@@ -83,7 +85,8 @@ function emitGlobalGneralArraies(socket, userinfo) {
     const notifications = memo_ctl.eventCtl.getRecords();
     const domesticMessages = memo_ctl.eventCtl.getRecords(userinfo.countryId);
     const warRecords = algorithms.flatMap(memo_ctl.warRecords, enums.WarRecordGlobalAttributes);
-    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap, occupationMap, gameMap, domesticMessages, warRecords}});
+    const itemMap = memo_ctl.itemMap;
+    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap, occupationMap, gameMap, domesticMessages, warRecords, itemMap}});
 }
 
 
@@ -102,7 +105,8 @@ function refreshByAdmin() {
         const battlefieldMap = memo_ctl.battlefieldMap;
         const occupationMap = memo_ctl.occupationMap;
         const warRecords = algorithms.flatMap(memo_ctl.warRecords, enums.WarRecordGlobalAttributes);
-        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_DATA, payload: { users, maps, cities, countries, battlefieldMap, occupationMap, warRecords } });
+        const itemMap = memo_ctl.itemMap;
+        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_DATA, payload: { users, maps, cities, countries, battlefieldMap, occupationMap, warRecords, itemMap } });
         memo_ctl.userSockets.map(e => {
             const memoUser = memo_ctl.userMap[e.id];
             if (e.userinfo) {
@@ -217,6 +221,24 @@ function refreshBasicData(u=true, m=true, c=true, callback=null) {
             });
         });
         promises.push(promise7);
+        const promise8 = models.Item.findAll({attributes: {exclude: ['createdAt', 'updatedAt']}}).then(items => {
+            items.map(item => {
+                memo_ctl.itemMap[item.id] = item.toJSON();
+            });
+        });
+        promises.push(promise8);
+        const promise9 = models.PacketItem.findAll({attributes: {exclude: ['timestampDeadline', 'timestampUse', 'createdAt', 'updatedAt']}, where: {status: 1}}).then(items => {
+            const nextMap = {}
+            items.map(item => {
+                if (nextMap[item.userId]) {
+                    nextMap[item.userId].push(item.toJSON());
+                } else {
+                    nextMap[item.userId] = [item.toJSON()];
+                }
+            });
+            memo_ctl.userPacketItemMap = nextMap;
+        });
+        promises.push(promise9);
     }
     
     var _all = Promise.all(promises);

@@ -4,7 +4,7 @@
       <md-card-header>
         <md-card-header-text>
           <div class="md-title">
-            <span>{{user.nickname}} </span>
+            <span @click="moveToCenter">{{user.nickname}} </span>
             <span class="md-icon btn" @click="openHeroRanking = true">description</span>
           </div>
           <div class="md-subhead">
@@ -18,14 +18,14 @@
         </md-card-header-text>
       </md-card-header>
       <md-card-content>
-        <div class="map" @mousedown="onMouseDown($event)" @mousemove="onMouseMove($event)" @mouseup="onMouseUp()" @mouseleave="onMouseUp()">
+        <div class="map" @mousedown="onMouseDown($event)" @mousemove="onMouseMove($event)" @mouseup="onMouseUp()" @mouseleave="onMouseUp()" :class="{haveselections: showMapSelections.length > 0}">
           <div class="render" :style="{ transform: `translate(${viewX}px, ${viewY}px)` }">
             <!-- <canvas id="map-canvas"></canvas> -->
             <svg width="2800" height="2200" xmlns="http://www.w3.org/2000/svg">
               <line v-for="(li, idx) in mapLines" :key="idx" :x1="li[0].x" :y1="li[0].y" :x2="li[1].x" :y2="li[1].y" stroke="#33336611" />
             </svg>
-            <li v-for="(p, idx) in mapData" :key="p.id+idx" class="point" :style="{left: `${p.x}px`, top: `${p.y}px`}" @click="onClickPoint(p)">
-              <span :class="{light: showLights.includes(p.id), now: showNow==p.id, battle: showBattle.includes(p.id)}">🏠{{p.name}}</span>
+            <li v-for="(p, idx) in mapData" :key="p.id+idx" class="point" :style="{left: `${p.x}px`, top: `${p.y}px`}" @click="onClickPoint(p)" :class="{selection: showMapSelections.includes(p.id)}">
+              <span :class="{light: showLights.includes(p.id), now: showNow==p.id, battle: showBattle.includes(p.id)}">🏠{{p.name}}<i v-if="p.adventureId > new Date().getTime() / 60000">🔨</i></span>
               <dd class="person-zone" v-if="p.users.length > 0"><span class="md-icon person">person</span><i>{{p.users.length}}</i></dd>
               <span v-if="p.color" class="md-icon flag" :style="{color: p.color}">flag</span>
               <Man
@@ -84,7 +84,7 @@
             <p class="step-point" v-for="(st) in mapSteps" :key="`${st.id}_${st.x}`" :style="{left: `${st.x}px`, top: `${st.y}px`}">{{st.point}}</p>
           </div>
         </div>
-        <div class="nav">
+        <div class="nav" v-if="showMapSelections.length == 0">
           <button @click="onClickMove">移動</button>
           <button @click="onClickIncreaseSoldier">徵兵</button>
           <button @click="onClickSearchWild">探索</button>
@@ -105,6 +105,11 @@
           <button @click="onClickSetOriginCity">遷都</button>
           <button @click="onClickRaiseCountry">起義</button>
           <button @click="onClickRebellion">叛亂</button>
+          <button @click="onClickStratagem">政策(錦囊)</button>
+        </div>
+        <div v-else class="nav">
+          <div v-if="global.itemMap[tmpSavedItemId]">{{global.itemMap[tmpSavedItemId].name}}</div>
+          <button @click="showMapSelections = []; openItems = true;">取消</button>
         </div>
         <div class="notifications">
           <ul>
@@ -246,6 +251,28 @@
             </ul>
           </div>
         </div>
+        <div class="mask" v-if="openItems" @click="onClickCloseStratagem">
+          <div @click="$event.stopPropagation()" class="basic-dialog items">
+            <table v-if="global.items.length > 0">
+              <tbody>
+                <tr>
+                  <th width="16%">錦囊</th>
+                  <th>詳細</th>
+                  <th width="12%">數量</th>
+                  <th width="12%">使用</th>
+                </tr>
+                <tr v-for="(item, idx) in myPacketItems" :key="idx">
+                  <td>{{item.name}}</td>
+                  <td>{{item.detail}}</td>
+                  <td>{{item.quantity}}</td>
+                  <td><button v-if="item.allow" @click="onClickUseItem(item.id)">使用</button></td>
+                </tr>
+                
+              </tbody>
+            </table>
+            <dd v-else class="loading"></dd>
+          </div>
+        </div>
       </md-card-content>
     </md-card>
   </div>
@@ -267,6 +294,7 @@ export default {
       viewY: 0,
       showLights: [],
       showBattle: [],
+      showMapSelections: [],
       battleTimeSelected: -1,
       openAssignment: false,
       selectedShowCityInfo: 0,
@@ -274,6 +302,8 @@ export default {
       openSharePanel: false,
       openHistoryWars: false,
       openHeroRanking: false,
+      openItems: false,
+      tmpSavedItemId: 0,
       shareData: {
         userId: 0,
         money: 0,
@@ -443,7 +473,17 @@ export default {
         });
       });
       return lines;
-    }
+    },
+    myPacketItems() {
+      const user = this.user;
+      const hashItemMap = this.global.itemMap;
+      const items = this.global.items;
+      return Object.values(hashItemMap).map(info => {
+        const quantity = items.filter(e => e.itemId == info.id).length;
+        const allow = quantity > 0 && (info.when == 0 || !user.captiveDate);
+        return {quantity, allow, ...info};
+      })
+    },
   },
   components: {
     Man, Assignment, CityPanel,
@@ -455,6 +495,7 @@ export default {
     }
     this._mouse_dataset = {};
     console.log('store: ', this.$store);
+    this.moveToCenter();
   },
   methods: {
     usersByMapId(mapId) {
@@ -483,7 +524,13 @@ export default {
         this.viewY = moveY;
       }
     },
+    moveToCenter() {
+      const nowMap = this.mapHash[this.user.mapNowId];
+      this.viewX = -(nowMap.x - Math.floor((window.innerWidth-100)/2));
+      this.viewY = -(nowMap.y - Math.floor((window.innerHeight-100)/2));
+    },
     onClickMove() {
+      this.moveToCenter();
       if (this.user.mapTargetId != 0) {return false;}
       if (this.localVoteBoolean) {
         const routes = mapAlgorithm.getAllowedPosition(this.user.mapNowId, this.user.actPoint, this.user.countryId);
@@ -528,6 +575,18 @@ export default {
           this.showBattle = [];
           this.mapSteps = [];
           return this.$store.dispatch('actBattle', { mapId: dataset.id });
+        }
+      } else if (this.showMapSelections.includes(dataset.id)) {
+        const itemId = this.tmpSavedItemId;
+        const mapId = dataset.id;
+        const pkItem = this.global.items.find(e => e.itemId == itemId);
+        this.showMapSelections = [];
+        if (pkItem && window.confirm(`確定對 ${this.mapHash[mapId].name} 使用錦囊 ${this.global.itemMap[itemId].name} 嗎?`)) {
+          this.$store.dispatch('clearItems');
+          return this.$store.dispatch('actUseItem', {itemId, itemPkId: pkItem.id, mapId});
+        } else {
+          this.openItems = true;
+          return false;
         }
       }
       this.selectedShowCityInfo = dataset.cityId;
@@ -725,7 +784,7 @@ export default {
       if (myocc && myocc.name == '軍師') {
         if (window.confirm('確定在此叛亂嗎?')) {
           const countryName = window.prompt('輸入國家名稱(兩中文字內): ');
-          const colorBg = window.prompt('輸入國家背景色(RGB,例如#ff00ff): ');
+          const colorBg = window.prompt('輸入國家背景色RGB,例如#ff00ff): ');
           const colorText = window.prompt('輸入國家字色(RGB,例如#ffff00): ');
           const gameTypes = Object.keys(enums.CHINESE_GAMETYPE_NAMES).map(key => [parseInt(key), enums.CHINESE_GAMETYPE_NAMES[key]]);
           const gameTypeId = parseInt(window.prompt(gameTypes.map(f => `${f[0]} -> ${f[1]}`).join('\r\n')));
@@ -733,6 +792,49 @@ export default {
         }
       } else {
         window.alert('不能叛亂');
+      }
+    },
+    onClickStratagem() {
+      this.openItems = true;
+      this.$store.dispatch('getItems');
+    },
+    onClickCloseStratagem() {
+      this.openItems = false;
+      this.$store.dispatch('clearItems');
+    },
+    onClickUseItem(itemId) {
+      const info = this.global.itemMap[itemId];
+      if (info.object == 0) {
+        const pkItem = this.global.items.find(e => e.itemId == itemId);
+        if (pkItem && window.confirm(`確定使用錦囊 ${info.name} 嗎?`)) {
+          this.onClickCloseStratagem();
+          this.$store.dispatch('actUseItem', {itemId, itemPkId: pkItem.id, mapId: 0});
+        }
+      } else {
+        const mapHash = this.mapHash;
+        const myCnty = this.user.countryId;
+        let selections = [];
+        if (info.lv == 0) {
+          selections = this.global.maps.map(map => map.id);
+        } else if (info.lv == 1) {
+          selections = this.mapHash[this.user.mapNowId].route;
+        }
+        switch (info.object) {
+          case 2: selections = selections.filter(id => mapHash[id].ownCountryId == myCnty); break;
+          case 3: selections = selections.filter(id => mapHash[id].ownCountryId != myCnty); break;
+          case 4: selections = selections.filter(id => mapHash[id].cityId > 0); break;
+          case 5: selections = selections.filter(id => mapHash[id].cityId > 0 && mapHash[id].ownCountryId == myCnty); break;
+          case 6: selections = selections.filter(id => mapHash[id].cityId > 0 && mapHash[id].ownCountryId != myCnty); break;
+          case 7: selections = selections.filter(id => mapHash[id].cityId == 0); break;
+          case 8: selections = selections.filter(id => mapHash[id].cityId == 0 && mapHash[id].ownCountryId == myCnty); break;
+          case 9: selections = selections.filter(id => mapHash[id].cityId == 0 && mapHash[id].ownCountryId != myCnty); break;
+          default:
+        }
+        this.tmpSavedItemId = itemId;
+        this.showMapSelections = selections;
+        this.showLights = [];
+        this.showBattle = [];
+        this.openItems = false;
       }
     },
     getCheck(ary = []) {
@@ -764,7 +866,7 @@ export default {
 .map {
   position: relative;
   width: calc(100vw - 154px);
-  height: 720px;
+  height: calc(100vh - 116px);
   overflow: hidden;
 }
 .render {
@@ -841,9 +943,11 @@ export default {
 .light {
   color: blue;
 }
+.glight {
+  color: #6ebd32;
+}
 .now {
-  color: #a98941;
-  font-size: 2em;
+  font-weight: bold;
 }
 .battle {
   color: red;
@@ -852,6 +956,15 @@ export default {
   position: absolute;
   top: -44px;
   left: 20px;
+}
+.haveselections {
+  .point {
+    display: none;
+    &.selection {
+      display: inline-block;
+      color: green;
+    }
+  }
 }
 .nav {
   position: absolute;
@@ -862,7 +975,11 @@ export default {
   background: rgba(0,0,0,0.2);
 }
 .notifications {
-  height: 100px;
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  width: 100%;
+  height: 112px;
   overflow: hidden;
   background-color: #010600;
   color: #fff;
@@ -982,5 +1099,10 @@ export default {
       flex: 1;
     }
   }
+}
+
+.items {
+  max-height: 520px;
+  overflow: auto;
 }
 </style>

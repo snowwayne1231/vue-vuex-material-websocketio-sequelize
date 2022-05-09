@@ -109,6 +109,15 @@ function validate(act, payload, userinfo, memo) {
             res.msg = isExistMap(userinfo.mapNowId, memo) || isAllowedRecurit(userinfo, memo) || isAllowedShareUser(userinfo, memo) || isHereCityMap(userinfo.mapNowId, memo)
                     || isNotOriginCity(userinfo.mapNowId, memo) || isAllowedCountryName(countryName) || isRGBFormat(colorBg) || isRGBFormat(colorText) || isExistGameType(gameTypeId) ;
         } break
+        case enums.ACT_GET_ITEMS: {
+            
+        } break
+        case enums.ACT_USE_ITEM: {
+            const itemId = payload.itemId;
+            const itemPkId = payload.itemPkId;
+            const mapId = payload.mapId;
+            res.msg = haveItem(itemId, itemPkId, userinfo, memo) || itemWhenAllowed(itemId, userinfo, memo) || itemObjectAllowed(itemId, mapId, userinfo, memo) || itemLvAllowed(itemId, mapId, userinfo, memo);
+        } break
         default:
             console.log("Not Found Act: ", act);
             res.msg = 'Unknown Action.';
@@ -429,6 +438,51 @@ function isAllowedCountryName(name) {
 
 function isRGBFormat(color) {
     return typeof color == 'string' && color.match(/^\#[\w]{6}$/i) ? '' : 'Color Format Not Match.';
+}
+
+function haveItem(itemid, pkid, userinfo, memo) {
+    const packets = memo.userPacketItemMap[userinfo.id];
+    if (packets && packets.length > 0) {
+        return packets.filter(e => e.itemId == itemid && e.id == pkid).length > 0 ? '' : 'Do Not Have This Item.';
+    }
+    return 'Do Not Have Item.';
+}
+
+function itemWhenAllowed(itemid, userinfo, memo) {
+    const info = memo.itemMap[itemid];
+    return info && (info.when == 0 || !userinfo.captiveDate) ? '' : 'Not Allow To Use This Item.';
+}
+
+function itemObjectAllowed(itemid, mapid, userinfo, memo) {
+    const info = memo.itemMap[itemid];
+    const mapInfo = memo.mapIdMap[mapid] || {};
+    switch (info.object) {
+        case 0: return '';
+        case 1: return mapInfo.id ? '' : 'Not Exist Map.';
+        case 2: return mapInfo.ownCountryId == userinfo.countryId ? '' : 'Not Same Country.';
+        case 3: return mapInfo.ownCountryId != userinfo.countryId ? '' : 'Is Same Country.';
+        case 4: return mapInfo.cityId > 0 ? '' : 'Not City.';
+        case 5: return mapInfo.cityId > 0 && mapInfo.ownCountryId == userinfo.countryId ? '' : 'Not Friendly City.';
+        case 6: return mapInfo.cityId > 0 && mapInfo.ownCountryId != userinfo.countryId ? '' : 'Not Enimily City.';
+        case 7: return mapInfo.cityId == 0 ? '' : 'Not Wild';
+        case 8: return mapInfo.cityId == 0 && mapInfo.ownCountryId == userinfo.countryId ? '' : 'Not Friendly Wild.';
+        case 9: return mapInfo.cityId == 0 && mapInfo.ownCountryId != userinfo.countryId ? '' : 'Not Enimily Wild.';
+        default:
+            return 'unknown';
+    }
+}
+
+function itemLvAllowed(itemid, mapid, userinfo, memo) {
+    const info = memo.itemMap[itemid];
+    if (info.lv > 0) {
+        if (info.lv == 1) {
+            const mymap = memo.mapIdMap[userinfo.mapNowId];
+            return mymap && mymap.route.includes(mapid) ? '' : 'Distance Is Not Reached.';
+        } else {
+            return 'Distance Wrong.'
+        }
+    }
+    return '';
 }
 
 module.exports = {
