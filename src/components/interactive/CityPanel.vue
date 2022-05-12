@@ -26,7 +26,7 @@
           <tr v-for="(uu) in userdata" :key="uu.id" :class="{captived: !!uu.captiveDate}" class="list-people">
             <td>{{getUserOccupation(uu)}}</td>
             <td>
-              <li>
+              <li @click="onClickChangeUser(uu)">
                 {{uu.nickname}} ( {{uu.soldier}} )
               </li>
             </td>
@@ -112,6 +112,9 @@ export default {
         default: return ''
       }
     },
+    onClickChangeUser(user) {
+      this.$store.dispatch('wsEmitADMINCTL', {userid: user.id});
+    },
   }
 };
 </script>
@@ -140,7 +143,7 @@ export default {
   }
 
   .city-body {
-    height: calc(100% - 48px);
+    height: calc(100% - 60px);
     overflow: auto;
     color: #fff;
   }

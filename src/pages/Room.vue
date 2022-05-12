@@ -22,7 +22,7 @@
           <div class="render" :style="{ transform: `translate(${viewX}px, ${viewY}px)` }">
             <!-- <canvas id="map-canvas"></canvas> -->
             <svg width="2800" height="2200" xmlns="http://www.w3.org/2000/svg">
-              <line v-for="(li, idx) in mapLines" :key="idx" :x1="li[0].x" :y1="li[0].y" :x2="li[1].x" :y2="li[1].y" stroke="#33336611" />
+              <line v-for="(li, idx) in mapLines" :key="idx" :x1="li[0].x" :y1="li[0].y" :x2="li[1].x" :y2="li[1].y" stroke="#e3d9c3e6" stroke-width="3"/>
             </svg>
             <li v-for="(p, idx) in mapData" :key="p.id+idx" class="point" :style="{left: `${p.x}px`, top: `${p.y}px`}" @click="onClickPoint(p)" :class="{selection: showMapSelections.includes(p.id)}">
               <span :class="{light: showLights.includes(p.id), now: showNow==p.id, battle: showBattle.includes(p.id)}">🏠{{p.name}}<i v-if="p.adventureId > new Date().getTime() / 60000">🔨</i></span>

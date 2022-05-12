@@ -132,10 +132,6 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                         mapNowId: mapId,
                         contribution: userinfo.contribution + enums.NUM_BATTLE_CONTRUBUTION,
                     }, act).then((user) => {
-                        const update = { ownCountryId: userinfo.countryId };
-                        subEmitGlobalChanges({
-                            dataset: [ { depth: ['maps', mapId], update } ]
-                        });
                         return updateMapOwner(mapId, userinfo.countryId , userinfo, memoController);
                     }).then(() => {
                         return memoController.eventCtl.broadcastInfo(enums.EVENT_WAR_WIN, {atkCountryName, mapName: thisMap.name, nicknames: userinfo.nickname, round: configs.round.value});
@@ -564,7 +560,7 @@ async function updateMapOwner(mapId, countryId, userinfo, memoController=null) {
         memoController.mapIdMap[mapId].ownCountryId = countryId;
         memoController.mapIdMap[mapId].adventureId = timeMinutes;
         algorithms.updateHash(mapId, 'country', countryId);
-        broadcastSocket(memo, {act: enums.ACT_GET_GLOBAL_CHANGE_DATA, payload: {dataset: [{depth: ['maps', mapId], update: {adventureId: timeMinutes}}]}});
+        broadcastSocket(memoController, {act: enums.ACT_GET_GLOBAL_CHANGE_DATA, payload: {dataset: [{depth: ['maps', mapId], update: {adventureId: timeMinutes, ownCountryId: countryId}}]}});
     }
     await models.RecordApi.create({
         userId: userinfo.id,
@@ -738,7 +734,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
     const results = {done: false, nickname: userinfo.nickname, tips: ''};
     const effUserNames = [];
     const effMapNames = [];
-    const mapName = (mapId > 0 ? memo.mapIdMap[mapId] : memo.mapIdMap[userinfo.mapNowId]).name;
+    let mapName = (mapId > 0 ? memo.mapIdMap[mapId] : memo.mapIdMap[userinfo.mapNowId]).name;
     let appendTips = '';
     switch (itemInfo.staticKey) {
         case '_STRATEGY_RECRUIT_': {
@@ -781,21 +777,25 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
             const mymapid = userinfo.mapNowId;
             const cityId = memo.mapIdMap[mymapid].cityId;
             const thisCity = memo.cityMap[cityId];
-            await updateCity(cityId, { addResource: thisCity.addResource + 15}, userinfo, memo);
-            effMapNames.push(mapName);
+            if (thisCity) {
+                await updateCity(cityId, { addResource: thisCity.addResource + 15}, userinfo, memo);
+                effMapNames.push(mapName);
+            }
         } break;
         case '_STRATEGY_BUILDING_UP_': {
             const mapid = userinfo.mapNowId;
             const cityId = memo.mapIdMap[mapid].cityId;
             const thisCity = memo.cityMap[cityId];
-            const update = {
-                jsonConstruction: {...thisCity.jsonConstruction}
-            };
-            Object.keys(update.jsonConstruction).map(key => {
-                update.jsonConstruction[key].lv += 1;
-            });
-            await updateCity(cityId, update, userinfo, memo);
-            effMapNames.push(mapName);
+            if (thisCity) {
+                const update = {
+                    jsonConstruction: {...thisCity.jsonConstruction}
+                };
+                Object.keys(update.jsonConstruction).map(key => {
+                    update.jsonConstruction[key].lv += 1;
+                });
+                await updateCity(cityId, update, userinfo, memo);
+                effMapNames.push(mapName);
+            }
         } break;
         case '_STRATEGY_STEAL_': {
             const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId);
@@ -874,6 +874,166 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
                 }
             }
         } break;
+        case '_STRATEGY_KICK_': {
+            const targetMap = memo.mapIdMap[mapId];
+            const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.countryId == targetMap.ownCountryId && u.mapTargetId == 0);
+            if (users.length > 0) {
+                const allOtherMap = Object.values(memo.mapIdMap).filter(m => m.ownCountryId == targetMap.ownCountryId && m.id != targetMap.id);
+                if (allOtherMap.length > 0) {
+                    for (let i = 0; i < users.length; i++) {
+                        let user = users[i];
+                        let rand = Math.floor(Math.random() * allOtherMap.length);
+                        let randMap = allOtherMap[rand];
+                        await updateSingleUser(user.id, {mapNowId: randMap.id}, userinfo, memo);
+                        effUserNames.push(user.nickname);
+                    }
+                }
+            }
+        } break;
+        case '_STRATEGY_EAST_WEST_': {
+            const targetMap = memo.mapIdMap[mapId];
+            const users = Object.values(memo.userMap).filter(u => targetMap.route.includes(u.mapNowId) && u.countryId == targetMap.ownCountryId && u.mapTargetId == 0);
+            if (users.length > 0) {
+                for (let i = 0; i < users.length; i++) {
+                    let user = users[i];
+                    await updateSingleUser(user.id, {mapNowId: mapId, actPoint: Math.max(user.actPoint - 1, 0)}, userinfo, memo);
+                    effUserNames.push(user.nickname);
+                }
+            }
+        } break;
+        case '_STRATEGY_SNEAK_': {
+            const targetMap = memo.mapIdMap[mapId];
+            const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.countryId == targetMap.ownCountryId);
+            if (users.length == 0 && targetMap.cityId == 0) {
+                await updateMapOwner(mapId, userinfo.countryId, userinfo, memo);
+                await updateSingleUser(userinfo.id, { mapNowId: mapId }, userinfo, memo);
+                effMapNames.push(targetMap.name);
+            }
+        } break;
+        case '_STRATEGY_SEIZE_': {
+            const targetMap = memo.mapIdMap[mapId];
+            const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.countryId == targetMap.ownCountryId);
+            if (users.length == 0 && targetMap.cityId > 0) {
+                await updateMapOwner(mapId, userinfo.countryId, userinfo, memo);
+                await updateSingleUser(userinfo.id, { mapNowId: mapId }, userinfo, memo);
+                effMapNames.push(targetMap.name);
+            }
+        } break;
+        case '_STRATEGY_TRAPE_': {
+            const targetMap = memo.mapIdMap[mapId];
+            const sameCountryMapIds = targetMap.route.filter(r => memo.mapIdMap[r].ownCountryId == targetMap.ownCountryId).concat(mapId);
+            const users = Object.values(memo.userMap).filter(u => sameCountryMapIds.includes(u.mapNowId) && u.countryId == targetMap.ownCountryId);
+            if (users.length > 0) {
+                for (let i = 0; i < users.length; i++) {
+                    let user = users[i];
+                    await updateSingleUser(user.id, {mapNowId: user.mapTargetId == 0 ? mapId : user.mapNowId, actPoint: 0}, userinfo, memo);
+                    effUserNames.push(user.nickname);
+                }
+            }
+        } break;
+        case '_STRATEGY_EMPTY_CITY_': {
+            const targetMapId = userinfo.mapNowId;
+            const targetBattle = memo.battlefieldMap[targetMapId];
+            if (targetBattle) {
+                const users = targetBattle.atkUserIds.filter(uid => uid > 0).map(uid => memo.userMap[uid]);
+                const defUsers = targetBattle.defUserIds.filter(uid => uid > 0);
+                const now = new Date();
+                if (users.length > 0 && defUsers.length == 0 && now.getTime() < new Date(targetBattle.timestamp).getTime()) {
+                    const atkCountry = memo.countryMap[users[0].countryId];
+                    const originMap = Object.values(memo.mapIdMap).find(m => m.cityId == atkCountry.originCityId);
+                    for (let i = 0; i < users.length; i++) {
+                        let user = users[i];
+                        let mapNowId = originMap ? originMap.id : user.mapNowId;
+                        await updateSingleUser(user.id, {mapNowId, mapTargetId: 0}, userinfo, memo);
+                        effUserNames.push(user.nickname);
+                    }
+
+                    await models.RecordWar.update({winnerCountryId: 999}, {where: {id: targetBattle.id}});
+                    delete memo.battlefieldMap[targetMapId];
+                    broadcastSocket(memo, {act: enums.ACT_BATTLE_DONE, payload: {mapId: targetMapId, id: targetBattle.id}});
+                }
+            }
+        } break;
+        case '_STRATEGY_BEAUTY_': {
+            const targetMapId = userinfo.mapNowId;
+            const targetMap = memo.mapIdMap[targetMapId];
+            const now = new Date();
+            if (targetMap && targetMap.route) {
+                const mapIds = [targetMapId].concat(targetMap.route);
+                const battleMapInRange = [];
+                for (let i = 0; i < mapIds.length; i++) {
+                    let mid = mapIds[i];
+                    let battle = memo.battlefieldMap[mid];
+                    if (battle && now.getTime() < new Date(battle.timestamp).getTime()) {
+                        battleMapInRange.push(mid);
+                    }
+                }
+                if (battleMapInRange.length > 0) {
+                    let randIdx = Math.floor(Math.random() * battleMapInRange.length);
+                    let randMapId = battleMapInRange[randIdx];
+                    let battle = memo.battlefieldMap[randMapId];
+                    let atkUsers = battle.atkUserIds.filter(uid => uid > 0);
+                    let defUsers = battle.defUserIds.filter(uid => uid > 0);
+                    let inBattleUsers = atkUsers.concat(defUsers);
+                    await models.RecordWar.update({winnerCountryId: 999}, {where: {id: battle.id}});
+                    delete memo.battlefieldMap[randMapId];
+                    broadcastSocket(memo, {act: enums.ACT_BATTLE_DONE, payload: {mapId: randMapId, id: battle.id}});
+                    for (let i = 0; i < inBattleUsers.length; i++) {
+                        let userId = inBattleUsers[i];
+                        let user = memo.userMap[userId];
+                        await updateSingleUser(userId, {mapTargetId: 0}, userinfo, memo);
+                        effUserNames.push(user.nickname);
+                    }
+                    mapName = memo.mapIdMap[randMapId].name;
+                }
+                
+            }
+        } break;
+        case '_STRATEGY_BITTER_': {
+            const decreaseSoldier = userinfo.soldier;
+            const nearMaps = memo.mapIdMap[userinfo.mapNowId].route;
+            const users = Object.values(memo.userMap).filter(u => nearMaps.includes(u.mapNowId) && u.countryId != userinfo.countryId && u.mapTargetId == 0 && u.role != enums.ROLE_FREEMAN);
+            if (decreaseSoldier > 0 && users.length > 0) {
+                for (let i = 0; i < users.length; i++) {
+                    let user = users[i];
+                    await updateSingleUser(user.id, {soldier: Math.max(user.soldier - decreaseSoldier, 0)}, userinfo, memo);
+                    effUserNames.push(user.nickname);
+                }
+                await updateSingleUser(userinfo.id, {soldier: 0}, userinfo, memo);
+                appendTips = `(所有人失去 ${decreaseSoldier} 兵力)`;
+            }
+        } break;
+        case '_STRATEGY_SOLDIER_STEAL_': {
+            const nearMaps = memo.mapIdMap[userinfo.mapNowId].route;
+            const users = Object.values(memo.userMap).filter(u => nearMaps.includes(u.mapNowId) && u.countryId != userinfo.countryId && u.mapTargetId == 0 && u.soldier > 0 && u.role != enums.ROLE_FREEMAN);
+            if (users.length > 0) {
+                users.sort((a,b) => b.soldier - a.soldier);
+                const mostSoldierUser = users[0];
+                const halfSoldier = Math.floor(mostSoldierUser.soldier / 2);
+                await updateSingleUser(userinfo.id, {soldier: userinfo.soldier + halfSoldier}, userinfo, memo);
+                await updateSingleUser(mostSoldierUser.id, {soldier: mostSoldierUser.soldier - halfSoldier}, userinfo, memo);
+                effUserNames.push(mostSoldierUser.nickname);
+                mapName = memo.mapIdMap[mostSoldierUser.mapNowId].name;
+                appendTips = `(共獲得 ${halfSoldier} 兵力)`;
+            }
+        } break;
+        case '_STRATEGY_AVERAGE_': {
+            const timeMinutes = Math.floor(new Date().getTime() / 1000 / 60);
+            const nearMaps = [userinfo.mapNowId].concat(memo.mapIdMap[userinfo.mapNowId].route).filter(mid => memo.mapIdMap[mid].adventureId > timeMinutes);
+            if (nearMaps.length > 0) {
+                const users = Object.values(memo.userMap).filter(u => nearMaps.includes(u.mapNowId) && u.mapTargetId == 0 && u.role != enums.ROLE_FREEMAN);
+                if (users.length > 0) {
+                    const sumOfSoldier = users.reduce((a,b) => a + b.soldier, 0);
+                    const avgSoldier = Math.floor(sumOfSoldier / users.length);
+                    for (let i = 0; i < users.length; i++) {
+                        let user = users[i];
+                        await updateSingleUser(user.id, {soldier: avgSoldier}, userinfo, memo);
+                        effUserNames.push(user.nickname);
+                    }
+                    appendTips = `(平均兵力為 ${avgSoldier})`;
+                }
+            }
+        } break;
         default:
             return results;
     }
@@ -897,6 +1057,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
         await models.PacketItem.update({status: 0, timestampUse: new Date(), userTarget: mapName}, {where: {id: itemPkId}});
         let pkidx = memo.userPacketItemMap[userinfo.id].findIndex(e => e.id == itemPkId);
         memo.userPacketItemMap[userinfo.id].splice(pkidx, 1);
+        await updateSingleUser(userinfo.id, {actPoint: userinfo.actPoint - 1}, userinfo, memo);
     }
     return results;
 }

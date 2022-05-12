@@ -189,7 +189,7 @@ function refreshBasicData(u=true, m=true, c=true, callback=null) {
             return true
         });
         promises.push(promise6);
-        const promise8 = models.RecordWar.findAll({ attributes: ['id', 'timestamp', 'mapId', 'winnerCountryId', 'attackCountryIds', 'defenceCountryId'], where: { winnerCountryId: {[Op.gt]: 0} } }).then(wars => {
+        const promise8 = models.RecordWar.findAll({ attributes: ['id', 'timestamp', 'mapId', 'winnerCountryId', 'attackCountryIds', 'defenceCountryId'], where: { winnerCountryId: {[Op.between]: [1, 255]} } }).then(wars => {
             const nextary = wars.map(e => {
                 return e.toJSON();
             });

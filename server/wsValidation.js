@@ -116,7 +116,7 @@ function validate(act, payload, userinfo, memo) {
             const itemId = payload.itemId;
             const itemPkId = payload.itemPkId;
             const mapId = payload.mapId;
-            res.msg = haveItem(itemId, itemPkId, userinfo, memo) || itemWhenAllowed(itemId, userinfo, memo) || itemObjectAllowed(itemId, mapId, userinfo, memo) || itemLvAllowed(itemId, mapId, userinfo, memo);
+            res.msg = hasPoint(userinfo, 1) || haveItem(itemId, itemPkId, userinfo, memo) || itemWhenAllowed(itemId, userinfo, memo) || itemObjectAllowed(itemId, mapId, userinfo, memo) || itemLvAllowed(itemId, mapId, userinfo, memo);
         } break
         default:
             console.log("Not Found Act: ", act);
@@ -457,7 +457,7 @@ function itemObjectAllowed(itemid, mapid, userinfo, memo) {
     const info = memo.itemMap[itemid];
     const mapInfo = memo.mapIdMap[mapid] || {};
     switch (info.object) {
-        case 0: return '';
+        case 0: return memo.mapIdMap[userinfo.mapNowId] ? '' : 'Not Stand On Map.';
         case 1: return mapInfo.id ? '' : 'Not Exist Map.';
         case 2: return mapInfo.ownCountryId == userinfo.countryId ? '' : 'Not Same Country.';
         case 3: return mapInfo.ownCountryId != userinfo.countryId ? '' : 'Is Same Country.';
