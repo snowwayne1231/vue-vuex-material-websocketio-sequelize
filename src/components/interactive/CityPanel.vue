@@ -101,7 +101,7 @@ export default {
   },
   methods: {
     getUserOccupation(user) {
-      let ext = (user.captiveDate) ? '(俘虜)' : '';
+      let ext = (user.captiveDate) ? `(俘虜) (${new Date(user.captiveDate).toLocaleString()})` : '';
       switch (user.role) {
         case 1: return '主公'+ext
         case 2: {
