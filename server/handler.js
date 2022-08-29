@@ -124,6 +124,8 @@ module.exports = {
                         if ((nowMinutes - configs.recover) > gapMinutes){
                             return self.checkPeopleStatus(ws).then(ok => {
                                 return self.rewardPeople(ws, configs)
+                            }).then((ok) => {
+                                return self.resetBusiness(ws)
                             }).then(ok => {
                                 return self.recoverPoint(ws, configs, nowMinutes);
                             }).then((updated) => {
@@ -166,6 +168,13 @@ module.exports = {
             })
         }
         return true
+    },
+    resetBusiness: async function(ws) {
+        const memo = ws.getMemo();
+        await memo.businessCtl.reset();
+        const itemSellerMap = memo.businessCtl.getSellerMap();
+        memo.broadcast(enums.MESSAGE, {act: enums.ACT_GET_ITEM_SELLER, payload: {itemSellerMap}});
+        return true;
     },
     rewardPeople: async function(ws, configs) {
         const round = configs.round;

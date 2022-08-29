@@ -11,19 +11,25 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
         const act = msg.act || '';
         const payload = msg.payload || {};
         const userinfo = socket.request.session.userinfo;
+        // console.log('before validated: payload: ', payload)
         const validated = validation.validate(act, payload, userinfo, memoController);
         if (!validated.ok) {
             return subEmitMessage(enums.ALERT, {msg: validated.msg, act}); 
         }
         let switched = subSwitchOnMessage(act, payload, userinfo);
-        return switched && switched.catch && switched.catch(err => console.log('[Error] ', err));
+        if (switched && switched.catch) {
+            return switched.catch(err => console.log('[Error] ', err));
+        } else {
+            console.log('SubSwitchOnMessage Failed: ', switched)
+            return switched;
+        }
     });
 
     return true;
 
 
     function subSwitchOnMessage(act, payload, userinfo) {
-        // console.log('subSwitchOnMessage: act: ', act);
+        console.log('subSwitchOnMessage: act: ', act);
         switch (act) {
             case enums.ACT_GET_GLOBAL_USERS_INFO: {
                 const actMaxIdx = enums.UserGlobalAttributes.indexOf('actPointMax');
@@ -66,12 +72,25 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const maxMoney = 150;
                 const isLucky = randomMoney / maxMoney > 0.97;
                 return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney, actPoint: userinfo.actPoint-1,  }, act).then(() => {
-                    return isLucky && memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
+                    isLucky && memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
                         round: configs.round.value,
                         countryId: userinfo.countryId,
                         type: enums.CHINESE_TYPE_DOMESTIC,
                         content: algorithms.getMsgLuckyMoney(userinfo.nickname, randomMoney),
                     });
+                    return memoController.businessCtl.search(userinfo.mapNowId)
+                }).then(evt => {
+                    if (evt && evt.success) {
+                        const thismap = memoController.mapIdMap[userinfo.mapNowId];
+                        const itemSellerMap = memoController.businessCtl.getSellerMap();
+                        memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
+                            round: configs.round.value,
+                            countryId: userinfo.countryId,
+                            type: '隱士',
+                            content: `${userinfo.nickname} 在 ${thismap.name} 探索時發現了 ${evt.name}`,
+                        });
+                        broadcastSocket(memoController, {act: enums.ACT_GET_ITEM_SELLER, payload: {itemSellerMap}});
+                    }
                 });
             }
             case enums.ACT_BUSINESS: {
@@ -227,6 +246,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                     if (userinfo.actPoint < actSpend || userinfo.money < enums.NUM_BATTLE_MONEY_MIN) { break }
 
                     if (isDefenceSite && thisBattle.defUserIds[position] == 0) {
+                        if (involvedSoldiers > 10000) { break }
                         bdata.defUserIds = thisBattle.defUserIds.slice();
                         bdata.defUserIds[position] = userinfo.id;
                         bdata.detail.defSoldiers[position] = involvedSoldiers;
@@ -441,7 +461,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                         const emperor = userinfo.nickname;
                         const originCityMap = Object.values(memoController.mapIdMap).find(m => m.cityId == country.originCityId);
                         memoController.eventCtl.broadcastInfo(enums.EVENT_CAPTIVE_RECRUIT, {nickname, emperor, round});
-                        return updateSingleUser(userId, {countryId: userinfo.countryId, role: enums.ROLE_GENERMAN , actPointMax: 7, captiveDate: null, mapNowId: originCityMap.id, mapTargetId: 0, occupationId: 0}, userinfo, memoController);
+                        return updateSingleUser(userId, {countryId: userinfo.countryId, role: enums.ROLE_GENERMAN , actPointMax: 7, captiveDate: null, mapNowId: originCityMap.id, mapTargetId: 0, occupationId: 0, loyalUserId: 0}, userinfo, memoController);
                     } else {
                         const backCountry = memoController.countryMap[user.countryId];
                         const originCityMap = backCountry.originCityId > 0 ? Object.values(memoController.mapIdMap).find(m => m.cityId == backCountry.originCityId) : null;
@@ -495,7 +515,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 });
             }
             case enums.ACT_REBELLION: {
-                return createCountry(payload, userinfo, memoController, false).then((data) => {
+                return createCountry(payload, userinfo, memoController, false, true).then((data) => {
                     const round = configs.round.value;
                     // {nickname} 位於 {mapName} 叛亂 {whether}
                     return memoController.eventCtl.broadcastInfo(enums.EVENT_CHAOS, { round, nickname: userinfo.nickname, mapName: data.mapName, whether: `舉國為 ${data.countryName}` });
@@ -515,6 +535,39 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                     const round = configs.round.value;
                     if (data.done) {
                         return memoController.eventCtl.broadcastInfo(enums.EVENT_USE_TIPS, { round, nickname: data.nickname, tips: data.tips });
+                    } else {
+                        return subEmitMessage(enums.ALERT, {msg: 'Failed.', act});
+                    }
+                });
+            }
+            case enums.ACT_BUY_ITEM: {
+                const itemId = payload.itemId;
+                const item = memoController.itemMap[itemId];
+                return memoController.businessCtl.buy(item.name, userinfo).then(newItem => {
+                    // console.log('newItem: ', newItem)
+                    if (newItem) {
+                        const pkItem = {
+                            id: newItem.id,
+                            itemId: newItem.itemId,
+                            status: newItem.status,
+                            userId: newItem.userId,
+                            userTarget: newItem.userTarget,
+                        }
+                        if (memoController.userPacketItemMap[userinfo.id] && memoController.userPacketItemMap[userinfo.id].length >= 0) {
+                            memoController.userPacketItemMap[userinfo.id].push(pkItem)
+                        } else {
+                            memoController.userPacketItemMap[userinfo.id] = [pkItem];
+                        }
+                        return asyncUpdateUserInfo(userinfo, { actPoint: userinfo.actPoint - 1, money: userinfo.money - newItem.price }, act).then(() => {
+                            memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
+                                round: configs.round.value,
+                                countryId: userinfo.countryId,
+                                type: '交易',
+                                content: `${userinfo.nickname} 獲得了錦囊 [${item.name}] `,
+                            });
+                            return subEmitMessage(enums.ACT_GET_ITEMS, memoController.userPacketItemMap[userinfo.id]);
+                        });
+                        
                     } else {
                         return subEmitMessage(enums.ALERT, {msg: 'Failed.', act});
                     }
@@ -662,7 +715,7 @@ function getCityConstruction(mapId, name, memoController) {
     return city && city.jsonConstruction && city.jsonConstruction.hasOwnProperty(name) ? city.jsonConstruction[name] : {lv: 0, value: 0};
 }
 
-async function createCountry(payload, userinfo, memoController, hireFreeman = true) {
+async function createCountry(payload, userinfo, memoController, hireFreeman = true, hireGenerals = false) {
     const countryName = payload.countryName;
     const gameTypeId = payload.gameTypeId;
     const colorBg = payload.colorBg;
@@ -681,14 +734,16 @@ async function createCountry(payload, userinfo, memoController, hireFreeman = tr
     });
     const jsonCountry = newCountry.toJSON();
     memoController.countryMap[jsonCountry.id] = jsonCountry;
-
+    console.log('jsonCountry: ', jsonCountry);
+    
     await models.Map.update({
         gameType: gameTypeId,
         ownCountryId: jsonCountry.id,
     },{where: {id: thisMap.id}});
     memoController.mapIdMap[thisMap.id].gameType = gameTypeId;
     memoController.mapIdMap[thisMap.id].ownCountryId = jsonCountry.id;
-    algorithms.updateHash(thisMap.id, 'country', jsonCountry.id);
+    await updateMapOwner(thisMap.id, jsonCountry.id, userinfo, memoController)
+    // algorithms.updateHash(thisMap.id, 'country', jsonCountry.id);
     let users = `${userinfo.nickname}`;
     if (hireFreeman) {
         const freeusers = Object.values(memoController.userMap).filter(user => user.mapNowId == thisMap.id && user.role == enums.ROLE_FREEMAN);
@@ -707,15 +762,26 @@ async function createCountry(payload, userinfo, memoController, hireFreeman = tr
             }
         }
     } else {
-        await updateSingleUser(userinfo.id, {
-            countryId: jsonCountry.id,
-            role: enums.ROLE_EMPEROR,
-            actPoint: 15,
-            actPointMax: 10,
-            occupationId: 0,
-            loyalUserId: 0,
-            mapNextId: Math.floor(new Date().getTime() / 1000 / 60),    // save minutes for now
-        }, userinfo, memoController);
+        const generals = hireGenerals ? 
+            Object.values(memoController.userMap).filter(user => user.mapNowId == thisMap.id && user.role == enums.ROLE_GENERMAN && !user.captiveDate)
+        :   [memoController.userMap[userinfo.id]];
+
+        for (let i = 0; i < generals.length; i++) {
+            let user = generals[i];
+            let ismydo = user.id == userinfo.id;
+            await updateSingleUser(user.id, {
+                countryId: jsonCountry.id,
+                role: ismydo ? enums.ROLE_EMPEROR : enums.ROLE_GENERMAN,
+                actPoint: ismydo ? 15 : user.actPoint,
+                actPointMax: ismydo ? 10 : 7,
+                occupationId: 0,
+                loyalUserId: 0,
+                mapNextId: Math.floor(new Date().getTime() / 1000 / 60),    // save minutes for now
+            }, userinfo, memoController);
+            if (!ismydo) {
+                users += `,${user.nickname}`;
+            }
+        }
     }
     
     broadcastSocket(memoController, {act: enums.ACT_RAISE_COUNTRY, payload: {newCountry: jsonCountry, mapId: thisMap.id, gameType: gameTypeId}});
@@ -1008,7 +1074,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
             const users = Object.values(memo.userMap).filter(u => nearMaps.includes(u.mapNowId) && u.countryId != userinfo.countryId && u.mapTargetId == 0 && u.soldier > 0 && u.role != enums.ROLE_FREEMAN);
             if (users.length > 0) {
                 users.sort((a,b) => b.soldier - a.soldier);
-                const mostSoldierUser = users[0];
+                const mostSoldierUser = users[Math.floor(Math.random() * (users.length-1))];
                 const halfSoldier = Math.floor(mostSoldierUser.soldier / 2);
                 await updateSingleUser(userinfo.id, {soldier: userinfo.soldier + halfSoldier}, userinfo, memo);
                 await updateSingleUser(mostSoldierUser.id, {soldier: mostSoldierUser.soldier - halfSoldier}, userinfo, memo);

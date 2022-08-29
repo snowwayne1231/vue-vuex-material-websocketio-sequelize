@@ -92,5 +92,8 @@ module.exports = {
     actUseItem: ({dispatch}, args) => {
         dispatch('wsEmitMessage', {act: enums.ACT_USE_ITEM, payload: args});
     },
+    actBuyItem: ({dispatch}, args) => {
+        dispatch('wsEmitMessage', {act: enums.ACT_BUY_ITEM, payload: args});
+    },
     register,
 }

@@ -106,8 +106,8 @@ function validate(act, payload, userinfo, memo) {
             const colorBg = payload.colorBg;
             const colorText = payload.colorText;
             const gameTypeId = payload.gameTypeId;
-            res.msg = isExistMap(userinfo.mapNowId, memo) || isAllowedRecurit(userinfo, memo) || isAllowedShareUser(userinfo, memo) || isHereCityMap(userinfo.mapNowId, memo)
-                    || isNotOriginCity(userinfo.mapNowId, memo) || isAllowedCountryName(countryName) || isRGBFormat(colorBg) || isRGBFormat(colorText) || isExistGameType(gameTypeId) ;
+            res.msg = isExistMap(userinfo.mapNowId, memo) || isAllowedRecurit(userinfo, memo) || isAllowedShareUser(userinfo, memo) || isHereCityMap(userinfo.mapNowId, memo) || hasNoKingHere(userinfo, memo)
+                    || isNotOriginCity(userinfo.mapNowId, memo) || isAllowedCountryName(countryName) || isRGBFormat(colorBg) || isRGBFormat(colorText) || isExistGameType(gameTypeId) || isNoBattle(userinfo, memo);
         } break
         case enums.ACT_GET_ITEMS: {
             
@@ -117,6 +117,11 @@ function validate(act, payload, userinfo, memo) {
             const itemPkId = payload.itemPkId;
             const mapId = payload.mapId;
             res.msg = hasPoint(userinfo, 1) || haveItem(itemId, itemPkId, userinfo, memo) || itemWhenAllowed(itemId, userinfo, memo) || itemObjectAllowed(itemId, mapId, userinfo, memo) || itemLvAllowed(itemId, mapId, userinfo, memo);
+        } break
+        case enums.ACT_BUY_ITEM: {
+            const itemId = payload.itemId;
+            const mapId = userinfo.mapNowId;
+            res.msg = hasPoint(userinfo, 1) || haveSeller(itemId, mapId, memo) || haveItemMoney(itemId, userinfo, memo)
         } break
         default:
             console.log("Not Found Act: ", act);
@@ -185,7 +190,7 @@ function isExistGame(gameId, memo) {
 }
 
 function isExistGameType(gameTypeId) {
-    return enums.CHINESE_GAMETYPE_NAMES[String(gameTypeId)] ? '' : 'Not Exsit Game Type.';
+    return enums.CHINESE_GAMETYPE_NAMES[String(gameTypeId).trim()] ? '' : 'Not Exsit Game Type.';
 }
 
 function isEnemyMap(userinfo, mapId, memo) {
@@ -195,6 +200,12 @@ function isEnemyMap(userinfo, mapId, memo) {
 
 function isAllowedGo(userinfo, mapData = {}) {
     return userinfo.countryId == 0 || mapData.ownCountryId == userinfo.countryId ? '' : 'Not Allowed Moving.';
+}
+
+function hasNoKingHere(userinfo, memo) {
+    const _mapid = userinfo.mapNowId;
+    const _map = Object.values(memo.userMap).filter(user => user.role == 1 && user.mapNowId == _mapid);
+    return _map == 0 ? '' : 'Has King Right Here.';
 }
 
 function hasPoint(userinfo, atLease = 1) {
@@ -323,6 +334,12 @@ function hasBattle(mapId, battleId, memo) {
     return _battle && _battle.id == battleId ? '' : 'Not Exist Battle.';
 }
 
+function isNoBattle(userinfo, memo) {
+    const _mapid = userinfo.mapNowId;
+    const _battle = memo.battlefieldMap[_mapid];
+    return !_battle ? '' : 'Has Battle On Map.';
+}
+
 function hasRecordBattle(battleId, memo) {
     return memo.warRecords.find(w => w.id == battleId) ? '' : 'Not Exist Battle.';
 }
@@ -433,7 +450,7 @@ function isNearMap(userId, mapId, memo) {
 }
 
 function isAllowedCountryName(name) {
-    return name && name.length <= 2 && !name.match(/[\w\s]+/g) ? '' : 'Not Allowed Name.';
+    return name && name.length <= 2 ? '' : 'Not Allowed Name.';
 }
 
 function isRGBFormat(color) {
@@ -483,6 +500,26 @@ function itemLvAllowed(itemid, mapid, userinfo, memo) {
         }
     }
     return '';
+}
+
+function haveSeller(itemid, mapid, memo) {
+    const items = memo.businessCtl.getItems();
+    const item = items.find(e => e.itemId == itemid);
+    if (!item) {
+        return 'Do Not Exist This Item.';
+    }
+    console.log('item: ', item)
+    const itemSeller = memo.businessCtl.getSellerMap()[item.seller];
+    if (!itemSeller) {
+        return 'Wrong Seller.'
+    }
+    return itemSeller == mapid ? '' : 'Do Not Have Item Seller On Area.';
+}
+
+function haveItemMoney(itemid, userinfo, memo) {
+    const items = memo.businessCtl.getItems();
+    const item = items.find(e => e.itemId == itemid);
+    return userinfo.money >= item.price ? '' : 'Not Enough Money.';
 }
 
 module.exports = {

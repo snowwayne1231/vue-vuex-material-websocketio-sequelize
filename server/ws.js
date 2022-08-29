@@ -7,6 +7,7 @@ const enums = require('../src/enum');
 const algorithms = require('./websocketctl/algorithm');
 const events = require('./events');
 const battles = require('./battles');
+const business = require('./business');
 const { asyncLogin } = require('./handler');
 const { makeToken, getDateByToekn } = require('./websocketctl/authorization');
 const onMessage = require('./wsMessage');
@@ -28,6 +29,7 @@ const memo_ctl = {
     userPacketItemMap: {},
     eventCtl: events,
     battleCtl: battles,
+    businessCtl: business,
     broadcast: broadcastSocketByte,
     emitSocketByte,
 };
@@ -86,7 +88,9 @@ function emitGlobalGneralArraies(socket, userinfo) {
     const domesticMessages = memo_ctl.eventCtl.getRecords(userinfo.countryId);
     const warRecords = algorithms.flatMap(memo_ctl.warRecords, enums.WarRecordGlobalAttributes);
     const itemMap = memo_ctl.itemMap;
-    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap, occupationMap, gameMap, domesticMessages, warRecords, itemMap}});
+    const itemShop = memo_ctl.businessCtl.getItems(itemMap);
+    const itemSellerMap = memo_ctl.businessCtl.getSellerMap();
+    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap, occupationMap, gameMap, domesticMessages, warRecords, itemMap, itemShop, itemSellerMap}});
 }
 
 
@@ -106,7 +110,9 @@ function refreshByAdmin() {
         const occupationMap = memo_ctl.occupationMap;
         const warRecords = algorithms.flatMap(memo_ctl.warRecords, enums.WarRecordGlobalAttributes);
         const itemMap = memo_ctl.itemMap;
-        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_DATA, payload: { users, maps, cities, countries, battlefieldMap, occupationMap, warRecords, itemMap } });
+        const itemShop = memo_ctl.businessCtl.getItems();
+        const itemSellerMap = memo_ctl.businessCtl.getSellerMap();
+        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_DATA, payload: { users, maps, cities, countries, battlefieldMap, occupationMap, warRecords, itemMap, itemShop, itemSellerMap } });
         memo_ctl.userSockets.map(e => {
             const memoUser = memo_ctl.userMap[e.id];
             if (e.userinfo) {
@@ -452,6 +458,8 @@ module.exports = {
         }).then(() => {
             return refreshBasicData();
         }).then(() => {
+            return memo_ctl.businessCtl.init(memo_ctl.userSockets, Object.keys(memo_ctl.mapIdMap).length, memo_ctl.itemMap);
+        }).then(() => {
             memo_ctl.battleCtl.init(io, memo_ctl.userSockets, memo_ctl.mapIdMap);
             memo_ctl.battleCtl.bindSuccessfulRBF(hookerHandleBattleFinish);
             return memo_ctl.eventCtl.init(broadcastSocketByte);
@@ -557,7 +565,7 @@ module.exports = {
             const headerInfo = socket.request.headers.origin ? socket.request.headers.origin : socket.request.headers.host;
             const isQAsitePort = headerInfo && !!headerInfo.match(/\:12022.?$/g);
             const isPRODsite = headerInfo && !!headerInfo.match(/\:20221.?$/g);
-            const isDevsite = !!userinfo.address.match(/(172.16.2.111)|(127.0.0.1)/g);
+            const isDevsite = userinfo && !!userinfo.address.match(/(172.16.2.111)|(127.0.0.1)/g);
             const canQA = userinfo && (algorithms.isWelfare(userinfo) || isQAsitePort || isDevsite);
             const canFix = isPRODsite ? userinfo && userinfo.code == 'R343' : canQA;
             if (canQA) {

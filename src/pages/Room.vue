@@ -80,6 +80,7 @@
                   </tr>
                 </table>
               </div>
+              <span v-if="p.sellers.length > 0" class="adventures">🧙</span>
             </li>
             <p class="step-point" v-for="(st) in mapSteps" :key="`${st.id}_${st.x}`" :style="{left: `${st.x}px`, top: `${st.y}px`}">{{st.point}}</p>
           </div>
@@ -106,6 +107,7 @@
           <button @click="onClickRaiseCountry">起義</button>
           <button @click="onClickRebellion">叛亂</button>
           <button @click="onClickStratagem">政策(錦囊)</button>
+          <button @click="onClickTrade">交易</button>
         </div>
         <div v-else class="nav">
           <div v-if="global.itemMap[tmpSavedItemId]">{{global.itemMap[tmpSavedItemId].name}}</div>
@@ -253,7 +255,7 @@
         </div>
         <div class="mask" v-if="openItems" @click="onClickCloseStratagem">
           <div @click="$event.stopPropagation()" class="basic-dialog items">
-            <table v-if="global.items.length > 0">
+            <table>
               <tbody>
                 <tr>
                   <th width="16%">錦囊</th>
@@ -270,7 +272,7 @@
                 
               </tbody>
             </table>
-            <dd v-else class="loading"></dd>
+            <!-- <dd v-else class="loading"></dd> -->
           </div>
         </div>
       </md-card-content>
@@ -315,6 +317,19 @@ export default {
   },
   computed: {
     ...mapState(['global', 'user']),
+    hashMapSellers(self) {
+      const result = {}
+      const itemSellerMap = self.global.itemSellerMap;
+      itemSellerMap && Object.keys(itemSellerMap).map(key => {
+        let mapId = itemSellerMap[key];
+        if (result[mapId]) {
+          result[mapId].push(key);
+        } else {
+          result[mapId] = [key]
+        }
+      });
+      return result
+    },
     mapData(self) {
       const mapHash = {};
       const mpas = self.global.maps.map(m => {
@@ -353,6 +368,8 @@ export default {
         if (country) {
           next.color = country.color.split(',')[0];
         }
+
+        next.sellers = self.hashMapSellers[next.id] || []
         next.users = users && users.length > 0 ? users : [];
         mapHash[next.id] = next;
         return next;
@@ -837,6 +854,35 @@ export default {
         this.openItems = false;
       }
     },
+    onClickTrade() {
+      const mapNowId = this.user.mapNowId;
+      const hashMapSellers = this.hashMapSellers;
+      const sellers = hashMapSellers[mapNowId] || [];
+      if (sellers.length > 0) {
+        const itemShop = this.global.itemShop;
+        const products = [];
+        itemShop.map(itemdata => {
+          if (sellers.includes(itemdata.seller)) {
+            products.push(itemdata)
+          }
+        });
+        console.log('products: ', products);
+        const productlist = products.map((p,idx) => `${idx+1}. [${p.seller}] => [${p.name}]  ${p.price} $`);
+        const ans = parseInt(window.prompt(`輸入欲購買之錦囊: \r\n ${productlist.join('\r\n')}`));
+        const parsedAns = Math.max(ans-1, 0);
+        if (ans && products[parsedAns]) {
+          // console.log('products[ans]: ', products[ans])
+          const itemId = products[parsedAns].itemId;
+          this.$store.dispatch('actBuyItem', {itemId});
+          
+        } else if (isNaN(ans)) {
+        } else {
+          window.alert('編號無效');
+        }
+      } else {
+        window.alert('沒有隱士');
+      }
+    },
     getCheck(ary = []) {
       return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});
     },
@@ -1032,6 +1078,9 @@ export default {
 }
 .battlearea .btn{
   background-color: #ccc;
+}
+.adventures {
+
 }
 .basic-dialog {
   width: 720px;

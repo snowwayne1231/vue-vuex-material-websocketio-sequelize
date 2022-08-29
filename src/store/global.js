@@ -14,6 +14,8 @@ const global = {
     occupationMap: {/*0: {id: 0, name: '', contributionCondi: 999, addActPoint: 5, isAllowedRecurit: false, isAllowedShare: false}*/},
     gameMap: {/*0: {id: 0, name: '', type: 0, b1v1: true, b2v2: false, b3v3: false, b4v4: false,..} */},
     itemMap: {/* */},
+    itemSellerMap: {/* name: mapId */},
+    itemShop: [],
     notifications: [],
     domesticMessages: [],
     items: [],
@@ -61,6 +63,8 @@ const global = {
           }
           if (payload.itemMap) {
             state.itemMap = payload.itemMap;
+            state.itemShop = payload.itemShop;
+            state.itemSellerMap = payload.itemSellerMap;
           }
           break
         case enums.ACT_GET_GLOBAL_CHANGE_DATA: {
@@ -144,6 +148,9 @@ const global = {
         } break
         case enums.ACT_GET_ITEMS: {
           state.items = payload;
+        } break
+        case enums.ACT_GET_ITEM_SELLER: {
+          state.itemSellerMap = payload.itemSellerMap;
         } break
         case enums.ADMIN_CONTROL: {
           console.log(payload);
