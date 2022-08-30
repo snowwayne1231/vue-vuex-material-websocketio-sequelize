@@ -847,11 +847,16 @@ export default {
           case 9: selections = selections.filter(id => mapHash[id].cityId == 0 && mapHash[id].ownCountryId != myCnty); break;
           default:
         }
-        this.tmpSavedItemId = itemId;
-        this.showMapSelections = selections;
-        this.showLights = [];
-        this.showBattle = [];
-        this.openItems = false;
+        if (selections.length > 0) {
+          this.tmpSavedItemId = itemId;
+          this.showMapSelections = selections;
+          this.showLights = [];
+          this.showBattle = [];
+          this.openItems = false;
+        } else {
+          window.alert('沒有目標');
+        }
+        
       }
     },
     onClickTrade() {

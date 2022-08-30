@@ -614,6 +614,20 @@ async function updateMapOwner(mapId, countryId, userinfo, memoController=null) {
         memoController.mapIdMap[mapId].adventureId = timeMinutes;
         algorithms.updateHash(mapId, 'country', countryId);
         broadcastSocket(memoController, {act: enums.ACT_GET_GLOBAL_CHANGE_DATA, payload: {dataset: [{depth: ['maps', mapId], update: {adventureId: timeMinutes, ownCountryId: countryId}}]}});
+        
+        const thisBattle = memoController.battlefieldMap[mapId];
+        if (thisBattle) {
+            let atkUsers = thisBattle.atkUserIds.filter(uid => uid > 0);
+            let defUsers = thisBattle.defUserIds.filter(uid => uid > 0);
+            let inBattleUsers = atkUsers.concat(defUsers);
+            await models.RecordWar.update({winnerCountryId: 999}, {where: {id: thisBattle.id}});
+            delete memoController.battlefieldMap[mapId];
+            broadcastSocket(memoController, {act: enums.ACT_BATTLE_DONE, payload: {mapId, id: thisBattle.id}});
+            for (let i = 0; i < inBattleUsers.length; i++) {
+                let userId = inBattleUsers[i];
+                await updateSingleUser(userId, {mapTargetId: 0}, userinfo, memoController);
+            }
+        }
     }
     await models.RecordApi.create({
         userId: userinfo.id,
@@ -815,7 +829,8 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
                     captiveDate: null,
                     mapNowId: userinfo.mapNowId,
                     mapTargetId: 0,
-                    occupationId: 0
+                    occupationId: 0,
+                    loyalUserId: 0
                 }, userinfo, memo);
             }
         } break;
@@ -828,7 +843,8 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
             }, userinfo, memo);
         } break;
         case '_STRATEGY_CATCH_': {
-            const users = Object.values(memo.userMap).filter(user => user.mapNowId == mapId && user.mapTargetId == 0);
+            const mycountryId = userinfo.countryId;
+            const users = Object.values(memo.userMap).filter(user => user.mapNowId == mapId && user.mapTargetId == 0 && user.countryId != mycountryId);
             if (users.length > 0) {
                 users.sort((a,b) => a.contribution - b.contribution);
                 let user = users[0];
@@ -864,7 +880,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
             }
         } break;
         case '_STRATEGY_STEAL_': {
-            const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId);
+            const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.role != enums.ROLE_FREEMAN);
             if (users.length > 0) {
                 const rand = Math.floor(Math.random() * users.length);
                 const targetUser = users[rand];
@@ -887,7 +903,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
             }
         } break;
         case '_STRATEGY_REDUCE_GOLD_': {
-            const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.countryId != userinfo.countryId);
+            const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.countryId != userinfo.countryId && u.role != enums.ROLE_FREEMAN);
             if (users.length > 0) {
                 const targetCountryId = memo.mapIdMap[mapId].ownCountryId;
                 const decreaseRatio = Math.min(Object.values(memo.mapIdMap).filter(m => m.ownCountryId == targetCountryId).length * 2 /100, 1);
@@ -897,6 +913,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
                     await updateSingleUser(user.id, {money}, userinfo, memo);
                     effUserNames.push(user.nickname);
                 }
+                appendTips = ` (黃金減少率: ${decreaseRatio*100}%)`;
             }
         } break;
         case '_STRATEGY_FIRE_': {
@@ -926,8 +943,9 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
             const thisMap = memo.mapIdMap[mapId];
             const timeMinutes = Math.floor(new Date().getTime() / 1000 / 60);
             if (thisMap.adventureId > timeMinutes) {
+                const mycountryId = userinfo.countryId;
+                const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.countryId != mycountryId && u.role != enums.ROLE_FREEMAN);
                 let totalMoney = 0;
-                const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId);
                 for (let i = 0; i < users.length; i++) {
                     let user = users[i];
                     totalMoney += user.money;
@@ -958,11 +976,11 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
         } break;
         case '_STRATEGY_EAST_WEST_': {
             const targetMap = memo.mapIdMap[mapId];
-            const users = Object.values(memo.userMap).filter(u => targetMap.route.includes(u.mapNowId) && u.countryId == targetMap.ownCountryId && u.mapTargetId == 0);
+            const users = Object.values(memo.userMap).filter(u => targetMap.route.includes(u.mapNowId) && u.countryId == targetMap.ownCountryId);
             if (users.length > 0) {
                 for (let i = 0; i < users.length; i++) {
                     let user = users[i];
-                    await updateSingleUser(user.id, {mapNowId: mapId, actPoint: Math.max(user.actPoint - 1, 0)}, userinfo, memo);
+                    await updateSingleUser(user.id, {mapNowId:  user.mapTargetId == 0 ? mapId : user.mapNowId, actPoint: Math.max(user.actPoint - 1, 0)}, userinfo, memo);
                     effUserNames.push(user.nickname);
                 }
             }

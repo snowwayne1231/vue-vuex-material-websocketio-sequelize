@@ -2,7 +2,7 @@ const enums = require('../src/enum');
 
 function validate(act, payload, userinfo, memo) {
     const res = { ok: false, msg: '' };
-    if (!(userinfo && userinfo.id > 0)) { return res; }
+    if (!(userinfo && userinfo.id > 0)) { console.log('validate userinfo: ', userinfo); return res; }
 
     switch (act) {
         case enums.ACT_MOVE: {
@@ -94,6 +94,7 @@ function validate(act, payload, userinfo, memo) {
             res.msg = isRoleEmperor(userinfo) || hasPoint(userinfo, 1) || isNoOriginCity(userinfo, memo) || isCityInMyCountry(cityId, userinfo, memo) || isExistGameType(gameTypeId);
         } break
         case enums.ACT_RAISE_COUNTRY: {
+            console.log('ACT_RAISE_COUNTRY: ', payload);
             const countryName = payload.countryName;
             const gameTypeId = payload.gameTypeId;
             const colorBg = payload.colorBg;
@@ -102,6 +103,7 @@ function validate(act, payload, userinfo, memo) {
                     || isRGBFormat(colorBg) || isRGBFormat(colorText) || isExistMap(userinfo.mapNowId, memo) || isHereCityMap(userinfo.mapNowId, memo);
         } break
         case enums.ACT_REBELLION: {
+            console.log('ACT_REBELLION: ', payload);
             const countryName = payload.countryName;
             const colorBg = payload.colorBg;
             const colorText = payload.colorText;
