@@ -34,6 +34,7 @@ export default {
         { name: '資料', name_en: 'DATAFLOW', url: '/data' },
         { name: '測試', name_en: 'TEST', url: '/room' },
         { name: '獎勵', name_en: 'REWARD', url: '/reward' },
+        { name: '排名', name_en: 'RANK', url: '/rank' },
         { name: '離開', name_en: 'SIGN OUT', url: '/logout', onclick: this.onClickLogout },
       ]
     },

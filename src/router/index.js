@@ -4,6 +4,7 @@ import Home from '@/pages/Home';
 import Room from '@/pages/Room';
 import Reward from '@/pages/Reward';
 import AdminQuery from '@/pages/AdminQuery';
+import Rank from '@/pages/Rank';
 
 Vue.use(Router);
 
@@ -33,6 +34,11 @@ export default new Router({
       path: '/reward',
       name: 'Reward',
       component: Reward,
+    },
+    {
+      path: '/rank',
+      name: 'Rank',
+      component: Rank,
     }
   ],
 });

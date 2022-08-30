@@ -107,6 +107,7 @@ module.exports = {
         return obj;
     },
     getTimeOptions(occupiedTimes) {
+        const vacations = [909, 910, 1010, 102];
         const allowedHours = [800, 1200, 1230, 1530, 2230];
         const afterDays = 7;
         const timeOptions = [];
@@ -115,6 +116,7 @@ module.exports = {
         startDate.setMilliseconds(0);
         const startWeekDay = startDate.getDay();
         startDate.setDate(startDate.getDate() + afterDays + (startWeekDay == 0 ? 1 : (startWeekDay == 6 ? 2 : 0)));
+        
         if (occupiedTimes.length > 0 && startDate.getTime() < occupiedTimes[-1]) {
             startDate.setTime(occupiedTimes[-1]);
         }
@@ -122,7 +124,8 @@ module.exports = {
         let day = 0;
         while (timeOptions.length < 5 && day++ < afterDays) {
             let _weekday = startDate.getDay();
-            if (_weekday > 0 && _weekday <= 5) {
+            let startDateDecimal = ((startDate.getMonth() + 1) * 100) + startDate.getDate();
+            if (_weekday > 0 && _weekday <= 5 && !vacations.includes(startDateDecimal)) {
                 for(let i = 0; i < allowedHours.length; i++) {
                     let loc = allowedHours[i];
                     let hour = Math.floor(loc / 100);
