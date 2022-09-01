@@ -88,7 +88,7 @@ function emitGlobalGneralArraies(socket, userinfo) {
     const domesticMessages = memo_ctl.eventCtl.getRecords(userinfo.countryId);
     const warRecords = algorithms.flatMap(memo_ctl.warRecords, enums.WarRecordGlobalAttributes);
     const itemMap = memo_ctl.itemMap;
-    const itemShop = memo_ctl.businessCtl.getItems(itemMap);
+    const itemShop = memo_ctl.businessCtl.getItems();
     const itemSellerMap = memo_ctl.businessCtl.getSellerMap();
     return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap, occupationMap, gameMap, domesticMessages, warRecords, itemMap, itemShop, itemSellerMap}});
 }

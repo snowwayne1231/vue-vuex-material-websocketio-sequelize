@@ -554,7 +554,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                             userTarget: newItem.userTarget,
                         }
                         if (memoController.userPacketItemMap[userinfo.id] && memoController.userPacketItemMap[userinfo.id].length >= 0) {
-                            memoController.userPacketItemMap[userinfo.id].push(pkItem)
+                            memoController.userPacketItemMap[userinfo.id].push(pkItem);
                         } else {
                             memoController.userPacketItemMap[userinfo.id] = [pkItem];
                         }
@@ -786,7 +786,7 @@ async function createCountry(payload, userinfo, memoController, hireFreeman = tr
             await updateSingleUser(user.id, {
                 countryId: jsonCountry.id,
                 role: ismydo ? enums.ROLE_EMPEROR : enums.ROLE_GENERMAN,
-                actPoint: ismydo ? 15 : user.actPoint,
+                actPoint: ismydo ? 15 : 7,
                 actPointMax: ismydo ? 10 : 7,
                 occupationId: 0,
                 loyalUserId: 0,

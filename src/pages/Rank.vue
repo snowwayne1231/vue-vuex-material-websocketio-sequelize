@@ -29,7 +29,7 @@
               <tr>
                 <th>總兵力</th>
                 <td v-for="(country) in countries" :key="country.id">
-                  {{country.totalSoldier}}
+                  {{country.totalSoldier.toLocaleString()}}
                 </td>
               </tr>
               <tr>
@@ -38,10 +38,19 @@
                   <ul>武將數: {{country.users.length}}</ul>
                   <ul>
                     <li v-for="(user) in country.users" :key="user.id">
-                      <span>{{user.nickname}} ⚔️({{user.soldier}})</span>
+                      <span>{{user.nickname}} ⚔️({{user.soldier.toLocaleString()}})</span>
                       <span class="occupation" :class="{new: user.occupationId > 0 && !localOccMap[user.id]}">{{user.occupation.name || ''}} ({{user.contribution}})</span>
+                      <span @click="onClickLoginCircle(user.id)"><i class="login-circle" v-for="(ldata, idx) in (loginRecordMap[user.id] ? loginRecordMap[user.id].uniqle : [])" :key="idx" :title="`IP [${ldata.ip}] Time [${ldata.timestamp}]`"></i></span>
                     </li>
                   </ul>
+                </td>
+              </tr>
+              <tr>
+                <th>登入異常</th>
+                <td :colspan="countries.length">
+                  <span v-for="(otl, idx) in overThreeLoginIp" :key="idx">
+                    IP [ {{otl.ip}} ] | Users: {{otl.users}}
+                  </span>
                 </td>
               </tr>
             </tbody>
@@ -54,12 +63,15 @@
 
 <script>
 import { mapState } from 'vuex';
+import axios from 'axios';
 
 export default {
   name: 'Rank',
   data() {
     return {
       localOccMap: {},
+      loginRecordMap: {},
+      overThreeLoginIp: [],
     }
   },
   components:{
@@ -107,9 +119,54 @@ export default {
     }
   },
   mounted() {
+    const self = this;
     this.loadLocalOcc();
+    axios.post('/getloginrecord').then(res => {
+      self.handleLoginData(res.data);
+    }).catch(err => {
+      console.log('err: ', err);
+    });
   },
   methods: {
+    handleLoginData(data) {
+      const self = this;
+      const nextmap = {};
+      const ipmap = {};
+      const otli = [];
+      const userMap = {};
+      self.global.users.map(user => {
+        userMap[user.id] = user;
+      });
+      data.map(d => {
+        let _ = {timestamp: d.timestamp, ip: d.ip};
+        if (nextmap[d.userId]) {
+          if (nextmap[d.userId].uniqle.findIndex(e => e.ip == d.ip) < 0) {
+            nextmap[d.userId].uniqle.push(_);
+          }
+          nextmap[d.userId].all.push(_);
+        } else {
+          nextmap[d.userId] = {all: [_], uniqle: [_]};
+        }
+        if (ipmap[d.ip]) {
+          if (!ipmap[d.ip].includes(d.userId)) {
+            ipmap[d.ip].push(d.userId);
+          }
+        } else {
+          ipmap[d.ip] = [d.userId];
+        }
+      });
+      Object.keys(ipmap).map(ip => {
+        const loc = ipmap[ip];
+        if (loc.length >= 3) {
+          let users = loc.map(uid => userMap[uid] ? userMap[uid].nickname : 'unknown');
+          otli.push({ip, users});
+        }
+      })
+      self.loginRecordMap = nextmap;
+      self.overThreeLoginIp = otli;
+      // console.log('loginRecordMap: ', self.loginRecordMap);
+      console.log('overThreeLoginIp: ', self.overThreeLoginIp);
+    },
     loadLocalOcc() {
       let localOcc = window.localStorage.getItem('__localOcc__');
       if (typeof localOcc == 'string') {
@@ -125,6 +182,12 @@ export default {
         }
       });
       window.localStorage.setItem('__localOcc__', JSON.stringify([nextMap]));
+      this.localOccMap = nextMap;
+    },
+    onClickLoginCircle(userId) {
+      const result = this.loginRecordMap[userId] ? this.loginRecordMap[userId].all : [];
+      const shows = result.map(e => `${e.ip.substr(-12)} => ${new Date(e.timestamp).toLocaleString()}`);
+      console.log(shows.slice(0, 49));
     },
   },
 }
@@ -154,6 +217,8 @@ export default {
       }
       span {
         display: block;
+        height: 22px;
+        line-height: 20px;
       }
       .occupation {
         text-align: left;
@@ -162,6 +227,14 @@ export default {
         &.new {
           color: red;
         }
+      }
+      .login-circle {
+        width: 12px;
+        height: 12px;
+        display: inline-block;
+        background-color: #898989;
+        border-radius: 50%;
+        cursor: help;
       }
     }
   }

@@ -108,6 +108,14 @@ module.exports = {
                     });
                 }
             }
+            case 'getloginrecord': {
+                const loginRecords = models.RecordLogin.findAll({attributes: ['ip', 'userId', 'timestamp'], limit: 700, order: [['id', 'DESC']]});
+                return loginRecords.then(records => {
+                    const ary = records.map(r => r.toJSON());
+                    console.log('getloginrecord: ary ', ary);
+                    return res.json(ary);
+                });
+            }
             case 'checkweek': {
                 const self = this;
                 const recoverDay = 1;
