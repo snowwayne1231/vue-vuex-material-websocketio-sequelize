@@ -202,6 +202,12 @@ module.exports = {
                     const locUser = userMap[loc.id];
                     if (locUser) {
                         await locUser.update({money: locUser.money + loc.money, soldier: locUser.soldier + loc.soldier, contribution: locUser.contribution + loc.contribution});
+                        if (loc.items && loc.items.length > 0) {
+                            for (let itemIdx = 0; itemIdx < loc.items.length; itemIdx++) {
+                                const itemId = loc.items[itemIdx];
+                                await this.addItemToUser(locUser.id, itemId, memo);
+                            }
+                        }
                     }
                 }
                 await reward.update({status: 2});
@@ -210,6 +216,29 @@ module.exports = {
                     memo.eventCtl.broadcastInfo(`【${reward.title}】${reward.content}`, { round });
                 }
             }
+        }
+    },
+    addItemToUser: async function(userId, itemId, memo) {
+        const pkItem = await models.PacketItem.create({
+            userId: userId,
+            itemId: itemId,
+            timestampDeadline: null,
+            timestampUse: null,
+            userTarget: 'none',
+            status: 1,
+        });
+        const newItem = pkItem.toJSON();
+        const userPkItem = {
+            id: newItem.id,
+            itemId: newItem.itemId,
+            status: newItem.status,
+            userId: newItem.userId,
+            userTarget: newItem.userTarget,
+        }
+        if (memo.userPacketItemMap[userId] && memo.userPacketItemMap[userId].length >= 0) {
+            memo.userPacketItemMap[userId].push(userPkItem);
+        } else {
+            memo.userPacketItemMap[userId] = [userPkItem];
         }
     },
     checkPeopleStatus: async function(ws) {

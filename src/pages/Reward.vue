@@ -30,12 +30,24 @@
                 <th>add Money</th>
                 <th>add Soldier</th>
                 <th>add Contribution</th>
+                <th width="25%">Items</th>
               </tr>
               <tr v-for="(user, idx) in listUsers" :key="user.id">
                 <td :style="{color: user.color, background: user.colorbg, border: '1px solid #333'}">{{user.nickname}}</td>
                 <td><input type="number" v-model.number="rewardList[idx].money"/></td>
                 <td><input type="number" v-model.number="rewardList[idx].soldier"/></td>
                 <td><input type="number" v-model.number="rewardList[idx].contribution"/></td>
+                <td>
+                  <div v-for="(item, index) in rewardList[idx].items" :key="`${item}-${idx}`">
+                    <select v-model="rewardList[idx].items[index]">
+                      <option :value="0">無</option>
+                      <option v-for="(opt) in itemOptions" :key="opt.value" :value="opt.value">{{opt.label}}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <span class="md-icon add" @click="onClickAddRewardItem(idx)">add</span>
+                  </div>
+                </td>
               </tr>
             </table>
           </div>
@@ -49,14 +61,14 @@
               <th>Status</th>
               <th></th>
             </tr>
-            <tr v-for="reward in global.rewards" :key="reward.id" @click="onClickReward(reward)">
+            <tr v-for="reward in showRewards" :key="reward.id" @click="onClickReward(reward)">
               <td>{{reward.title}}</td>
               <td>{{reward.content}}</td>
               <td>{{new Date(reward.datetime).toLocaleString()}}</td>
               <td>{{reward.status == 1 ? '未發送' : '已發送'}}</td>
               <td>
                 <span v-if="reward.status == 1" class="md-icon save" @click="onClickSaveReward(reward, $event)">save</span>
-                <span v-if="reward.status == 1" class="md-icon close" @click="onClickDeleteReward(reward, $event)">close</span>
+                <span v-if="reward.status == 1" class="md-icon" @click="onClickDeleteReward(reward, $event)">close</span>
                 <span v-if="reward.status == 2" class="md-icon check">check</span>
                 <span v-if="reward.status == 4" class="md-icon delete">delete_forever</span>
               </td>
@@ -79,7 +91,7 @@ export default {
       activeDate: `${time.getFullYear()}-${String(time.getMonth()+1).padStart(2, '0')}-${String(time.getDate()).padStart(2, '0')}`,
       title: '',
       content: '',
-      rewardList: new Array(200).fill(0).map(e => {return {id: 0, money: 0, soldier: 0, contribution: 0}}),
+      rewardList: new Array(120).fill(0).map(e => {return {id: 0, money: 0, soldier: 0, contribution: 0, items: []}}),
     }
   },
   computed: {
@@ -99,6 +111,19 @@ export default {
       uus.sort((a,b) => b.countryId - a.countryId);
       return uus;
     },
+    itemOptions(self) {
+      return Object.values(self.global.itemMap).map(e => {
+        return {
+          value: e.id,
+          label: e.name,
+        }
+      })
+    },
+    showRewards(self) {
+      const rewards = self.global.rewards.slice();
+      rewards.sort((a,b) => new Date(b.datetime) - new Date(a.datetime))
+      return rewards
+    }
   },
   mounted() {
     if (!['R343', 'R307', 'R064'].includes(this.user.code)) {
@@ -117,7 +142,9 @@ export default {
       const rl = this.rewardList;
       this.listUsers.map((user, idx) => {
         const res = {...rl[idx], id: user.id, nn: user.nickname};
-        result.push(res);
+        if (res.soldier || res.money || res.contribution || res.items.length > 0) {
+          result.push(res);
+        }
       });
       
       const create = {
@@ -149,6 +176,12 @@ export default {
           self.rewardList[idx].money = loc.money;
           self.rewardList[idx].soldier = loc.soldier;
           self.rewardList[idx].contribution = loc.contribution;
+          self.rewardList[idx].items = loc.items || [];
+        } else {
+          self.rewardList[idx].money = 0;
+          self.rewardList[idx].soldier = 0;
+          self.rewardList[idx].contribution = 0;
+          self.rewardList[idx].items = [];
         }
       });
     },
@@ -172,7 +205,9 @@ export default {
         const rl = this.rewardList;
         this.listUsers.map((user, idx) => {
           const res = {...rl[idx], id: user.id, nn: user.nickname};
-          result.push(res);
+          if (res.soldier || res.money || res.contribution || res.items.length > 0) {
+            result.push(res);
+          }
         });
         
         const update = {
@@ -187,6 +222,11 @@ export default {
         const reload = this.reload;
         window.setTimeout(reload, 1000);
       }
+    },
+    onClickAddRewardItem(rewardIdx) {
+      const nextRewardList = this.rewardList.slice();
+      nextRewardList[rewardIdx].items = nextRewardList[rewardIdx].items.concat(0);
+      this.rewardList = nextRewardList;
     },
     onPaste(evt) {
       const self = this;
@@ -235,6 +275,14 @@ export default {
       }
       >tr:nth-child(odd) {
         background: #ebfdff;
+      }
+      .add {
+        cursor: pointer;
+        border-radius: 50%;
+        &:hover {
+          color: #fff;
+          background-color: #666;
+        }
       }
     }
   }
