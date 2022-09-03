@@ -112,7 +112,7 @@ module.exports = {
                 const loginRecords = models.RecordLogin.findAll({attributes: ['ip', 'userId', 'timestamp'], limit: 700, order: [['id', 'DESC']]});
                 return loginRecords.then(records => {
                     const ary = records.map(r => r.toJSON());
-                    console.log('getloginrecord: ary ', ary);
+                    // console.log('getloginrecord: ary ', ary);
                     return res.json(ary);
                 });
             }
