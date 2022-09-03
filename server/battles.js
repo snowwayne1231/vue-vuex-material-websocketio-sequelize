@@ -9,7 +9,7 @@ const halfHourTimer = {
 const memo = {webSocket: {}, userSockets: {}, map: {}};
 const formulaRatio = {
     ATKWIN: (x, y) => (Math.min(y/x, 1)**2),
-    ATKLOSE: (x, y) => (Math.min(y/x, 1)*0.5),
+    ATKLOSE: (x, y) => (Math.min(y/x*0.5, 1)),
     DEFWIN: () => 0.20,
     DEFLOSE: () => 0.45,
 }
