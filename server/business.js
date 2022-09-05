@@ -25,7 +25,7 @@ const items = [
     {name: '五穀豐登', seller: '曹操', price: 1450},
     {name: '無中生有', seller: '老子', price: 3000},
     {name: '順手牽羊', seller: '魯智深', price: 1500},
-    {name: '兵糧寸斷', seller: '許攸', price: 1450},
+    {name: '兵糧寸斷', seller: '許攸', price: 2450},
     {name: '火燒連營', seller: '陸遜', price: 3000},
     {name: '趁火打劫', seller: '韓信', price: 1500},
     {name: '調虎離山', seller: '韓信', price: 1000},

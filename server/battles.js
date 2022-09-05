@@ -271,16 +271,17 @@ async function handleWarLock(warModel) {
     const country = await models.Country.findOne({where: {id: map.ownCountryId}});
     const ifOriginCity = country.originCityId == map.cityId;
 
-    if (ifOriginCity) {
+    if (warModel.gameId > 0) {  // game already set
+        return updated;
+    }
+
+    // if (ifOriginCity) {
         // const time = new Date(warModel.timestamp);
         // const now = new Date();
         // if (now < time.setDate(time.getDate()-1) ) {
         //     return updated;
         // }
-        if (warModel.gameId > 0) {  // game already set
-            return updated;
-        }
-    }
+    // }
 
     const gameTypes = String(map.gameType).split('').map(e => parseInt(e));
     const vsAry = [warModel.atkUserIds.filter(u => u > 0).length, warModel.defUserIds.filter(u => u > 0).length];
