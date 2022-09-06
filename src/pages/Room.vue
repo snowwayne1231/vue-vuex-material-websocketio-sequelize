@@ -14,6 +14,7 @@
             <span>金: {{user.money}} 💰 | </span>
             <span>兵: {{user.soldier}} ⚔️ | </span>
             <span>貢獻: {{user.contribution}} ❤️ | </span>
+            <span v-if="global.datetime">伺服器時間: {{global.datetime.toLocaleString()}} </span>
           </div>
         </md-card-header-text>
       </md-card-header>

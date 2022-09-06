@@ -22,8 +22,10 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState, mapMutations } from 'vuex';
 import { ACT_GET_GLOBAL_DATA } from '@/enum';
+
+
 
 export default {
   name: 'App',
@@ -42,11 +44,26 @@ export default {
   mounted() {
     clog('Main App mounted $this: ', this);
     this.checkConnection();
+    this.checkKeepAliveTimer();
   },
   updated() {
     
   },
   methods: {
+    ...mapMutations(['addDatetimeSeconds']),
+    checkKeepAliveTimer() {
+      if (typeof window.secondInterval == 'undefined') {
+        window.secondInterval = window.setInterval(() => {
+          if (this.global.keepAliveNum > 30) {
+            window.clearInterval(window.secondInterval);
+            window.alert('已離線超時');
+            window.location.href = '/logout';
+          } else {
+            this.addDatetimeSeconds(1);
+          }
+        }, 1000);
+      }
+    },
     onClickLogout(evt) {
       evt.stopPropagation();
       evt.preventDefault();

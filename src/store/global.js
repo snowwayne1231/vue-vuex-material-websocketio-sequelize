@@ -29,6 +29,8 @@ const global = {
     },
     rewards: [],
     results: [],
+    datetime: null,
+    keepAliveNum: 0,
   },
   mutations: {
     wsOnMESSAGE: (state, message) => {
@@ -66,6 +68,9 @@ const global = {
             state.itemShop = payload.itemShop;
             state.itemSellerMap = payload.itemSellerMap;
           }
+          if (payload.datetime) {
+            state.datetime = new Date(payload.datetime);
+          }
           break
         case enums.ACT_GET_GLOBAL_CHANGE_DATA: {
           const dataset = payload.dataset
@@ -89,6 +94,9 @@ const global = {
         } break
         case enums.ACT_GET_GLOBAL_USERS_INFO: {
           state.users = parser.parseArraiesToObjects(payload.users, enums.UserGlobalAttributes)
+          if (payload.datetime) {
+            state.datetime = new Date(payload.datetime);
+          }
         } break
         case enums.ACT_NOTIFICATION: {
           const new_noti = [new Date(payload[0]), payload[1]]
@@ -155,6 +163,12 @@ const global = {
         case enums.ADMIN_CONTROL: {
           console.log(payload);
         } break
+        case enums.ACT_GET_TIME: {
+          if (payload.datetime) {
+            state.datetime = new Date(payload.datetime);
+            state.keepAliveNum = 0;
+          }
+        } break
         case enums.ALERT: {
           let errorMsg =payload.msg;
           if (payload.act == enums.ACT_BATTLE && payload.deadline) {
@@ -172,6 +186,13 @@ const global = {
           state[key] = val;
         }
       });
+    },
+    addDatetimeSeconds: (state, seconds = 1) => {
+      // console.log('state.datetime: ', state.datetime);
+      if (state.datetime) {
+        state.datetime = new Date(state.datetime.getTime() + (seconds*1000));
+        state.keepAliveNum = state.keepAliveNum + 1;
+      }
     },
   },
   actions: {

@@ -32,6 +32,7 @@ const memo_ctl = {
     businessCtl: business,
     broadcast: broadcastSocketByte,
     emitSocketByte,
+    datetimeIntervaler: 0,
 };
 const globalConfigs = { round: { value: -1, staticKey: '' }, season: { value: -1, staticKey: '' } };
 
@@ -56,6 +57,13 @@ function onDisconnect(socket) {
     });
 }
 
+
+function intervalTimer() {
+    memo_ctl.userSockets.map(us => {
+        emitSocketByte(us.socket, enums.MESSAGE, { act: enums.ACT_GET_TIME, payload: { datetime: new Date() } });
+    });
+    // broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_TIME, payload: { datetime: new Date() } });
+}
 
 
 function emitSocketByte(socket, frame, data) {
@@ -90,7 +98,7 @@ function emitGlobalGneralArraies(socket, userinfo) {
     const itemMap = memo_ctl.itemMap;
     const itemShop = memo_ctl.businessCtl.getItems();
     const itemSellerMap = memo_ctl.businessCtl.getSellerMap();
-    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap, occupationMap, gameMap, domesticMessages, warRecords, itemMap, itemShop, itemSellerMap}});
+    return emitSocketByte(socket, enums.MESSAGE, {act: enums.ACT_GET_GLOBAL_DATA, payload: {users, maps, cities, countries, notifications, battlefieldMap, occupationMap, gameMap, domesticMessages, warRecords, itemMap, itemShop, itemSellerMap, datetime: new Date()}});
 }
 
 
@@ -112,7 +120,7 @@ function refreshByAdmin() {
         const itemMap = memo_ctl.itemMap;
         const itemShop = memo_ctl.businessCtl.getItems();
         const itemSellerMap = memo_ctl.businessCtl.getSellerMap();
-        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_DATA, payload: { users, maps, cities, countries, battlefieldMap, occupationMap, warRecords, itemMap, itemShop, itemSellerMap } });
+        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_DATA, payload: { users, maps, cities, countries, battlefieldMap, occupationMap, warRecords, itemMap, itemShop, itemSellerMap, datetime: new Date() } });
         memo_ctl.userSockets.map(e => {
             const memoUser = memo_ctl.userMap[e.id];
             if (e.userinfo) {
@@ -134,7 +142,7 @@ function refreshMemoDataUsers() {
     return refreshBasicData(true, false, false).then(() => {
         const actMaxIdx = enums.UserGlobalAttributes.indexOf('actPointMax');
         const users = algorithms.flatMap(memo_ctl.userMap, enums.UserGlobalAttributes).filter(u => u[actMaxIdx] > 0);
-        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_USERS_INFO, payload: { users } });
+        broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_GLOBAL_USERS_INFO, payload: { users, datetime: new Date() } });
         return memo_ctl.userSockets.map(us => {
             const memoUser = memo_ctl.userMap[us.id];
             if (us.userinfo) {
@@ -464,6 +472,10 @@ module.exports = {
             memo_ctl.battleCtl.bindSuccessfulRBF(hookerHandleBattleFinish);
             return memo_ctl.eventCtl.init(broadcastSocketByte);
         }).then(() => {
+            if (memo_ctl.datetimeIntervaler) {
+                clearInterval(memo_ctl.datetimeIntervaler)
+            }
+            memo_ctl.datetimeIntervaler = setInterval(intervalTimer, 15 * 1000);
             memo_ctl.websocket.on('connection', onConn);
         });
     },
