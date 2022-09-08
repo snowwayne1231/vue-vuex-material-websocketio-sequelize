@@ -59,7 +59,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const thisCountry = memoController.countryMap[thisCountryId];
                 const ratio = Math.round(Math.random() * 10) / 10;
                 console.log('[ACT_ENTER_COUNTRY]: ratio: ', ratio, ' nickname: ', userinfo.nickname);
-                if (ratio > 0.45) {
+                if (ratio >= 0.5) {
                     return asyncUpdateUserInfo(userinfo, { countryId: thisCountryId, role: enums.ROLE_GENERMAN, actPoint: 0, actPointMax: 7, loyalUserId: 0 }, act).then(e => {
                         return memoController.eventCtl.broadcastInfo(enums.EVENT_ENTER_COUNTRY, {nickname: userinfo.nickname, countryName: thisCountry.name, round: configs.round.value});
                     });
@@ -354,18 +354,34 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const soldier = payload.soldier;
                 const money = payload.money;
                 const targetUser = memoController.userMap[userId];
-                // const packetId = payload.packetId;
+                const itemId = payload.itemId;
                 return updateSingleUser(userId, {soldier: targetUser.soldier + soldier, money: targetUser.money + money}, userinfo, memoController).then(e => {
+                    
                     return e ? asyncUpdateUserInfo(userinfo, {
                         actPoint: userinfo.actPoint - 1,
                         soldier: userinfo.soldier - soldier,
                         money: userinfo.money - money,
                     }, act).then(() => {
+                        if (itemId > 0) {
+                            const pkItemIdx = memoController.userPacketItemMap[userinfo.id].findIndex(item => item.itemId == itemId && item.status == 1);
+                            const pkItem = memoController.userPacketItemMap[userinfo.id][pkItemIdx]
+                            if (memoController.userPacketItemMap[userId]) {
+                                memoController.userPacketItemMap[userId].push(pkItem);
+                            } else {
+                                memoController.userPacketItemMap[userId] = [pkItem];
+                            }
+                            memoController.userPacketItemMap[userinfo.id].splice(pkItemIdx, 1);
+                            subEmitMessage(enums.ACT_GET_ITEMS, memoController.userPacketItemMap[userinfo.id]);
+                            return models.PacketItem.update({userId}, {where: {id: pkItem.id}});
+                        }
+                        return true
+                    }).then(() => {
+                        const item = memoController.itemMap[itemId];
                         return memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
                             round: configs.round.value,
                             countryId: userinfo.countryId,
                             type: enums.CHINESE_TYPE_DOMESTIC,
-                            content: algorithms.getMsgShare(userinfo.nickname, targetUser.nickname, money, soldier),
+                            content: algorithms.getMsgShare(userinfo.nickname, targetUser.nickname, money, soldier, item ? item.name : ''),
                         });
                     }) : null;
                 });

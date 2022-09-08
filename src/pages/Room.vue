@@ -98,7 +98,7 @@
           <button @click="onClickLevelUp('market')">升市場</button>
           <button @click="onClickLevelUp('stable')">升馬廄</button>
           <button @click="onClickLevelUp('wall')">升城牆</button>
-          <button @click="openSharePanel = true">配給</button>
+          <button @click="onClickShareOpenPanel">配給</button>
           <button @click="onClickEscape">逃脫</button>
           <button @click="onClickWarHistory">歷史戰役</button>
           <button @click="onClickRecruit">招募</button>
@@ -179,18 +179,28 @@
                 <th></th>
                 <th>金</th>
                 <th>兵</th>
+                <th width="30%">錦囊</th>
               </tr>
               <tr>
                 <td>
-                  <select v-model="shareData.userId">
-                  <option value="0">無</option>
-                  <option v-for="(user) in asCandidates" :key="user.id" :value="user.id">{{user.name}}</option>
-                </select>
-              </td>
+                    <select v-model="shareData.userId">
+                      <option value="0">無</option>
+                      <option v-for="(user) in asCandidates" :key="user.id" :value="user.id">{{user.name}}</option>
+                    </select>
+                </td>
                 <td><input type="number" v-model.number="shareData.money" /></td>
                 <td><input type="number" v-model.number="shareData.soldier" /></td>
+                <td>
+                  <select v-model="shareData.itemId">
+                    <option value="0">無</option>
+                    <option v-for="(item) in myPacketItems.filter(i => i.quantity > 0)" :key="item.id" :value="item.id">
+                      {{item.name}}
+                    </option>
+                  </select>
+                </td>
               </tr>
               <tr>
+                <td></td>
                 <td></td>
                 <td></td>
                 <td><button @click="onClickShare">配</button></td>
@@ -227,7 +237,6 @@
                 <td>{{battleRecordDetails.atkUsers[i-1]}} {{battleRecordDetails.detail.atkSoldiers[i-1]}} <span>-{{battleRecordDetails.detail.atkSoldierLoses[i-1]}}</span></td>
                 <td>{{battleRecordDetails.defUsers[i-1]}} {{battleRecordDetails.detail.defSoldiers[i-1]}} <span>-{{battleRecordDetails.detail.defSoldierLoses[i-1]}}</span></td>
               </tr>
-
             </table>
           </div>
         </div>
@@ -311,6 +320,7 @@ export default {
         userId: 0,
         money: 0,
         soldier: 0,
+        itemId: 0,
       },
       selectedOriginCityGameId: 0,
       mapSteps: [],
@@ -713,6 +723,12 @@ export default {
       console.log('onClickShare: ', this.shareData);
       if (this.shareData.userId) {
         this.$store.dispatch('actShare', this.shareData);
+        this.shareData = {
+          userId: 0,
+          money: 0,
+          soldier: 0,
+          itemId: 0,
+        }
       }
     },
     onClickEscape() {
@@ -888,6 +904,10 @@ export default {
       } else {
         window.alert('沒有隱士');
       }
+    },
+    onClickShareOpenPanel() {
+      this.$store.dispatch('getItems');
+      this.openSharePanel = true;
     },
     getCheck(ary = []) {
       return !ary.some(e => { let reason = e.apply(this); return reason.length > 0 && !window.alert(reason)});

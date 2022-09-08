@@ -59,8 +59,10 @@ function validate(act, payload, userinfo, memo) {
             const userId = payload.userId;
             const soldier = payload.soldier;
             const money = payload.money;
+            const itemId = payload.itemId;
             // const packetId = payload.packetId;
-            res.msg = isAllowedShareUser(userinfo, memo) || hasPoint(userinfo, 1) || isNotBeCaptived(userinfo) || isHereCityMap(userinfo.mapNowId, memo) || isSameCountryPartner(userinfo, userId, memo) || haveSoldier(userinfo, soldier) || haveMoney(userinfo, money);
+            res.msg = isAllowedShareUser(userinfo, memo) || hasPoint(userinfo, 1) || isNotBeCaptived(userinfo) || isHereCityMap(userinfo.mapNowId, memo) || isSameCountryPartner(userinfo, userId, memo) || haveSoldier(userinfo, soldier)
+             || haveMoney(userinfo, money) || isAllowedShareItem(itemId, userinfo, memo);
         } break
         case enums.ACT_ESCAPE: {
             const money = payload.money;
@@ -436,6 +438,12 @@ function isAllowedShareUser(userinfo, memo) {
     if (userinfo.role == enums.ROLE_EMPEROR) return '';
     const _myOccupation = memo.occupationMap[userinfo.occupationId];
     return _myOccupation && _myOccupation.isAllowedShare ? '' : 'Not Be Allowed To Share.';
+}
+
+function isAllowedShareItem(itemId, userinfo, memo) {
+    const userItems = memo.userPacketItemMap[userinfo.id] || [];
+    const targetItems = userItems.filter(item => item.itemId == itemId && item.status == 1)
+    return (targetItems.length > 0) ? '' : 'No Item.'
 }
 
 function isAllowedRecurit(userinfo, memo) {

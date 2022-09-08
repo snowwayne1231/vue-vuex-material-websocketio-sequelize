@@ -187,13 +187,13 @@ module.exports = {
     getMsgShare(starterName, targetName, money = 0, soldier = 0, item = '') {
         let resource = '';
         if (money > 0) {
-            resource += `${money} 黃金 `;
+            resource += ` ${money} 黃金 `;
         }
         if (soldier > 0) {
-            resource += `${soldier} 士兵 `;
+            resource += ` ${soldier} 士兵 `;
         }
         if (item.length > 0) {
-            resource += `${item} 錦囊 `;
+            resource += ` 錦囊 [${item}]`;
         }
         return `${starterName} 配給了 ${targetName} 共 ${resource}`;   
     },
