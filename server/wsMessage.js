@@ -71,15 +71,7 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                 const randomMoney = Math.round(Math.random() * 100) + 50;
                 const maxMoney = 150;
                 const isLucky = randomMoney / maxMoney > 0.97;
-                return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney, actPoint: userinfo.actPoint-1,  }, act).then(() => {
-                    isLucky && memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
-                        round: configs.round.value,
-                        countryId: userinfo.countryId,
-                        type: enums.CHINESE_TYPE_DOMESTIC,
-                        content: algorithms.getMsgLuckyMoney(userinfo.nickname, randomMoney),
-                    });
-                    return memoController.businessCtl.search(userinfo.mapNowId)
-                }).then(evt => {
+                return memoController.businessCtl.search(userinfo.mapNowId).then((evt) => {
                     if (evt && evt.success) {
                         const thismap = memoController.mapIdMap[userinfo.mapNowId];
                         const itemSellerMap = memoController.businessCtl.getSellerMap();
@@ -91,6 +83,15 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                         });
                         broadcastSocket(memoController, {act: enums.ACT_GET_ITEM_SELLER, payload: {itemSellerMap}});
                     }
+
+                    isLucky && memoController.eventCtl.broadcastInfo(enums.EVENT_DOMESTIC, {
+                        round: configs.round.value,
+                        countryId: userinfo.countryId,
+                        type: enums.CHINESE_TYPE_DOMESTIC,
+                        content: algorithms.getMsgLuckyMoney(userinfo.nickname, randomMoney),
+                    });
+
+                    return asyncUpdateUserInfo(userinfo, { money: userinfo.money + randomMoney, actPoint: userinfo.actPoint-1,  }, act, evt)
                 });
             }
             case enums.ACT_BUSINESS: {
