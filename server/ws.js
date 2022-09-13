@@ -62,9 +62,7 @@ function intervalTimer() {
     memo_ctl.userSockets.map(us => {
         emitSocketByte(us.socket, enums.MESSAGE, { act: enums.ACT_GET_TIME, payload: { datetime: new Date() } });
     });
-    // broadcastSocketByte(enums.MESSAGE, { act: enums.ACT_GET_TIME, payload: { datetime: new Date() } });
 }
-
 
 function emitSocketByte(socket, frame, data) {
     var buf = Buffer.from(JSON.stringify(data), 'utf-8');

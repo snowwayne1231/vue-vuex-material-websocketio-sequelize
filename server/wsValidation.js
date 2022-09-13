@@ -504,7 +504,7 @@ function itemLvAllowed(itemid, mapid, userinfo, memo) {
     if (info.lv > 0) {
         if (info.lv == 1) {
             const mymap = memo.mapIdMap[userinfo.mapNowId];
-            return mymap && mymap.route.includes(mapid) ? '' : 'Distance Is Not Reached.';
+            return mymap && (mymap.route.includes(mapid) || mymap.id == mapid)? '' : 'Distance Is Not Reached.';
         } else {
             return 'Distance Wrong.'
         }

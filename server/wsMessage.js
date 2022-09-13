@@ -3,7 +3,6 @@ const models = require('./models');
 const algorithms = require('./websocketctl/algorithm');
 const validation = require('./wsValidation');
 const sequelize = require('sequelize');
-const { BreadcrumbLink } = require('admin-bro');
 
 function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
     
@@ -17,8 +16,8 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
             return subEmitMessage(enums.ALERT, {msg: validated.msg, act}); 
         }
         let switched = subSwitchOnMessage(act, payload, userinfo);
-        if (switched && switched.catch) {
-            return switched.catch(err => console.log('[Error] ', err));
+        if (switched) {
+            return switched.catch ? switched.catch(err => console.log('[Error] ', err)) : switched;
         } else {
             console.log('SubSwitchOnMessage Failed: ', switched)
             return switched;
@@ -509,7 +508,15 @@ function onMessage(socket, asyncUpdateUserInfo, memoController, configs) {
                     const maps = Object.values(memoController.mapIdMap);
                     const originCityMap = backCountry.originCityId > 0 ? maps.find(m => m.cityId == backCountry.originCityId) : null;
                     memoController.eventCtl.broadcastInfo(enums.EVENT_CAPTIVE_RELEASE, { round, nickname, emperor });
-                    const mapNowId = originCityMap ? originCityMap.id : maps.find(m => m.ownCountryId == user.countryId).id;
+                    // 2022.09.12 因無主城 原先是從ID找 改成隨機
+                    // const mapNowId = originCityMap ? originCityMap.id : maps.find(m => m.ownCountryId == user.countryId).id;
+                    let mapNowId;
+                    if (originCityMap) {
+                        mapNowId = originCityMap.id;
+                    } else {
+                        const localMaps = maps.filter(m => m.ownCountryId == user.countryId);
+                        mapNowId = localMaps.length > 0 ? localMaps[Math.floor(Math.random() * localMaps.length)].id : user.mapNowId;
+                    }
                     return updateSingleUser(userId, {captiveDate: null, mapNowId, mapTargetId: 0, money: 0, soldier: 0}, userinfo, memoController);
                 });
             }
@@ -861,7 +868,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
         } break;
         case '_STRATEGY_CATCH_': {
             const mycountryId = userinfo.countryId;
-            const users = Object.values(memo.userMap).filter(user => user.mapNowId == mapId && user.mapTargetId == 0 && user.countryId != mycountryId);
+            const users = Object.values(memo.userMap).filter(user => user.mapNowId == mapId && user.mapTargetId == 0 && user.countryId != mycountryId && user.role != enums.ROLE_FREEMAN);
             if (users.length > 0) {
                 users.sort((a,b) => a.contribution - b.contribution);
                 let user = users[0];
@@ -897,7 +904,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
             }
         } break;
         case '_STRATEGY_STEAL_': {
-            const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.role != enums.ROLE_FREEMAN);
+            const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.role != enums.ROLE_FREEMAN && u.id != userinfo.id);
             if (users.length > 0) {
                 const rand = Math.floor(Math.random() * users.length);
                 const targetUser = users[rand];
