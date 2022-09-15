@@ -120,7 +120,7 @@ function validate(act, payload, userinfo, memo) {
             const itemId = payload.itemId;
             const itemPkId = payload.itemPkId;
             const mapId = payload.mapId;
-            res.msg = hasPoint(userinfo, 1) || haveItem(itemId, itemPkId, userinfo, memo) || itemWhenAllowed(itemId, userinfo, memo) || itemObjectAllowed(itemId, mapId, userinfo, memo) || itemLvAllowed(itemId, mapId, userinfo, memo);
+            res.msg = hasPoint(userinfo, 1) || haveItem(itemId, itemPkId, userinfo, memo) || itemWhenAllowed(itemId, userinfo, memo) || itemObjectAllowed(itemId, mapId, userinfo, memo) || itemLvAllowed(itemId, mapId, userinfo, memo) || itemAllowedEff(itemId, mapId, userinfo, memo);
         } break
         case enums.ACT_BUY_ITEM: {
             const itemId = payload.itemId;
@@ -441,6 +441,7 @@ function isAllowedShareUser(userinfo, memo) {
 }
 
 function isAllowedShareItem(itemId, userinfo, memo) {
+    if (!itemId) { return ''; }
     const userItems = memo.userPacketItemMap[userinfo.id] || [];
     const targetItems = userItems.filter(item => item.itemId == itemId && item.status == 1)
     return (targetItems.length > 0) ? '' : 'No Item.'
@@ -508,6 +509,46 @@ function itemLvAllowed(itemid, mapid, userinfo, memo) {
         } else {
             return 'Distance Wrong.'
         }
+    }
+    return '';
+}
+
+function itemAllowedEff(itemid, mapid, userinfo, memo) {
+    // 錦囊做防呆機制
+    const info = memo.itemMap[itemid];
+    switch (info.staticKey) {
+        case '_STRATEGY_SNEAK_':
+        case '_STRATEGY_SEIZE_': {
+            // 子午谷/暗度陳倉 不能放在戰役地圖上
+            const battle = memo.battlefieldMap[mapid]
+            if (battle) { return 'In Battlefiel.'; }
+        } break
+        case '_STRATEGY_EMPTY_CITY_':
+        case '_STRATEGY_BEAUTY_': {
+            // 空城美人 24H
+            const mymap = memo.mapIdMap[userinfo.mapNowId];
+            const gapHours = 1000*60*60*24;
+            const allowedTime = new Date().getTime() + gapHours;
+            if (info.staticKey == '_STRATEGY_EMPTY_CITY_') {
+                const battle = memo.battlefieldMap[mymap.id];
+                const battleTime = new Date(battle.timestamp);
+                if (battleTime.getTime() < allowedTime) {
+                    return 'Timeout.';
+                }
+            } else {
+                const maps = mymap.route.concat(mymap.id);
+                const allowedMaps = maps.filter(mapId => {
+                    let _battle = memo.battlefieldMap[mapId];
+                    if (_battle) {
+                        return new Date(_battle.timestamp).getTime() > allowedTime;
+                    }
+                    return false;
+                });
+                return allowedMaps.length > 0 ? '' : 'No Target Works.';
+            }
+        } break
+        default:
+
     }
     return '';
 }

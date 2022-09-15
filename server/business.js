@@ -58,6 +58,9 @@ function init(userSockets, mapLength = 100, itemMap = {}) {
     })
     return load().then(e => {
         return sellerMap
+    }).catch(err => {
+        console.log('[Business] failed init : ', err)
+        return false;
     })
 }
 
@@ -97,31 +100,40 @@ async function search(mapId) {
 }
 
 async function load() {
-    const advs = await models.Adventure.findAll();
-    advs.map(adv => {
+    const advs = await models.Adventure.findAll({order: [['id', 'DESC']]});
+    const localDoneHash = {};
+    for(let i = 0; i < advs.length; i++) {
+        const adv = advs[i];
         const name = adv.name;
         const _ary = name.split('-');
         if (_ary.length == 2) {
             const sellerName = _ary[0].trim();
             const sellerMapId = parseInt(_ary[1]);
-            if (sellerMapId > 0 && sellerMap.hasOwnProperty(sellerName)) {
-                sellerMap[sellerName] = sellerMapId
-                setting.hashAdventureId[sellerName] = adv.id
+            if (localDoneHash.hasOwnProperty(sellerName)) {
+                await adv.destroy();
+                continue;
+            }
+            if (sellerMap.hasOwnProperty(sellerName)) {
+                setting.hashAdventureId[sellerName] = adv;
+                localDoneHash[sellerName] = true;
+                if (sellerMapId > 0) {
+                    sellerMap[sellerName] = sellerMapId;
+                }
             }
         }
-    });
+    }
     return true
 }
 
 async function save(name = '', value = 0) {
     if (sellerMap.hasOwnProperty(name)) {
-        const id = setting.hashAdventureId[name];
+        const adv = setting.hashAdventureId[name];
         const saveName = `${name}-${value}`;
         sellerMap[name] = value
-        if (id && id > 0) {
-            await models.Adventure.update({
+        if (adv) {
+            await adv.update({
                 name: saveName,
-            }, {where: {id}});
+            });
         } else {
             await models.Adventure.create({
                 name: saveName
