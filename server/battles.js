@@ -166,6 +166,16 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
                 updated.User.push({id: user.id, updated: userUpdateData });
                 await user.update(userUpdateData);
             }
+
+            // 滅國後的週圍地圖戰役
+            const nearWars = await models.RecordWar.findAll({where: { defenceCountryId: warModel.winnerCountryId, winnerCountryId: 0}});
+            for (let i = 0; i < nearWars.length; i++) {
+                let _war = nearWars[i];
+                if (_war.attackCountryIds[0] == warModel.defenceCountryId) {
+                    _war.winnerCountryId = warModel.winnerCountryId;
+                    await _war.save();
+                }
+            }
             
         } else {
             // 損兵

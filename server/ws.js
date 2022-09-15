@@ -401,6 +401,22 @@ function hookerHandleBattleFinish(battleChanges, time) {
                         globalChangeDataset.push({ depth: ['countries', rw.defenceCountryId], update: {emperorId: 0, originCityId: 0} });
                         defCountry.emperorId = 0;
                         defCountry.originCityId = 0;
+                        const destoriedBattles = Object.values(memo_ctl.battlefieldMap).filter(e => e.attackCountryIds[0] == rw.defenceCountryId);
+                        if (destoriedBattles.length > 0) {
+                            for (let i = 0; i < destoriedBattles.length; i++) {
+                                const _battle = destoriedBattles[i];
+                                const _mapId = _battle.mapId;
+                                delete memo_ctl.battlefieldMap[_mapId];
+                                broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_BATTLE_DONE, payload: {
+                                    id: _battle.id,
+                                    timestamp: _battle.timestamp,
+                                    mapId: _mapId,
+                                    winnerCountryId: rw.winnerCountryId,
+                                    attackCountryIds: _battle.attackCountryIds,
+                                    defenceCountryId: _battle.defenceCountryId
+                                }});
+                            }
+                        }
                     }
                     return memo_ctl.eventCtl.broadcastInfo(event, {
                         round,
