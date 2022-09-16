@@ -517,11 +517,52 @@ function itemAllowedEff(itemid, mapid, userinfo, memo) {
     // 錦囊做防呆機制
     const info = memo.itemMap[itemid];
     switch (info.staticKey) {
+        case '_STRATEGY_RECRUIT_': {
+            const freemans = Object.values(memo.userMap).filter(user => user.mapNowId == mapid && user.role == enums.ROLE_FREEMAN);
+            if (freemans.length == 0) { return 'No Freeman.'; }
+        } break
+        case '_STRATEGY_MOVE_': {
+        } break
+        case '_STRATEGY_CATCH_': {
+            const noWarUsers = Object.values(memo.userMap).filter(user => user.mapNowId == mapid && user.mapTargetId == 0 && userinfo.countryId != user.countryId && user.role != enums.ROLE_FREEMAN);
+            if (noWarUsers.length == 0) { return 'No Effective Target.'; }
+        } break
+        case '_STRATEGY_ADD_RESOURCE_':
+        case '_STRATEGY_BUILDING_UP_':
+        case '_STRATEGY_FIRE_': {
+            const thismap = memo.mapIdMap[userinfo.mapNowId];
+            if (!thismap || thismap.cityId == 0) { return 'No Effective Target.'; }
+        } break
+        case '_STRATEGY_STEAL_': {
+            const users = Object.values(memo.userMap).filter(user => user.mapNowId == mapid && user.id != userinfo.id);
+            if (users.length == 0) { return 'No Effective Target.'; }
+        } break
+        case '_STRATEGY_REDUCE_GOLD_':
+        case '_STRATEGY_FIRE_STEAL_':
+        case '_STRATEGY_KICK_': {
+            const users = Object.values(memo.userMap).filter(user => user.mapNowId == mapid && user.countryId != userinfo.countryId);
+            if (users.length == 0) { return 'No Effective Target.'; }
+        } break
+        case '_STRATEGY_EAST_WEST_':
+        case '_STRATEGY_TRAPE_': {
+            const targetMap = memo.mapIdMap[mapid];
+            if (targetMap.route && targetMap.route.length > 0) {
+                const mapIds = targetMap.route.concat(mapid);
+                const users = Object.values(memo.userMap).filter(user => mapIds.includes(user.mapNowId) && user.countryId == targetMap.ownCountryId);
+                if (users.length == 0) { return 'No Effective Target.'; }
+            } else {
+                return 'Error Map Route';
+            }
+        } break
         case '_STRATEGY_SNEAK_':
         case '_STRATEGY_SEIZE_': {
             // 子午谷/暗度陳倉 不能放在戰役地圖上
             const battle = memo.battlefieldMap[mapid]
             if (battle) { return 'In Battlefiel.'; }
+            // 不能放有人
+            const targetMap = memo.mapIdMap[mapid];
+            const users = Object.values(memo.userMap).filter(user => user.mapNowId == mapid && user.countryId == targetMap.ownCountryId);
+            if (users.length > 0) { return 'Have People.'; }
         } break
         case '_STRATEGY_EMPTY_CITY_':
         case '_STRATEGY_BEAUTY_': {
@@ -531,9 +572,12 @@ function itemAllowedEff(itemid, mapid, userinfo, memo) {
             const allowedTime = new Date().getTime() + gapHours;
             if (info.staticKey == '_STRATEGY_EMPTY_CITY_') {
                 const battle = memo.battlefieldMap[mymap.id];
+                if (!battle) {
+                    return 'No Battle.';
+                }
                 const battleTime = new Date(battle.timestamp);
                 if (battleTime.getTime() < allowedTime) {
-                    return 'Timeout.';
+                    return '[24H] Timeout.';
                 }
             } else {
                 const maps = mymap.route.concat(mymap.id);
@@ -544,11 +588,18 @@ function itemAllowedEff(itemid, mapid, userinfo, memo) {
                     }
                     return false;
                 });
-                return allowedMaps.length > 0 ? '' : 'No Target Works.';
+                return allowedMaps.length > 0 ? '' : 'No Target Battle Works.';
             }
         } break
+        case '_STRATEGY_BITTER_':
+        case '_STRATEGY_SOLDIER_STEAL_':
+        case '_STRATEGY_AVERAGE_': {
+            const mymap = memo.mapIdMap[userinfo.mapNowId];
+            const mapIds = mymap.route.concat(mymap.id);
+            const users = Object.values(memo.userMap).filter(user => mapIds.includes(user.mapNowId) && user.countryId != userinfo.countryId && user.mapTargetId == 0 && user.role != enums.ROLE_FREEMAN);
+            if (users.length == 0) { return 'No Effective Target.'; }
+        } break
         default:
-
     }
     return '';
 }
