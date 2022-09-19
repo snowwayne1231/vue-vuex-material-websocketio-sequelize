@@ -644,6 +644,14 @@ module.exports = {
                         const jsondata = memo_ctl.battlefieldMap[mapId];
                         return broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_BATTLE_ADD, payload: {mapId, jsondata}});
                     });
+                } else if (canFix && msg.sessioninfo) {
+                    const data = memo_ctl.userSockets.map(user => {
+                        return {
+                            userId: user.id,
+                            userinfo: user.userinfo,
+                        }
+                    });
+                    return emitSocketByte(socket, enums.ADMIN_CONTROL, {id: 'sessioninfo', data})
                 }
             }
             console.log('Failed. ');

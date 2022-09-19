@@ -245,7 +245,7 @@ export default {
         self.listUsers.map((user, idx) => {
           const rewd = rewardMap[user.nickname];
           if (rewd) {
-            self.rewardList[idx] = rewd;
+            self.rewardList[idx] = {...self.rewardList[idx], ...rewd};
           }
         });
         console.log('done.');

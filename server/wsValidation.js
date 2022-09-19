@@ -102,7 +102,7 @@ function validate(act, payload, userinfo, memo) {
             const colorBg = payload.colorBg;
             const colorText = payload.colorText;
             res.msg = isAllowedCountryName(countryName) || isExistGameType(gameTypeId) || hasPoint(userinfo, 1) || isFreeMan(userinfo.id, memo) || isFiveFreeManHere(userinfo, memo)
-                    || isRGBFormat(colorBg) || isRGBFormat(colorText) || isExistMap(userinfo.mapNowId, memo) || isHereCityMap(userinfo.mapNowId, memo);
+                    || isRGBFormat(colorBg) || isRGBFormat(colorText) || isExistMap(userinfo.mapNowId, memo) || isHereCityMap(userinfo.mapNowId, memo) || isNoBattle(userinfo, memo);
         } break
         case enums.ACT_REBELLION: {
             console.log('ACT_REBELLION: ', payload);
