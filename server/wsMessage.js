@@ -1130,7 +1130,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
             const nearMaps = [userinfo.mapNowId].concat(memo.mapIdMap[userinfo.mapNowId].route).filter(mid => memo.mapIdMap[mid].adventureId > timeMinutes);
             if (nearMaps.length > 0) {
                 const users = Object.values(memo.userMap).filter(u => nearMaps.includes(u.mapNowId) && u.mapTargetId == 0 && u.role != enums.ROLE_FREEMAN);
-                if (users.length > 0) {
+                if (users.length > 1) {
                     const sumOfSoldier = users.reduce((a,b) => a + b.soldier, 0);
                     const avgSoldier = Math.floor(sumOfSoldier / users.length);
                     for (let i = 0; i < users.length; i++) {

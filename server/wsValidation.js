@@ -522,6 +522,7 @@ function itemAllowedEff(itemid, mapid, userinfo, memo) {
             if (freemans.length == 0) { return 'No Freeman.'; }
         } break
         case '_STRATEGY_MOVE_': {
+            if (userinfo.mapNowId == mapid) { return 'Same Map.'; }
         } break
         case '_STRATEGY_CATCH_': {
             const noWarUsers = Object.values(memo.userMap).filter(user => user.mapNowId == mapid && user.mapTargetId == 0 && userinfo.countryId != user.countryId && user.role != enums.ROLE_FREEMAN);
@@ -530,7 +531,8 @@ function itemAllowedEff(itemid, mapid, userinfo, memo) {
         case '_STRATEGY_ADD_RESOURCE_':
         case '_STRATEGY_BUILDING_UP_':
         case '_STRATEGY_FIRE_': {
-            const thismap = memo.mapIdMap[userinfo.mapNowId];
+            const _mapid = mapid ? mapid : userinfo.mapNowId;
+            const thismap = memo.mapIdMap[_mapid];
             if (!thismap || thismap.cityId == 0) { return 'No Effective Target.'; }
         } break
         case '_STRATEGY_STEAL_': {
