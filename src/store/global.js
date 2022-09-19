@@ -29,6 +29,7 @@ const global = {
     },
     rewards: [],
     results: [],
+    sessionInfos: [],
     datetime: null,
     keepAliveNum: 0,
   },
@@ -161,7 +162,7 @@ const global = {
           state.itemSellerMap = payload.itemSellerMap;
         } break
         case enums.ADMIN_CONTROL: {
-          console.log(payload);
+          console.log('ADMIN_CONTROL: ', payload);
         } break
         case enums.ACT_GET_TIME: {
           if (payload.datetime) {
@@ -216,6 +217,11 @@ const global = {
               rewards: nextRewards,
             });
           }
+        } break
+        case 'SessionInfo': {
+          content.commit('updateGlobal', {
+            sessionInfos: msg.data
+          });
         } break
         default:
           if (Array.isArray(msg.data)) {

@@ -38,7 +38,7 @@
                   <ul>武將數: {{country.users.length}}</ul>
                   <ul>
                     <li v-for="(user) in country.users" :key="user.id">
-                      <span>{{user.nickname}} ⚔️({{user.soldier.toLocaleString()}})</span>
+                      <span><b v-if="user.online" class="online" @click="onClickOnline(user)">🟢</b>{{user.nickname}} ⚔️({{user.soldier.toLocaleString()}})</span>
                       <span class="occupation" :class="{new: user.occupationId > 0 && !localOccMap[user.id]}">{{user.occupation.name || ''}} ({{user.contribution}})</span>
                       <span @click="onClickLoginCircle(user.id)"><i class="login-circle" v-for="(ldata, idx) in (loginRecordMap[user.id] ? loginRecordMap[user.id].uniqle : [])" :key="idx" :title="`IP [${ldata.ip}] Time [${ldata.timestamp}]`"></i></span>
                     </li>
@@ -79,6 +79,13 @@ export default {
   },
   computed: {
     ...mapState(['global', 'user']),
+    loginUserIds(self) {
+      const ids = [];
+      self.global.sessionInfos.map(si => {
+        ids.push(si.userId)
+      });
+      return ids
+    },
     countries(self) {
       const global = self.global;
       const results = global.countries.map(country => {
@@ -98,6 +105,7 @@ export default {
           } else {
             user.occupation = user.occupationId > 0 ? global.occupationMap[user.occupationId] || {} : {};
           }
+          user.online = self.loginUserIds.includes(user.id)
         });
         maps.map(map => {
           if (map.cityId > 0) totalCity += 1;
@@ -126,6 +134,7 @@ export default {
     }).catch(err => {
       console.log('err: ', err);
     });
+    this.$store.dispatch('wsEmitADMINCTL', {sessioninfo: true});
   },
   methods: {
     handleLoginData(data) {
@@ -189,6 +198,14 @@ export default {
       const shows = result.map(e => `${e.ip.substr(-12)} => ${new Date(e.timestamp).toLocaleString()}`);
       console.log(shows.slice(0, 49));
     },
+    onClickOnline(user) {
+      const userId = user.id;
+      if (userId) {
+        if (window.confirm(`確定斷開 ${user.nickname} 的連線嗎?`)) {
+          this.$store.dispatch('wsEmitADMINCTL', {sessioninfo: true, userId});
+        }
+      }
+    }
   },
 }
 </script>
@@ -237,6 +254,10 @@ export default {
         cursor: help;
       }
     }
+  }
+
+  .online {
+    cursor: pointer;
   }
 }
 </style>

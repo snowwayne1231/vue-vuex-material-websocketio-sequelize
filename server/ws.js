@@ -645,13 +645,23 @@ module.exports = {
                         return broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_BATTLE_ADD, payload: {mapId, jsondata}});
                     });
                 } else if (canFix && msg.sessioninfo) {
+                    if (msg.userId) {
+                        memo_ctl.userSockets.map(us => {
+                            if (us.id == msg.userId) {
+                                emitSocketByte(us.socket, enums.AUTHORIZE, {logout: true});
+                                us.socket.disconnect();
+                            }
+                        });
+                    }
                     const data = memo_ctl.userSockets.map(user => {
                         return {
                             userId: user.id,
-                            userinfo: user.userinfo,
+                            username: user.userinfo.nickname,
+                            nameen: user.userinfo.nameEn,
+                            code: user.userinfo.code,
                         }
                     });
-                    return emitSocketByte(socket, enums.ADMIN_CONTROL, {id: 'sessioninfo', data})
+                    return emitSocketByte(socket, enums.ADMIN_CONTROL, {model: 'SessionInfo', data})
                 }
             }
             console.log('Failed. ');
