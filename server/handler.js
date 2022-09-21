@@ -131,11 +131,14 @@ module.exports = {
                         const nowMinutes = Math.floor(now.getTime() / 60000);
                         if ((nowMinutes - configs.recover) > gapMinutes){
                             return self.checkPeopleStatus(ws).then(ok => {
+                                return self.recoverPoint(ws, configs, nowMinutes);
+                            }).then(ok => {
                                 return self.rewardPeople(ws, configs)
-                            }).then((ok) => {
+                            }).then(ok => {
                                 return self.resetBusiness(ws)
                             }).then(ok => {
-                                return self.recoverPoint(ws, configs, nowMinutes);
+                                // 更新記憶體 user data
+                                return ws.refreshMemoDataUsers();
                             }).then((updated) => {
                                 res.status(200).send(updated ? 'done' : 'nothing');
                             }).catch(err => {
@@ -164,8 +167,6 @@ module.exports = {
         }
         // 行動點小於 max 補充到 max
         await models.User.update({actPoint: sequelize.literal('"actPointMax"')}, {where: {actPoint: {[sequelize.Op.lt]: sequelize.literal('"actPointMax"')}}});
-        // 更新記憶體 user data
-        await ws.refreshMemoDataUsers();
         //
         await models.Config.update({status: configs.round + 1}, {where: {name: 'round'}});
         await ws.initConfig();
@@ -189,7 +190,7 @@ module.exports = {
         const rewards = await models.Reward.findAll({where: {datetime: {[sequelize.Op.lte]: new Date()}, status: 1}});
         if (rewards.length > 0) {
             const memo = ws.getMemo();
-            const users = await models.User.findAll({attributes: ['id', 'money', 'soldier', 'contribution']});
+            const users = await models.User.findAll({attributes: ['id', 'money', 'soldier', 'contribution', 'actPoint']});
             const userMap = {};
             users.map(user => {
                 userMap[user.id] = user;
@@ -201,7 +202,12 @@ module.exports = {
                     const loc = json[j];
                     const locUser = userMap[loc.id];
                     if (locUser) {
-                        await locUser.update({money: locUser.money + loc.money, soldier: locUser.soldier + loc.soldier, contribution: locUser.contribution + loc.contribution});
+                        await locUser.update({
+                            money: locUser.money + loc.money,
+                            soldier: locUser.soldier + loc.soldier,
+                            contribution: locUser.contribution + loc.contribution,
+                            actPoint: locUser.actPoint + loc.point,
+                        });
                         if (loc.items && loc.items.length > 0) {
                             for (let itemIdx = 0; itemIdx < loc.items.length; itemIdx++) {
                                 const itemId = loc.items[itemIdx];
@@ -215,6 +221,9 @@ module.exports = {
                 if (memo) {
                     memo.eventCtl.broadcastInfo(`【${reward.title}】${reward.content}`, { round });
                 }
+            }
+            if (memo) {
+
             }
         }
     },

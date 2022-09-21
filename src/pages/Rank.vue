@@ -6,6 +6,7 @@
           <div class="md-title">
             <span>RANK DATA</span>
             <button @click="saveLocalOcc">Save Occ</button>
+            <button @click="onClickRecovry">*Recovry*</button>
           </div>
         </md-card-header-text>
       </md-card-header>
@@ -204,6 +205,15 @@ export default {
         if (window.confirm(`確定斷開 ${user.nickname} 的連線嗎?`)) {
           this.$store.dispatch('wsEmitADMINCTL', {sessioninfo: true, userId});
         }
+      }
+    },
+    onClickRecovry() {
+      window.localStorage.setItem('__onClickRecovry__', new Date().toLocaleString());
+      if (this.user.code == 'R343') {
+        const location = window.location.hostname == 'localhost' ? 'localhost:81' : window.location.host;
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `http://${location}/checkweek`);
+        xhr.send();
       }
     }
   },

@@ -31,6 +31,7 @@
                 <th>add Soldier</th>
                 <th>add Contribution</th>
                 <th width="25%">Items</th>
+                <th>actPoint</th>
               </tr>
               <tr v-for="(user, idx) in listUsers" :key="user.id">
                 <td :style="{color: user.color, background: user.colorbg, border: '1px solid #333'}">{{user.nickname}}</td>
@@ -48,6 +49,7 @@
                     <span class="md-icon add" @click="onClickAddRewardItem(idx)">add</span>
                   </div>
                 </td>
+                <td><input type="number" v-model.number="rewardList[idx].point"/></td>
               </tr>
             </table>
           </div>
@@ -91,7 +93,7 @@ export default {
       activeDate: `${time.getFullYear()}-${String(time.getMonth()+1).padStart(2, '0')}-${String(time.getDate()).padStart(2, '0')}`,
       title: '',
       content: '',
-      rewardList: new Array(120).fill(0).map(e => {return {id: 0, money: 0, soldier: 0, contribution: 0, items: []}}),
+      rewardList: new Array(120).fill(0).map(e => {return {id: 0, money: 0, soldier: 0, contribution: 0, items: [], point: 0}}),
     }
   },
   computed: {
@@ -142,7 +144,7 @@ export default {
       const rl = this.rewardList;
       this.listUsers.map((user, idx) => {
         const res = {...rl[idx], id: user.id, nn: user.nickname};
-        if (res.soldier || res.money || res.contribution || res.items.length > 0) {
+        if (res.soldier || res.money || res.contribution || res.items.length > 0 || res.point) {
           result.push(res);
         }
       });
@@ -177,11 +179,13 @@ export default {
           self.rewardList[idx].soldier = loc.soldier;
           self.rewardList[idx].contribution = loc.contribution;
           self.rewardList[idx].items = loc.items || [];
+          self.rewardList[idx].point = loc.point || 0;
         } else {
           self.rewardList[idx].money = 0;
           self.rewardList[idx].soldier = 0;
           self.rewardList[idx].contribution = 0;
           self.rewardList[idx].items = [];
+          self.rewardList[idx].point = 0;
         }
       });
     },
@@ -205,7 +209,7 @@ export default {
         const rl = this.rewardList;
         this.listUsers.map((user, idx) => {
           const res = {...rl[idx], id: user.id, nn: user.nickname};
-          if (res.soldier || res.money || res.contribution || res.items.length > 0) {
+          if (res.soldier || res.money || res.contribution || res.items.length > 0 || res.point) {
             result.push(res);
           }
         });
@@ -240,8 +244,14 @@ export default {
         evt.preventDefault();
         const rewardMap = {};
         list.slice(1).map(loc => {
-          rewardMap[loc[0].trim()] = { money: parseInt(loc[1]), soldier: parseInt(loc[2]), contribution: parseInt(loc[3]) }
+          rewardMap[loc[0].trim()] = {
+            money: parseInt(loc[1]) || 0,
+            soldier: parseInt(loc[2]) || 0,
+            contribution: parseInt(loc[3]) || 0,
+            point: parseInt(loc[4]) || 0
+          }
         });
+        console.log('rewardMap: ', rewardMap);
         self.listUsers.map((user, idx) => {
           const rewd = rewardMap[user.nickname];
           if (rewd) {
