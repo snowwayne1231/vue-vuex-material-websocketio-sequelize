@@ -128,6 +128,10 @@ export default {
     }
   },
   mounted() {
+    if (!['R343', 'R307', 'R064', 'R001'].includes(this.user.code)) {
+      window.alert('福委用的');
+      return this.$router.push('/');
+    }
     const self = this;
     this.loadLocalOcc();
     axios.post('/getloginrecord').then(res => {

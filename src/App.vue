@@ -32,13 +32,18 @@ export default {
   computed: {
     ...mapState(['user', 'global']),
     menu() {
-      return [
+      const isWelfare = ['R001', 'R064', 'R343'].includes(this.user.code);
+      const list = [
         { name: '資料', name_en: 'DATAFLOW', url: '/data' },
         { name: '測試', name_en: 'TEST', url: '/room' },
         { name: '獎勵', name_en: 'REWARD', url: '/reward' },
         { name: '排名', name_en: 'RANK', url: '/rank' },
         { name: '離開', name_en: 'SIGN OUT', url: '/logout', onclick: this.onClickLogout },
-      ]
+      ];
+      if (!isWelfare) {
+        list.splice(2, 2);
+      }
+      return list
     },
   },
   mounted() {
