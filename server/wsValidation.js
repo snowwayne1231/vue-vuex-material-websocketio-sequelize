@@ -48,7 +48,7 @@ function validate(act, payload, userinfo, memo) {
         } break
         case enums.ACT_DISMISS: {
             const userId = payload.userId;
-            res.msg = isRoleEmperor(userinfo) || hasPoint(userinfo, 1) || isSameCountryPartner(userinfo, userId, memo);
+            res.msg = isRoleEmperor(userinfo) || hasPoint(userinfo, 1) || isSameCountryPartner(userinfo, userId, memo) || isUserNoTarget(userId, memo);
         } break
         case enums.ACT_LEVELUP_CITY: {
             const cityId = payload.cityId;
@@ -84,11 +84,11 @@ function validate(act, payload, userinfo, memo) {
         } break
         case enums.ACT_RECRUIT_CAPTIVE: {
             const userId = payload.userId;
-            res.msg = isRoleEmperor(userinfo) || hasPoint(userinfo, 3) || isExistOriginCity(userinfo, memo) || isCaptived(userId, memo) || isInMyCountry(userId, userinfo, memo) || isUserRoleNotEmperor(userId, memo);
+            res.msg = isRoleEmperor(userinfo) || hasPoint(userinfo, 3) || isExistOriginCity(userinfo, memo) || isCaptived(userId, memo) || isInMyCountry(userId, userinfo, memo) || isUserRoleNotEmperor(userId, memo) || isUserNoTarget(userId, memo);
         } break
         case enums.ACT_RELEASE_CAPTIVE: {
             const userId = payload.userId;
-            res.msg = isRoleEmperor(userinfo) || hasPoint(userinfo, 1) || isCaptived(userId, memo) || isInMyCountry(userId, userinfo, memo);
+            res.msg = isRoleEmperor(userinfo) || hasPoint(userinfo, 1) || isCaptived(userId, memo) || isInMyCountry(userId, userinfo, memo) || isUserNoTarget(userId, memo);;
         } break
         case enums.ACT_SET_ORIGIN_CITY: {
             const cityId = payload.cityId;
@@ -144,6 +144,11 @@ function isNotWorking(userinfo, memo) {
 
 function isNoTarget(userinfo) {
     return userinfo.mapTargetId == 0 ? '' : 'Already Has Target.';
+}
+
+function isUserNoTarget(userId, memo) {
+    const user = memo.userMap[userId];
+    return user && user.mapTargetId == 0 ? '' : 'User Already Has Target.';
 }
 
 function isNotBeCaptived(userinfo) {
