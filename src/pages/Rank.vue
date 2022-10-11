@@ -39,7 +39,7 @@
                   <ul>武將數: {{country.users.length}}</ul>
                   <ul>
                     <li v-for="(user) in country.users" :key="user.id">
-                      <span><b v-if="user.online" class="online" @click="onClickOnline(user)">🟢</b>{{user.nickname}} ⚔️({{user.soldier.toLocaleString()}})</span>
+                      <span :title="user.code"><b v-if="user.online" class="online" @click="onClickOnline(user)">🟢</b>{{user.nickname}} ⚔️({{user.soldier.toLocaleString()}})</span>
                       <span class="occupation" :class="{new: user.occupationId > 0 && !localOccMap[user.id]}">{{user.occupation.name || ''}} ({{user.contribution}})</span>
                       <span @click="onClickLoginCircle(user.id)"><i class="login-circle" v-for="(ldata, idx) in (loginRecordMap[user.id] ? loginRecordMap[user.id].uniqle : [])" :key="idx" :title="`IP [${ldata.ip}] Time [${ldata.timestamp}]`"></i></span>
                     </li>
@@ -125,7 +125,10 @@ export default {
         return cityGap == 0 ? b.maps.length - a.maps.length : cityGap
       })
       return results.filter(e => e.users.length > 0);
-    }
+    },
+    warData() {
+      return this.globl.results
+    },
   },
   mounted() {
     if (!['R343', 'R307', 'R064', 'R001'].includes(this.user.code)) {
@@ -140,6 +143,11 @@ export default {
       console.log('err: ', err);
     });
     this.$store.dispatch('wsEmitADMINCTL', {sessioninfo: true});
+
+    const sendto = {model: 'RecordWar', where: {}, attributes: {}};
+    // console.log('sendto: ', sendto);
+    // war records in results
+    this.$store.dispatch('wsEmitADMINCTL', sendto);
   },
   methods: {
     handleLoginData(data) {

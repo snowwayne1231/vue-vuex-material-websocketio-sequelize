@@ -38,10 +38,11 @@ export default {
         { name: '測試', name_en: 'TEST', url: '/room' },
         { name: '獎勵', name_en: 'REWARD', url: '/reward' },
         { name: '排名', name_en: 'RANK', url: '/rank' },
+        { name: '排名(武將)', name_en: 'RANKPEOPLE', url: '/rankpeople' },
         { name: '離開', name_en: 'SIGN OUT', url: '/logout', onclick: this.onClickLogout },
       ];
       if (!isWelfare) {
-        list.splice(2, 2);
+        list.splice(2, 3);
       }
       return list
     },

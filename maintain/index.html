@@ -1,36 +1,59 @@
 <html>
-    <head>
-        <style>
-            body {
-                position: relative;
-                margin: 0px;
-                padding: 0px;
-                background-image: url(./12.gif);
-                background-repeat: no-repeat;
-                background-position: top;
-                background-size: contain;
-                background-color: #242220;
-                height: 100vh;
-            }
-            div {
-                padding: 4vw;
-                margin: 0px auto;
-                text-align: center;
-            }
-            h2 {
-                margin: 20px auto;
-                padding: 6vh;
-                font-size: 98px;
-                color: #ffa20c;
-                background: rgba(0,0,0,0.3);
-                border: 2px outset #ce9944;
-                text-shadow: 2px 2px 4px #000;
-            }
-        </style>
-    </head>
-    <body>
-        <div>
-            <h2>維護中唷~~</h2>
-        </div>
-    </body>
+
+<head>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            position: relative;
+            margin: 0px;
+            padding: 0px;
+            background-image: url(./12.gif);
+            background-repeat: repeat;
+            background-position: top;
+            background-size: auto 25%;
+            background-color: #242220;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+        }
+
+        .note {
+            border: 2px outset #ce9944;
+            display: inline-block;
+            text-align: center;
+            padding: 80px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        h2 {
+            color: #ffa20c;
+            font-size: 98px;
+            line-height: 130px;
+            margin: 0;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        span {
+            background-color: #ffa20c;
+            display: inline-block;
+            padding: 10px;
+            color: #000;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="note">
+        <h2>維護中</h2>
+        <span>敬告武朝眾將，由於討論熱烈，眾多同仁掛機造成長時間的流量負載，官網決定將 開放時間 調整為每日 07:00-09:00、11:45-13:15、14:45-16:15、22:00-00:00，感謝您為了節省流量做的一份供獻。</span>
+    </div>
+</body>
+
 </html>

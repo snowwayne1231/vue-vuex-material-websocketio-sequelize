@@ -5,6 +5,7 @@ import Room from '@/pages/Room';
 import Reward from '@/pages/Reward';
 import AdminQuery from '@/pages/AdminQuery';
 import Rank from '@/pages/Rank';
+import RankPeople from '@/pages/RankPeople';
 
 Vue.use(Router);
 
@@ -39,6 +40,11 @@ export default new Router({
       path: '/rank',
       name: 'Rank',
       component: Rank,
+    },
+    {
+      path: '/rankpeople',
+      name: 'RankPeople',
+      component: RankPeople,
     }
   ],
 });

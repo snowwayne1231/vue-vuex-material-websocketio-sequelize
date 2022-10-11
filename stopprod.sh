@@ -1,0 +1,1 @@
+/home/snow/.nvm/versions/node/v14.15.5/bin/node /home/snow/.nvm/versions/node/v14.15.5/bin/pm2 stop 2 && /home/snow/.nvm/versions/node/v14.15.5/bin/node /home/snow/.nvm/versions/node/v14.15.5/bin/pm2 start 0

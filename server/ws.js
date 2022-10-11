@@ -33,6 +33,7 @@ const memo_ctl = {
     broadcast: broadcastSocketByte,
     emitSocketByte,
     datetimeIntervaler: 0,
+    open: true,
 };
 const globalConfigs = { round: { value: -1, staticKey: '' }, season: { value: -1, staticKey: '' } };
 
@@ -59,9 +60,16 @@ function onDisconnect(socket) {
 
 
 function intervalTimer() {
-    memo_ctl.userSockets.map(us => {
-        emitSocketByte(us.socket, enums.MESSAGE, { act: enums.ACT_GET_TIME, payload: { datetime: new Date() } });
-    });
+    if (memo_ctl.open) {
+        memo_ctl.userSockets.map(us => {
+            emitSocketByte(us.socket, enums.MESSAGE, { act: enums.ACT_GET_TIME, payload: { datetime: new Date() } });
+        });
+    } else {
+        memo_ctl.userSockets.map(us => {
+            emitSocketByte(us.socket, enums.AUTHORIZE, {logout: true});
+            us.socket.disconnect();
+        });
+    }
 }
 
 function emitSocketByte(socket, frame, data) {
@@ -502,6 +510,10 @@ module.exports = {
         var authorized = false;
         var binded = false;
         const loadGun = (userId) => {
+            if (!memo_ctl.open) {
+                socket.disconnect() 
+                return {} 
+            }
             memo_ctl.userSockets.map(us => {
                 if (us.id == userId) {
                     emitSocketByte(us.socket, enums.AUTHORIZE, {logout: true});
