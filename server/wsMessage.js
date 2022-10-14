@@ -1024,6 +1024,16 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
             if (users.length == 0 && targetMap.cityId > 0) {
                 await updateMapOwner(mapId, userinfo.countryId, userinfo, memo);
                 await updateSingleUser(userinfo.id, { mapNowId: mapId }, userinfo, memo);
+                if (targetMap.ownCountryId > 0 && memo.countryMap[targetMap.ownCountryId]) {
+                    const country = memo.countryMap[targetMap.ownCountryId];
+                    const originCityId = country.originCityId;
+                    if (originCityId == targetMap.cityId) {
+                        await models.Country.update({
+                            originCityId: 0,
+                        }, {where: {id: country.id}});
+                        country.originCityId = 0;
+                    }
+                }
                 effMapNames.push(targetMap.name);
             }
         } break;
