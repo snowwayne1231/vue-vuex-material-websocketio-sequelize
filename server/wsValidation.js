@@ -62,7 +62,7 @@ function validate(act, payload, userinfo, memo) {
             const itemId = payload.itemId;
             // const packetId = payload.packetId;
             res.msg = isAllowedShareUser(userinfo, memo) || hasPoint(userinfo, 1) || isNotBeCaptived(userinfo) || isHereCityMap(userinfo.mapNowId, memo) || isSameCountryPartner(userinfo, userId, memo) || haveSoldier(userinfo, soldier)
-             || haveMoney(userinfo, money) || isAllowedShareItem(itemId, userinfo, memo);
+             || haveMoney(userinfo, money) || isAllowedShareItem(itemId, userinfo, memo) || isSoldierMoreThenBattle(userinfo, memo, soldier);
         } break
         case enums.ACT_ESCAPE: {
             const money = payload.money;
@@ -417,6 +417,26 @@ function availableGameInBattle(gameId, mapId, memo) {
     return battle.gameId == 0 && game && game[vs] && gameTypes.includes(game.type) ? '' : 'Not Available Game.';
 }
 
+function isSoldierMoreThenBattle(userinfo, memo, soldier) {
+    const targetMapId = userinfo.mapTargetId;
+    if (targetMapId > 0) {
+        const battle = memo.battlefieldMap[targetMapId];
+        if (battle) {
+            const userAtkIdx = battle.atkUserIds.indexOf(userinfo.id);
+            const userDefIdx = battle.defUserIds.indexOf(userinfo.id);
+            let sendedSoldier = 0;
+            if (userAtkIdx >= 0) {
+                sendedSoldier = battle.detail.atkSoldiers[userAtkIdx] || 0;
+            }
+            if (userDefIdx >= 0) {
+                sendedSoldier = battle.detail.defSoldiers[userDefIdx] || 0;
+            }
+            return soldier <= (userinfo.soldier - sendedSoldier) ? '' : 'Not Enough Soldier.';
+        }
+    }
+    return '';
+}
+
 function isOccupationEnoughContribution(userId, occupationId, memo) {
     const _occu = memo.occupationMap[occupationId];
     const _user = memo.userMap[userId];
@@ -528,6 +548,7 @@ function itemAllowedEff(itemid, mapid, userinfo, memo) {
         } break
         case '_STRATEGY_MOVE_': {
             if (userinfo.mapNowId == mapid) { return 'Same Map.'; }
+            if (userinfo.mapTargetId > 0) { return 'In Battlefiel.'; }
         } break
         case '_STRATEGY_CATCH_': {
             const noWarUsers = Object.values(memo.userMap).filter(user => user.mapNowId == mapid && user.mapTargetId == 0 && userinfo.countryId != user.countryId && user.role != enums.ROLE_FREEMAN);
@@ -563,9 +584,9 @@ function itemAllowedEff(itemid, mapid, userinfo, memo) {
         } break
         case '_STRATEGY_SNEAK_':
         case '_STRATEGY_SEIZE_': {
-            // 子午谷/暗度陳倉 不能放在戰役地圖上
+            // 子午谷/暗度陳倉 不能放在戰役地圖上 / 不能是已加入戰役
             const battle = memo.battlefieldMap[mapid]
-            if (battle) { return 'In Battlefiel.'; }
+            if (battle || userinfo.mapTargetId > 0) { return 'In Battlefiel.'; }
             // 不能放有人
             const targetMap = memo.mapIdMap[mapid];
             const users = Object.values(memo.userMap).filter(user => user.mapNowId == mapid && user.countryId == targetMap.ownCountryId);
