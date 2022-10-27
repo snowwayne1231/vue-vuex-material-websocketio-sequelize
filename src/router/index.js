@@ -6,6 +6,7 @@ import Reward from '@/pages/Reward';
 import AdminQuery from '@/pages/AdminQuery';
 import Rank from '@/pages/Rank';
 import RankPeople from '@/pages/RankPeople';
+import RankPeopleApi from '@/pages/RankPeopleApi';
 
 Vue.use(Router);
 
@@ -45,6 +46,11 @@ export default new Router({
       path: '/rankpeople',
       name: 'RankPeople',
       component: RankPeople,
+    },
+    {
+      path: '/rankpeopleapi',
+      name: 'RankPeopleApi',
+      component: RankPeopleApi,
     }
   ],
 });

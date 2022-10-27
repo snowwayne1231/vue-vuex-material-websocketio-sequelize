@@ -17,29 +17,32 @@
             <thead>
               <tr>
                 <th></th>
-                <th v-for="(country) in countries" :key="country.id" :style="{color: country.color2, backgroundColor: country.color, width: `${Math.floor(100/(countries.length+1))}%`}"><span>{{country.name}}</span></th>
+                <th v-for="country in countries" :key="country.id" :style="{color: country.color2, backgroundColor: country.color, width: `${Math.floor(100/(countries.length+1))}%`}"><span>{{country.name}}</span></th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <th>城池 / 領地</th>
-                <td v-for="(country) in countries" :key="country.id">
+                <td v-for="country in countries" :key="country.id">
                   {{country.totalCity}} / {{country.maps.length}}
                 </td>
               </tr>
               <tr>
                 <th>總兵力</th>
-                <td v-for="(country) in countries" :key="country.id">
+                <td v-for="country in countries" :key="country.id">
                   {{country.totalSoldier.toLocaleString()}}
                 </td>
               </tr>
               <tr>
                 <th>武將</th>
-                <td v-for="(country) in countries" :key="country.id">
+                <td v-for="country in countries" :key="country.id">
                   <ul>武將數: {{country.users.length}}</ul>
                   <ul>
-                    <li v-for="(user) in country.users" :key="user.id">
-                      <span :title="user.code"><b v-if="user.online" class="online" @click="onClickOnline(user)">🟢</b>{{user.nickname}} ⚔️({{user.soldier.toLocaleString()}})</span>
+                    <li v-for="user in country.users" :key="user.id">
+                      <span :title="user.code">
+                        <b v-if="user.online" class="online" @click="onClickOnline(user)">🟢</b>
+                        <i class="nickname" @click="onClickNickname(user)">{{user.nickname}} ⚔️({{user.soldier.toLocaleString()}})</i>
+                      </span>
                       <span class="occupation" :class="{new: user.occupationId > 0 && !localOccMap[user.id]}">{{user.occupation.name || ''}} ({{user.contribution}})</span>
                       <span @click="onClickLoginCircle(user.id)"><i class="login-circle" v-for="(ldata, idx) in (loginRecordMap[user.id] ? loginRecordMap[user.id].uniqle : [])" :key="idx" :title="`IP [${ldata.ip}] Time [${ldata.timestamp}]`"></i></span>
                     </li>
@@ -219,6 +222,23 @@ export default {
         }
       }
     },
+    onClickNickname(user) {
+      let adds = '';
+      if (user.role == 1) {
+        adds = '_1';
+      } else if (user.occupationId > 0) {
+        if (user.occupationId <= 2) {
+          adds = '_2';
+        } else if (user.occupationId <= 3) {
+          adds = '_3';
+        } else if (user.occupationId <= 8) {
+          adds = '_3';
+        } else {
+          adds = '_4';
+        }
+      }
+      window.open(`http://172.16.20.73:20221/welfare22/images/user/${user.code}${adds}.png`, 'headimg', 'width=600,height=600');
+    },
     onClickRecovry() {
       window.localStorage.setItem('__onClickRecovry__', new Date().toLocaleString());
       if (this.user.code == 'R343') {
@@ -274,6 +294,12 @@ export default {
         background-color: #898989;
         border-radius: 50%;
         cursor: help;
+      }
+      .nickname {
+        cursor: pointer;
+        &:hover {
+          color: #0000bb;
+        }
       }
     }
   }

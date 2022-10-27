@@ -4,7 +4,7 @@
       <md-card-header>
         <md-card-header-text>
           <div class="md-title">
-            <span>RANK PEOPLE DATA</span>
+            <span>RANK PEOPLE BATTLES</span>
             <!-- <button @click="saveLocalOcc">Save Occ</button>
             <button @click="onClickRecovry">*Recovry*</button> -->
           </div>
@@ -12,25 +12,29 @@
       </md-card-header>
       <md-card-content>
         <div class='rank-content'>
-          <table class="rank-table">
+          <table class="rank-table-war">
             <thead>
               <tr>
                 <th>國家</th>
                 <th>暱稱</th>
-                <th>貢獻</th>
-                <th>戰役(勝利)</th>
-                <th>戰役(出征)</th>
-                <th>戰役(防守)</th>
+                <th class="sortable" :class="{activate: 'contribution' == sortKey }" @click="onClickSort('contribution')">貢獻</th>
+                <th class="sortable" :class="{activate: '.win' == sortKey }" @click="onClickSort('.win')">戰役(勝利)</th>
+                <th class="sortable" :class="{activate: '.total' == sortKey }" @click="onClickSort('.total')">戰役總數 (出征/防守)</th>
+                <th >戰役勝率</th>
+                <th class="sortable" :class="{activate: '.judge' == sortKey }" @click="onClickSort('.judge')">裁判數</th>
+                <th class="sortable" :class="{activate: '.toolman' == sortKey }" @click="onClickSort('.toolman')">攝影數</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(loc) in warData" :key="loc.id">
+              <tr v-for="loc in warDatas" :key="loc.id">
                 <td :style="`color: ${loc.country.color[1]}; backgroundColor: ${loc.country.color[0]};`">{{loc.country ? loc.country.name : 'none'}}</td>
                 <td>{{loc.nickname}}</td>
                 <td>{{loc.contribution}}</td>
                 <td>{{loc.wardata.win}}</td>
-                <td>{{loc.wardata.atk}}</td>
-                <td>{{loc.wardata.def}}</td>
+                <td :title="showTitleByBattles(loc.wardata.battles)">{{loc.wardata.total}} ⚔️ ({{loc.wardata.atk}} / {{loc.wardata.def}})</td>
+                <td>{{Math.round(loc.wardata.win / loc.wardata.total * 100)}} %</td>
+                <td>{{loc.wardata.judge}}</td>                
+                <td>{{loc.wardata.toolman}}</td>  
               </tr>
             </tbody>
           </table>
@@ -48,6 +52,8 @@ export default {
   data() {
     return {
       localSorted: [],
+      sortKey: '',
+      sortRuleAsc: true,
     }
   },
   components:{
@@ -55,50 +61,18 @@ export default {
   },
   computed: {
     ...mapState(['global', 'user']),
-    countries(self) {
-      const global = self.global;
-      const results = global.countries.map(country => {
-        const cc = country.color.split(',');
-        let id = country.id;
-        let name = country.name;
-        let color = cc[0];
-        let color2 = cc[1];
-        let users = global.users.filter(user => user.countryId == id);
-        let maps = global.maps.filter(map => map.ownCountryId == id);
-        let totalSoldier = 0;
-        let totalCity = 0;
-        users.map(user => {
-          totalSoldier += user.soldier;
-          if (user.role==1) {
-            user.occupation = {name: '主公'};
-          } else {
-            user.occupation = user.occupationId > 0 ? global.occupationMap[user.occupationId] || {} : {};
-          }
-          user.online = self.loginUserIds.includes(user.id)
-        });
-        maps.map(map => {
-          if (map.cityId > 0) totalCity += 1;
-        });
-        users.sort((a,b) => {
-          if (a.role == 1) return -100;
-          if (b.role == 1) return 100;
-          const occGap = b.occupationId - a.occupationId;
-          return occGap == 0 ? Math.min(Math.max(b.soldier - a.soldier, -50), 50) : occGap;
-        });
-        return {id, users, maps, name, color, color2, totalSoldier, totalCity}
-      });
-      console.log('global: ', global);
-      results.sort((a,b) => {
-        const cityGap = b.totalCity - a.totalCity;
-        return cityGap == 0 ? b.maps.length - a.maps.length : cityGap
-      })
-      return results.filter(e => e.users.length > 0);
-    },
     userMap() {
       const map = {};
-      this.global.users.map(user => {
+      this.global.users.filter(user => user.mapNowId > 0).map(user => {
         map[user.id] = user;
       });
+      return map;
+    },
+    hashMapId() {
+      const map = {};
+      this.global.maps.map(m => {
+        map[m.id] = m;
+      })
       return map;
     },
     warHashUserMap() {
@@ -109,13 +83,18 @@ export default {
           lose: 0,
           atk: 0,
           def: 0,
+          total: 0,
           judge: 0,
           toolman: 0,
           battles: [],
+          helpers: [],
         };
       });
-      // console.log('warHashUserMap: ', this.global.results);
-      this.global.results.map(war => {
+      console.log('warHashUserMap: ', this.global.results);
+      const realBattles = this.global.results.filter(r => new Date(r.timestamp) < new Date(r.updatedAt));
+      console.log('realBattles: ', realBattles);
+      realBattles.map(war => {
+        if (typeof war.attackCountryIds == 'undefined') { return false }
         const isAtkWin = war.winnerCountryId == war.attackCountryIds[0];
         const isDefWin = war.winnerCountryId == war.defenceCountryId;
         if (war.atkUserIds) {
@@ -140,13 +119,16 @@ export default {
         }
         if (war.judgeId && map[war.judgeId]) {
           map[war.judgeId].judge += 1;
-          map[war.judgeId].battles.push(war);
+          map[war.judgeId].helpers.push(war);
         }
         if (war.toolmanId && map[war.toolmanId]) {
           map[war.toolmanId].toolman += 1;
-          map[war.toolmanId].battles.push(war);
+          map[war.toolmanId].helpers.push(war);
         }
-      }); 
+      });
+      Object.keys(map).map(key => {
+        map[key].total = map[key].atk + map[key].def;
+      })
       return map;
     },
     countryMap() {
@@ -158,7 +140,7 @@ export default {
       });
       return map
     },
-    warData() {
+    warDatas() {
       const userMap = this.userMap;
       const warHashUserMap = this.warHashUserMap;
       const countryMap = this.countryMap;
@@ -168,19 +150,22 @@ export default {
         results = this.localSorted.map(uid => {
           const next = userMap[uid] ? {...userMap[uid]} : {};
           next.wardata = warHashUserMap[uid] || {};
-          next.country = countryMap[next.countryId] || {color: ['#bbb', '#444'], name: 'none'};
+          next.country = countryMap[next.countryId] || {color: ['#bbb', '#444'], name: '浪'};
           return next;
         }).filter(e => !!e);
       } else {
         results = Object.values(userMap).map(user => {
           user.wardata = warHashUserMap[user.id] || {};
-          user.country = countryMap[user.countryId] || {color: ['#bbb', '#444'], name: 'none'};
+          user.country = countryMap[user.countryId] || {color: ['#bbb', '#444'], name: '浪'};
           return user;
         });
-        results.sort((a,b) => b.wardata.win - a.wardata.win);
+        results.sort((a,b) => {
+          const gapnum = b.wardata.total - a.wardata.total;
+          return gapnum == 0 ? b.wardata.win - a.wardata.win : gapnum;
+        });
       }
       // console.log('warData results: ', results);
-      return results
+      return results;
     },
   },
   mounted() {
@@ -189,18 +174,41 @@ export default {
       return this.$router.push('/');
     }
 
-    const sendto = {model: 'RecordWar', where: {}, attributes: {}};
-    // console.log('sendto: ', sendto);
     // war records in results
-    this.$store.dispatch('wsEmitADMINCTL', sendto);
+    this.$store.dispatch('wsEmitADMINCTL', {model: 'RecordWar', where: {}, attributes: {}});
+    // this.$store.dispatch('wsEmitADMINCTL', {model: 'RecordApi', where: {'model': 'City'}, attributes: {}});
   },
   methods: {
-    
-    onClickLoginCircle(userId) {
-      const result = this.loginRecordMap[userId] ? this.loginRecordMap[userId].all : [];
-      const shows = result.map(e => `${e.ip.substr(-12)} => ${new Date(e.timestamp).toLocaleString()}`);
-      console.log(shows.slice(0, 49));
+    onClickSort(key) {
+      const deeper = key[0] == '.';
+      if (this.sortKey == key) {
+        this.sortRuleAsc = !this.sortRuleAsc
+      } else {
+        this.sortKey = key;
+      }
+
+      let _ary = [];
+      if (deeper) {
+        const warKey = key.replace('.', '');
+        _ary = this.warDatas.map(e => [e.id, e.wardata[warKey]]);
+      } else {
+        _ary = this.warDatas.map(e => [e.id, e[key]]);
+      }
+
+      const isasc = this.sortRuleAsc;
+      _ary.sort((a,b) => {
+        return isasc ? a[1] - b[1] : b[1] - a[1];
+      });
+      this.localSorted = _ary.map(e => e[0]);
     },
+    showTitleByBattles(battles) {
+      const _hash = this.hashMapId;
+      return battles.map(e => {
+        const mapName = _hash[e.mapId] ? _hash[e.mapId].name : 'unKnown';
+        const time = new Date(e.timestamp).toLocaleDateString();
+        return `[${mapName}之戰] ${time}`;
+      }).join(',\r\n');
+    }
     
   },
 }
@@ -212,12 +220,17 @@ export default {
   overflow: auto;
   max-height: 86vh;
 
-  .rank-table {
+  .rank-table-war {
     width: 100%;
+
+    tr:nth-child(even) {
+      background-color: #eee;
+    }
 
     th {
       font-weight: 700;
       text-shadow: 1px 0px 1px #222;
+      border: 1px solid #ccc;
     }
     td {
       vertical-align: top;
@@ -241,13 +254,18 @@ export default {
           color: red;
         }
       }
-      .login-circle {
-        width: 12px;
-        height: 12px;
-        display: inline-block;
-        background-color: #898989;
-        border-radius: 50%;
-        cursor: help;
+    }
+
+    .sortable {
+      cursor: pointer;
+      background-color: #ddffff;
+      
+      &:hover {
+        
+        background-color: #00ffff;
+      }
+      &.activate {
+        background-color: #00ffff;
       }
     }
   }

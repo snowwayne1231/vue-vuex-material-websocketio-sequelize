@@ -614,7 +614,6 @@ module.exports = {
                         try {
                             if (msg.update) {
                                 console.log('[ADMIN_CONTROL] update.  user : ', userinfo.nickname , ' address: ', userinfo.address);
-                                if (modelName != 'Reward' && !canFix) { return false }
                                 insModel.update(msg.update, {where: msg.where}).then(refreshMemoDataUsers);
                                 return recordApi(userinfo.id, modelName, msg.update, 2);
                             } else if(msg.create) {
@@ -646,7 +645,7 @@ module.exports = {
                             emitSocketByte(us.socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: us.userinfo});
                         }
                     });
-                } else if (canFix && msg.battlemap && memo_ctl.battlefieldMap[msg.battlemap]) {
+                } else if (msg.battlemap && memo_ctl.battlefieldMap[msg.battlemap]) {
                     const mapId = msg.battlemap;
                     const thisBattle = memo_ctl.battlefieldMap[mapId];
                     const timestamp = new Date(thisBattle.timestamp);
@@ -656,7 +655,7 @@ module.exports = {
                         const jsondata = memo_ctl.battlefieldMap[mapId];
                         return broadcastSocketByte(enums.MESSAGE, {act: enums.ACT_BATTLE_ADD, payload: {mapId, jsondata}});
                     });
-                } else if (canFix && msg.sessioninfo) {
+                } else if (msg.sessioninfo) {
                     if (msg.userId) {
                         memo_ctl.userSockets.map(us => {
                             if (us.id == msg.userId) {

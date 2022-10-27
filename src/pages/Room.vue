@@ -5,10 +5,10 @@
         <md-card-header-text>
           <div class="md-title">
             <span @click="moveToCenter">{{user.nickname}} </span>
-            <span class="md-icon btn" @click="openHeroRanking = true">description</span>
+            <span class="md-icon btn" @click="openHeroRanking = true" v-if="imWelfare">description</span>
           </div>
           <div class="md-subhead">
-            <i class="md-icon btn" @click="onClickPlusPeople(user)">add_alarm</i>
+            <i class="md-icon btn" @click="onClickPlusPeople(user)" v-if="imWelfare">add_alarm</i>
             <span>行動力: ( {{user.actPoint}} ) | </span>
             <span>國家: ⚑[ {{myCountry.name}} ]⚑ | </span>
             <span>金: {{user.money}} 💰 | </span>
@@ -18,7 +18,7 @@
           </div>
         </md-card-header-text>
       </md-card-header>
-      <md-card-content>
+      <md-card-content style="background-color: #f4ffe9;">
         <div class="map" @mousedown="onMouseDown($event)" @mousemove="onMouseMove($event)" @mouseup="onMouseUp()" @mouseleave="onMouseUp()" :class="{haveselections: showMapSelections.length > 0}">
           <div class="render" :style="{ transform: `translate(${viewX}px, ${viewY}px)` }">
             <!-- <canvas id="map-canvas"></canvas> -->
@@ -38,7 +38,7 @@
                 <dd v-if="p.battlearea.gameName == '' && p.battlearea.isOriginCity && p.battlearea.gameOptions.length > 0">
                   <select v-model="selectedOriginCityGameId">
                     <option value="0">未選擇</option>
-                    <option v-for="(op) in p.battlearea.gameOptions" :key="op.id" :value="op.id">{{op.name}}</option>
+                    <option v-for="(op, idx) in p.battlearea.gameOptions" :key="op.id" :value="op.id">{{op.name}}</option>
                   </select>
                   <button @click="onClickSelectOriginCityGame(p.id, p.battlearea.id)">選定</button>
                 </dd>
@@ -47,7 +47,7 @@
                 </dd>
                 <table class="table">
                   <tr>
-                    <td colspan="2">{{p.battlearea.time}}<i class="md-icon alarm" @click="onClickDecreaseBattleDay(p.id)">alarm</i></td>
+                    <td colspan="2">{{p.battlearea.time}}<i class="md-icon alarm" @click="onClickDecreaseBattleDay(p.id)" v-if="imWelfare">alarm</i></td>
                   </tr>
                   <tr>
                     <th width="50%">{{p.battlearea.atkCountry}}</th>
@@ -83,7 +83,7 @@
               </div>
               <span v-if="p.sellers.length > 0" class="adventures">🧙</span>
             </li>
-            <p class="step-point" v-for="(st) in mapSteps" :key="`${st.id}_${st.x}`" :style="{left: `${st.x}px`, top: `${st.y}px`}">{{st.point}}</p>
+            <p class="step-point" v-for="(st, idx) in mapSteps" :key="`${st.id}_${st.x}`" :style="{left: `${st.x}px`, top: `${st.y}px`}">{{st.point}}</p>
           </div>
         </div>
         <div class="nav" v-if="showMapSelections.length == 0">
@@ -116,12 +116,12 @@
         </div>
         <div class="notifications">
           <ul>
-            <li v-for="(msg) in global.domesticMessages" :key="msg[0].getTime()">
+            <li v-for="(msg, idx) in global.domesticMessages" :key="msg[0].getTime()">
               <span>{{msg[0].toLocaleString()}}</span><span>{{msg[1]}}</span>
             </li>
           </ul>
           <ul>
-            <li v-for="(noti) in global.notifications" :key="noti[0].getTime()">
+            <li v-for="(noti, idx) in global.notifications" :key="noti[0].getTime()">
               <span>{{noti[0].toLocaleString()}}</span><span>{{noti[1]}}</span>
             </li>
           </ul>
@@ -185,7 +185,7 @@
                 <td>
                     <select v-model="shareData.userId">
                       <option value="0">無</option>
-                      <option v-for="(user) in asCandidates" :key="user.id" :value="user.id">{{user.name}}</option>
+                      <option v-for="(user, idx) in asCandidates" :key="user.id" :value="user.id">{{user.name}}</option>
                     </select>
                 </td>
                 <td><input type="number" v-model.number="shareData.money" /></td>
@@ -193,7 +193,7 @@
                 <td>
                   <select v-model="shareData.itemId">
                     <option value="0">無</option>
-                    <option v-for="(item) in myPacketItems.filter(i => i.quantity > 0)" :key="item.id" :value="item.id">
+                    <option v-for="(item, idx) in myPacketItems.filter(i => i.quantity > 0)" :key="item.id" :value="item.id">
                       {{item.name}}
                     </option>
                   </select>
@@ -211,7 +211,7 @@
         <div class="mask" v-if="openHistoryWars" @click="openHistoryWars = false">
           <div @click="$event.stopPropagation()" class="basic-dialog">
             <ul class="history-wars" style="height: 500px; overflow: auto;">
-              <li v-for="war in warRecords" :key="war.id" @click="onClickWarRecord(war.id)" :class="{activate: war.id == battleRecordDetails.id}">
+              <li v-for="(war, idx) in warRecords" :key="war.id" @click="onClickWarRecord(war.id)" :class="{activate: war.id == battleRecordDetails.id}">
                 <span>{{war.time}} - {{war.map.name}}之戰</span> | 
                 <span>{{war.atkCountry.name}}</span> V.S 
                 <span>{{war.defCountry.name}}</span>
@@ -233,14 +233,14 @@
                 <th>進攻方 [ {{battleRecordDetails.atkCountryName}} ]</th>
                 <th>防守方 [ {{battleRecordDetails.defCountryName}} ]</th>
               </tr>
-              <tr v-for="(i) in 4" :key="i">
+              <tr v-for="i in 4" :key="i">
                 <td>{{battleRecordDetails.atkUsers[i-1]}} {{battleRecordDetails.detail.atkSoldiers[i-1]}} <span>-{{battleRecordDetails.detail.atkSoldierLoses[i-1]}}</span></td>
                 <td>{{battleRecordDetails.defUsers[i-1]}} {{battleRecordDetails.detail.defSoldiers[i-1]}} <span>-{{battleRecordDetails.detail.defSoldierLoses[i-1]}}</span></td>
               </tr>
             </table>
           </div>
         </div>
-        <div class="mask" v-if="openHeroRanking" @click="openHeroRanking = false">
+        <div class="mask" v-if="openHeroRanking && imWelfare" @click="openHeroRanking = false">
           <div @click="$event.stopPropagation()" class="basic-dialog hero-ranking">
             <ul class="header">
               <li>
@@ -254,7 +254,7 @@
               <li v-for="user in global.users" :key="user.id">
                 <span>{{user.code}} <i v-if="countryMap[user.countryId]" :style="{color: countryMap[user.countryId].color.split(',')[0]}" class="md-icon">flag</i></span>
                 <span>{{user.nickname}}</span>
-                <span>{{mapHash[user.mapNowId].name}}</span>
+                <span>{{user.mapNowId ? mapHash[user.mapNowId].name : '-'}}</span>
                 <span>
                   <i class="md-icon btn" @click="onClickPlusPeople(user)">add_alarm</i>
                   <i class="md-icon btn" @click="onClickChangeUser(user)">assignment_ind</i>
@@ -297,6 +297,7 @@ import Assignment from '@/components/interactive/Assignment';
 import CityPanel from '@/components/interactive/CityPanel';
 import mapAlgorithm from '@/unit/mapAlgorithm';
 import enums from '../enum';
+import { isWelfare } from '../../server/websocketctl/algorithm';
 
 export default {
   name: 'Room',
@@ -328,6 +329,9 @@ export default {
   },
   computed: {
     ...mapState(['global', 'user']),
+    imWelfare(self) {
+      return isWelfare(self.user);
+    },
     hashMapSellers(self) {
       const result = {}
       const itemSellerMap = self.global.itemSellerMap;
@@ -517,9 +521,10 @@ export default {
     Man, Assignment, CityPanel,
   },
   mounted() {
-    if (!['81', '8080', '12022'].includes(window.location.port) && !['R343'].includes(this.user.code)) {
+    if (!['81', '8080', '12022'].includes(window.location.port) && !['R343', 'R307', 'R064', 'R001'].includes(this.user.code)) {
       window.alert('開發測試用的');
       this.$router.push('/');
+      return false;
     }
     this._mouse_dataset = {};
     console.log('store: ', this.$store);
@@ -546,7 +551,7 @@ export default {
         var moveY = y - md.start.y + md.origin.y;
         moveX = Math.max(moveX, - 2800 + window.innerWidth - 152);
         moveX = Math.min(moveX, 0);
-        moveY = Math.max(moveY, - 2200 + window.innerHeight - 152);
+        moveY = Math.max(moveY, - 2400 + window.innerHeight - 152);
         moveY = Math.min(moveY, 0);
         this.viewX = moveX;
         this.viewY = moveY;
@@ -554,8 +559,10 @@ export default {
     },
     moveToCenter() {
       const nowMap = this.mapHash[this.user.mapNowId];
-      this.viewX = -(nowMap.x - Math.floor((window.innerWidth-100)/2));
-      this.viewY = -(nowMap.y - Math.floor((window.innerHeight-100)/2));
+      if (nowMap) {
+        this.viewX = -(nowMap.x - Math.floor((window.innerWidth-100)/2));
+        this.viewY = -(nowMap.y - Math.floor((window.innerHeight-100)/2));
+      }
     },
     onClickMove() {
       this.moveToCenter();
@@ -799,17 +806,20 @@ export default {
       }
     },
     onClickPlusPeople(user) {
-      var where = {id: user.id};
-      var update = {actPoint: 100};
-      var model = 'User';
-      var sendto = {model, where, update};
-      return window.confirm(`確定儲給 ${user.nickname} ${100}行動嗎`) && this.$store.dispatch('wsEmitADMINCTL', sendto);
+      if (this.imWelfare) {
+        var point = window.location.port == '20221' ? 1 : 100
+        var where = {id: user.id};
+        var update = {actPoint: point};
+        var model = 'User';
+        var sendto = {model, where, update};
+        return window.confirm(`確定儲給 ${user.nickname} ${point}行動嗎`) && this.$store.dispatch('wsEmitADMINCTL', sendto);
+      }
     },
     onClickChangeUser(user) {
-      this.$store.dispatch('wsEmitADMINCTL', {userid: user.id});
+      this.imWelfare && this.$store.dispatch('wsEmitADMINCTL', {userid: user.id});
     },
     onClickDecreaseBattleDay(mapId) {
-      this.$store.dispatch('wsEmitADMINCTL', {battlemap: mapId});
+      this.imWelfare && this.$store.dispatch('wsEmitADMINCTL', {battlemap: mapId});
     },
     onClickRebellion() {
       const me = this.user;

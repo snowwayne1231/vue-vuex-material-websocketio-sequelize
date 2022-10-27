@@ -107,8 +107,10 @@ module.exports = {
         return obj;
     },
     getTimeOptions(occupiedTimes) {
-        const vacations = [909, 910, 1010, 102];
+        const yearEndingDate = 1223;
+        const vacations = [909, 910, 1010];
         const allowedHours = [800, 1200, 1230, 1530, 2230];
+        const hashDisableDateHour = { '1125': [1530] };
         const afterDays = 7;
         const timeOptions = [];
         const startDate = new Date();
@@ -125,11 +127,14 @@ module.exports = {
         while (timeOptions.length < 5 && day++ < afterDays) {
             let _weekday = startDate.getDay();
             let startDateDecimal = ((startDate.getMonth() + 1) * 100) + startDate.getDate();
+            if (startDateDecimal >= yearEndingDate) { break }
+            let disableHours = hashDisableDateHour[String(startDateDecimal)] || [];
             if (_weekday > 0 && _weekday <= 5 && !vacations.includes(startDateDecimal)) {
                 for(let i = 0; i < allowedHours.length; i++) {
                     let loc = allowedHours[i];
                     let hour = Math.floor(loc / 100);
                     let minute = loc % 100;
+                    if (disableHours.includes(loc)) { continue }
                     if (startDate.getHours() < hour || ( startDate.getHours() == hour && startDate.getMinutes() < minute )) {
                         startDate.setHours(hour);
                         startDate.setMinutes(minute);
@@ -163,7 +168,7 @@ module.exports = {
         return true;
     },
     isWelfare(user) {
-        return ['R307', 'R064', 'R343'].includes(user.code);
+        return ['R307', 'R064', 'R343', 'R001'].includes(user.code);
     },
     isWorking(userId, memo) {
         const bm = memo.battlefieldMap;

@@ -23,7 +23,7 @@
           <tr>
             <th colspan="2" style="border: 1px solid #d5c905;">所在地將領</th>
           </tr>
-          <tr v-for="(uu) in userdata" :key="uu.id" :class="{captived: !!uu.captiveDate}" class="list-people">
+          <tr v-for="(uu, idx) in userdata" :key="uu.id" :class="{captived: !!uu.captiveDate}" class="list-people">
             <td>{{getUserOccupation(uu)}}</td>
             <td>
               <li @click="onClickChangeUser(uu)">

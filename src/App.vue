@@ -24,6 +24,7 @@
 <script>
 import { mapState, mapMutations } from 'vuex';
 import { ACT_GET_GLOBAL_DATA } from '@/enum';
+import { isWelfare } from '../server/websocketctl/algorithm';
 
 
 
@@ -32,17 +33,18 @@ export default {
   computed: {
     ...mapState(['user', 'global']),
     menu() {
-      const isWelfare = ['R001', 'R064', 'R343'].includes(this.user.code);
+      // const isWelfare = ['R001', 'R064', 'R343'].includes(this.user.code);
       const list = [
         { name: '資料', name_en: 'DATAFLOW', url: '/data' },
         { name: '測試', name_en: 'TEST', url: '/room' },
         { name: '獎勵', name_en: 'REWARD', url: '/reward' },
         { name: '排名', name_en: 'RANK', url: '/rank' },
-        { name: '排名(武將)', name_en: 'RANKPEOPLE', url: '/rankpeople' },
+        { name: '排名(武將)(戰役)', name_en: 'RANKBATTLE', url: '/rankpeople' },
+        { name: '排名(武將)(建築)', name_en: 'RANKAPI', url: '/rankpeopleapi' },
         { name: '離開', name_en: 'SIGN OUT', url: '/logout', onclick: this.onClickLogout },
       ];
-      if (!isWelfare) {
-        list.splice(2, 3);
+      if (!isWelfare(this.user)) {
+        list.splice(2, 4);
       }
       return list
     },

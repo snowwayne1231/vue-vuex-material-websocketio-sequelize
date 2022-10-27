@@ -42,7 +42,7 @@
                   <div v-for="(item, index) in rewardList[idx].items" :key="`${item}-${idx}`">
                     <select v-model="rewardList[idx].items[index]">
                       <option :value="0">無</option>
-                      <option v-for="(opt) in itemOptions" :key="opt.value" :value="opt.value">{{opt.label}}</option>
+                      <option v-for="opt in itemOptions" :key="opt.value" :value="opt.value">{{opt.label}}</option>
                     </select>
                   </div>
                   <div>

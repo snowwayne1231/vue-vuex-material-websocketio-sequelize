@@ -1,4 +1,5 @@
 const enums = require('../src/enum');
+const algorithms = require('./websocketctl/algorithm');
 
 function validate(act, payload, userinfo, memo) {
     const res = { ok: false, msg: '' };
@@ -38,7 +39,7 @@ function validate(act, payload, userinfo, memo) {
         case enums.ACT_BATTLE_JUDGE: {
             const mapId = payload.mapId;
             const battleId = payload.battleId;
-            if (isWelfare(userinfo)=='') { break }
+            if (algorithms.isWelfare(userinfo)) { break }
             res.msg = hasBattle(mapId, battleId, memo) || isAllowedJudgeBattleTime(mapId, memo) || imJudge(userinfo, mapId, memo);
         } break
         case enums.ACT_APPOINTMENT: {
@@ -447,10 +448,6 @@ function isEmptyOccupation(userId, occupationId, memo) {
     const _user = memo.userMap[userId];
     const _users = Object.values(memo.userMap).filter(u => u.countryId == _user.countryId);
     return _users.findIndex(u => u.occupationId == occupationId) == -1 ? '' : 'Double Occupation.';
-}
-
-function isWelfare(userinfo) {
-    return ['R307', 'R343', 'R064'].includes(userinfo.code) ? '' : 'Nont Welfare';
 }
 
 function imJudge(userinfo, mapId, memo) {

@@ -13,7 +13,7 @@
             <th width="25%">
               <span v-if="getHasOccupated(selectedPos.id)" style="color: #ffe529;">{{selectedCandidateName}}</span>
               <select v-else v-model="selectedCandidateId">
-                <option v-for="(opt) in getOptionsByPosition()" :key="opt.value" :value="opt.value">{{opt.label}}</option>
+                <option v-for="(opt, idx) in getOptionsByPosition()" :key="opt.value" :value="opt.value">{{opt.label}}</option>
               </select>
             </th>
             <th width="25%">
