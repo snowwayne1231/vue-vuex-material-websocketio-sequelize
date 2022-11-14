@@ -629,6 +629,7 @@ async function updateMapOwner(mapId, countryId, userinfo, memoController=null) {
     const now = new Date();
     now.setDate(now.getDate() + 1);
     const timeMinutes = Math.floor(now.getTime() / 1000 / 60);
+    const loseCountryId = memoController.mapIdMap[mapId].ownCountryId;
     await models.Map.update({
         ownCountryId: countryId,
         adventureId: timeMinutes,
@@ -651,6 +652,45 @@ async function updateMapOwner(mapId, countryId, userinfo, memoController=null) {
                 let userId = inBattleUsers[i];
                 await updateSingleUser(userId, {mapTargetId: 0}, userinfo, memoController);
             }
+        }
+
+        const countryDestoried = Object.values(memoController.mapIdMap).filter(m => m.ownCountryId == loseCountryId).length == 0;
+
+        if (countryDestoried) {
+
+            const globalChangeDataset = [];
+            const defCountryName = memoController.countryMap[loseCountryId].name;
+            const atkCountryName = memoController.countryMap[countryId].name;
+
+            const updatedUsers = await memoController.battleCtl.handleDestoried(countryId, loseCountryId);
+            
+            globalChangeDataset.push({ depth: ['countries', loseCountryId], update: {emperorId: 0, originCityId: 0} });
+            memoController.countryMap[loseCountryId].emperorId = 0;
+            memoController.countryMap[loseCountryId].originCityId = 0;
+
+            updatedUsers && updatedUsers.map(usr => {
+                const updateKeys = Object.keys(usr.updated);
+                updateKeys.map(k => {
+                    memoController.userMap[usr.id][k] = usr.updated[k];
+                });
+                globalChangeDataset.push({ depth: ['users', usr.id], update: usr.updated });
+                memoController.userSockets.map(us => {
+                    if (us.id == usr.id) {
+                        updateKeys.map(k => {
+                            us.userinfo[k] = usr.updated[k];
+                        });
+                        memoController.emitSocketByte(us.socket, enums.AUTHORIZE, {act: enums.AUTHORIZE, payload: usr.updated});
+                    }
+                });
+            });
+
+            memoController.eventCtl.broadcastInfo(enums.EVENT_DESTROY_COUNTRY, {
+                round: 0,
+                defCountryName,
+                atkCountryName,
+            });
+
+            broadcastSocket(memoController, {act: enums.ACT_GET_GLOBAL_CHANGE_DATA, payload: {dataset: globalChangeDataset}});
         }
     }
     await models.RecordApi.create({

@@ -106,76 +106,8 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
 
         // 發生滅國
         if (isDestoried) {
-            let totalMoney = 0;
-            let totalSoldier = 0;
-            const destoriedUsers = await models.User.findAll({where: {countryId: warModel.defenceCountryId}});
-            for (let i = 0; i < destoriedUsers.length; i++) {
-                let user = destoriedUsers[i];
-                let userUpdateData = {};
-                totalMoney += user.money;
-                totalSoldier += user.soldier;
-                userUpdateData.money = 0;
-                userUpdateData.soldier = 0;
-                userUpdateData.countryId = 0;
-                userUpdateData.role = enums.ROLE_FREEMAN;
-                userUpdateData.actPointMax = 3;
-                userUpdateData.occupationId = 0;
-                userUpdateData.mapTargetId = 0;
-                userUpdateData.captiveDate = null;
-                userUpdateData.mapNowId = user.captiveDate ? user.mapNowId : Math.round(Math.random() * 120)+1;
-                if (user.destoryByCountryIds && user.destoryByCountryIds.length > 0) {
-                    userUpdateData.destoryByCountryIds = JSON.parse(user.destoryByCountryIds);
-                    userUpdateData.destoryByCountryIds.push(warModel.winnerCountryId);
-                } else {
-                    userUpdateData.destoryByCountryIds = [warModel.winnerCountryId];
-                }
-                
-                updated.User.push({id: user.id, updated: userUpdateData });
-                await user.update(userUpdateData);
-                await models.UserTime.create({
-                    utype: enums.TYPE_USERTIME_FREE,
-                    userId: user.id,
-                    before: JSON.stringify({"User": {isDestoried: true}}),
-                    after: JSON.stringify({"User": userUpdateData}),
-                    timestamp: new Date()
-                });
-            }
-            detail.defSoldierLoses = detail.defSoldiers;
 
-            await models.Country.update({
-                emperorId: 0,
-                originCityId: 0,
-            }, {where: {id: warModel.defenceCountryId}});
-
-            // 累積的黃金兵力給主公
-            const winUsers = await models.User.findAll({where: {countryId: warModel.winnerCountryId}});
-            for (let i = 0; i < winUsers.length; i++) {
-                let user = winUsers[i];
-                let userUpdateData = {};
-                userUpdateData.contribution = user.contribution + 50;
-                if (user.role == enums.ROLE_EMPEROR) {
-                    userUpdateData.soldier = user.soldier + totalSoldier;
-                    userUpdateData.money = user.money + totalMoney;
-                }
-                // 出征者移到
-                if (atkUserIds.includes(user.id)) {
-                    userUpdateData.mapNowId = warModel.mapId;
-                    userUpdateData.mapTargetId = 0;
-                }
-                
-                updated.User.push({id: user.id, updated: userUpdateData });
-                await user.update(userUpdateData);
-            }
-
-            // 滅國後的週圍地圖戰役
-            const nearWars = await models.RecordWar.findAll({where: { defenceCountryId: warModel.winnerCountryId, winnerCountryId: 0}});
-            for (let i = 0; i < nearWars.length; i++) {
-                let _war = nearWars[i];
-                if (_war.attackCountryIds[0] == warModel.defenceCountryId) {
-                    _war.winnerCountryId = warModel.winnerCountryId;
-                    await _war.save();
-                }
-            }
+            updated.User = handleDestoried(warModel.winnerCountryId, warModel.defenceCountryId, atkUserIds, warModel.mapId);
             
         } else {
             // 損兵
@@ -315,6 +247,83 @@ async function handleWarLock(warModel) {
     return updated;
 }
 
+async function handleDestoried(winCountryId, DestoriedCountryId, atkUserIds = [], atkMoveTo = 0) {
+    const updatedUsers = [];
+    let totalMoney = 0;
+    let totalSoldier = 0;
+    const destoriedUsers = await models.User.findAll({where: {countryId: DestoriedCountryId}});
+    for (let i = 0; i < destoriedUsers.length; i++) {
+        let user = destoriedUsers[i];
+        let userUpdateData = {};
+        totalMoney += user.money;
+        totalSoldier += user.soldier;
+        userUpdateData.money = 0;
+        userUpdateData.soldier = 0;
+        userUpdateData.countryId = 0;
+        userUpdateData.role = enums.ROLE_FREEMAN;
+        userUpdateData.actPointMax = 3;
+        userUpdateData.occupationId = 0;
+        userUpdateData.mapTargetId = 0;
+        userUpdateData.captiveDate = null;
+        userUpdateData.mapNowId = user.captiveDate ? user.mapNowId : Math.round(Math.random() * 120)+1;
+        if (user.destoryByCountryIds && Array.isArray(user.destoryByCountryIds) && user.destoryByCountryIds.length > 0) {
+            // userUpdateData.destoryByCountryIds = JSON.parse(user.destoryByCountryIds);
+            userUpdateData.destoryByCountryIds.push(winCountryId);
+        } else {
+            userUpdateData.destoryByCountryIds = [winCountryId];
+        }
+        
+        updatedUsers.push({id: user.id, updated: userUpdateData });
+        await user.update(userUpdateData);
+        await models.UserTime.create({
+            utype: enums.TYPE_USERTIME_FREE,
+            userId: user.id,
+            before: JSON.stringify({"User": {isDestoried: true}}),
+            after: JSON.stringify({"User": userUpdateData}),
+            timestamp: new Date()
+        });
+    }
+    // detail.defSoldierLoses = detail.defSoldiers;
+
+    await models.Country.update({
+        emperorId: 0,
+        originCityId: 0,
+    }, {where: {id: DestoriedCountryId}});
+
+    // 累積的黃金兵力給主公
+    const winUsers = await models.User.findAll({where: {countryId: winCountryId}});
+    for (let i = 0; i < winUsers.length; i++) {
+        let user = winUsers[i];
+        let userUpdateData = {};
+        userUpdateData.contribution = user.contribution + 50;
+        
+        if (user.role == enums.ROLE_EMPEROR) {
+            userUpdateData.soldier = user.soldier + totalSoldier;
+            userUpdateData.money = user.money + totalMoney;
+        }
+        // 出征者移到
+        if (atkUserIds.includes(user.id)) {
+            if (atkMoveTo) {
+                userUpdateData.mapNowId = atkMoveTo;
+            }
+            userUpdateData.mapTargetId = 0;
+        }
+        
+        updatedUsers.push({id: user.id, updated: userUpdateData });
+        await user.update(userUpdateData);
+    }
+
+    // 滅國後的週圍地圖戰役
+    const nearWars = await models.RecordWar.findAll({where: { defenceCountryId: winCountryId, winnerCountryId: 0}});
+    for (let i = 0; i < nearWars.length; i++) {
+        let _war = nearWars[i];
+        if (_war.attackCountryIds[0] == DestoriedCountryId) {
+            _war.winnerCountryId = winCountryId;
+            await _war.save();
+        }
+    }
+    return updatedUsers
+}
 
 
 module.exports = {
@@ -322,4 +331,5 @@ module.exports = {
     bindSuccessfulRBF,
     handleWarWinner,
     handleWarLock,
+    handleDestoried,
 }

@@ -377,7 +377,7 @@ function hookerHandleBattleFinish(battleChanges, time) {
                     }
                 });
             });
-            bc.RecordWar.map(rw => {
+            bc.RecordWar && bc.RecordWar.map(rw => {
                 const thisBattle = memo_ctl.battlefieldMap[rw.mapId];
                 const round = globalConfigs.round.value;
                 if (rw.winnerCountryId > 0) {   // 有勝敗
