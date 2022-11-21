@@ -684,6 +684,23 @@ async function updateMapOwner(mapId, countryId, userinfo, memoController=null) {
                 });
             });
 
+            const destoriedBattles = Object.values(memoController.battlefieldMap).filter(e => e.attackCountryIds[0] == loseCountryId);
+            if (destoriedBattles.length > 0) {
+                for (let i = 0; i < destoriedBattles.length; i++) {
+                    const _battle = destoriedBattles[i];
+                    const _mapId = _battle.mapId;
+                    delete memoController.battlefieldMap[_mapId];
+                    broadcastSocket(memoController, {act: enums.ACT_BATTLE_DONE, payload: {
+                        id: _battle.id,
+                        timestamp: _battle.timestamp,
+                        mapId: _mapId,
+                        winnerCountryId: countryId,
+                        attackCountryIds: _battle.attackCountryIds,
+                        defenceCountryId: _battle.defenceCountryId
+                    }});
+                }
+            }
+
             memoController.eventCtl.broadcastInfo(enums.EVENT_DESTROY_COUNTRY, {
                 round: 0,
                 defCountryName,
@@ -908,7 +925,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
         } break;
         case '_STRATEGY_CATCH_': {
             const mycountryId = userinfo.countryId;
-            const users = Object.values(memo.userMap).filter(user => user.mapNowId == mapId && user.mapTargetId == 0 && user.countryId != mycountryId && user.role != enums.ROLE_FREEMAN);
+            const users = Object.values(memo.userMap).filter(user => user.mapNowId == mapId && user.mapTargetId == 0 && user.countryId != mycountryId && user.role == enums.ROLE_GENERMAN);
             if (users.length > 0) {
                 users.sort((a,b) => a.contribution - b.contribution);
                 let user = users[0];
@@ -944,7 +961,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
             }
         } break;
         case '_STRATEGY_STEAL_': {
-            const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.role != enums.ROLE_FREEMAN && u.id != userinfo.id);
+            const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.role == enums.ROLE_GENERMAN && u.id != userinfo.id);
             if (users.length > 0) {
                 const rand = Math.floor(Math.random() * users.length);
                 const targetUser = users[rand];
@@ -967,7 +984,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
             }
         } break;
         case '_STRATEGY_REDUCE_GOLD_': {
-            const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.countryId != userinfo.countryId && u.role != enums.ROLE_FREEMAN);
+            const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.countryId != userinfo.countryId && u.role == enums.ROLE_GENERMAN);
             if (users.length > 0) {
                 const targetCountryId = memo.mapIdMap[mapId].ownCountryId;
                 const decreaseRatio = Math.min(Object.values(memo.mapIdMap).filter(m => m.ownCountryId == targetCountryId).length * 2 /100, 1);
@@ -1008,7 +1025,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
             const timeMinutes = Math.floor(new Date().getTime() / 1000 / 60);
             if (thisMap.adventureId > timeMinutes) {
                 const mycountryId = userinfo.countryId;
-                const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.countryId != mycountryId && u.role != enums.ROLE_FREEMAN);
+                const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.countryId != mycountryId && u.role == enums.ROLE_GENERMAN);
                 let totalMoney = 0;
                 for (let i = 0; i < users.length; i++) {
                     let user = users[i];
@@ -1024,7 +1041,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
         } break;
         case '_STRATEGY_KICK_': {
             const targetMap = memo.mapIdMap[mapId];
-            const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.countryId == targetMap.ownCountryId && u.mapTargetId == 0);
+            const users = Object.values(memo.userMap).filter(u => u.mapNowId == mapId && u.countryId == targetMap.ownCountryId && u.mapTargetId == 0 && u.role == enums.ROLE_GENERMAN);
             if (users.length > 0) {
                 const allOtherMap = Object.values(memo.mapIdMap).filter(m => m.ownCountryId == targetMap.ownCountryId && m.id != targetMap.id);
                 if (allOtherMap.length > 0) {
@@ -1040,7 +1057,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
         } break;
         case '_STRATEGY_EAST_WEST_': {
             const targetMap = memo.mapIdMap[mapId];
-            const users = Object.values(memo.userMap).filter(u => targetMap.route.includes(u.mapNowId) && u.countryId == targetMap.ownCountryId);
+            const users = Object.values(memo.userMap).filter(u => targetMap.route.includes(u.mapNowId) && u.countryId == targetMap.ownCountryId && u.role == enums.ROLE_GENERMAN);
             if (users.length > 0) {
                 for (let i = 0; i < users.length; i++) {
                     let user = users[i];
@@ -1080,7 +1097,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
         case '_STRATEGY_TRAPE_': {
             const targetMap = memo.mapIdMap[mapId];
             const sameCountryMapIds = targetMap.route.filter(r => memo.mapIdMap[r].ownCountryId == targetMap.ownCountryId).concat(mapId);
-            const users = Object.values(memo.userMap).filter(u => sameCountryMapIds.includes(u.mapNowId) && u.countryId == targetMap.ownCountryId);
+            const users = Object.values(memo.userMap).filter(u => sameCountryMapIds.includes(u.mapNowId) && u.countryId == targetMap.ownCountryId && u.role == enums.ROLE_GENERMAN);
             if (users.length > 0) {
                 for (let i = 0; i < users.length; i++) {
                     let user = users[i];
@@ -1150,7 +1167,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
         case '_STRATEGY_BITTER_': {
             const decreaseSoldier = userinfo.soldier;
             const nearMaps = memo.mapIdMap[userinfo.mapNowId].route;
-            const users = Object.values(memo.userMap).filter(u => nearMaps.includes(u.mapNowId) && u.countryId != userinfo.countryId && u.mapTargetId == 0 && u.role != enums.ROLE_FREEMAN);
+            const users = Object.values(memo.userMap).filter(u => nearMaps.includes(u.mapNowId) && u.countryId != userinfo.countryId && u.mapTargetId == 0 && u.role == enums.ROLE_GENERMAN);
             if (decreaseSoldier > 0 && users.length > 0) {
                 for (let i = 0; i < users.length; i++) {
                     let user = users[i];
@@ -1163,7 +1180,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
         } break;
         case '_STRATEGY_SOLDIER_STEAL_': {
             const nearMaps = memo.mapIdMap[userinfo.mapNowId].route;
-            const users = Object.values(memo.userMap).filter(u => nearMaps.includes(u.mapNowId) && u.countryId != userinfo.countryId && u.mapTargetId == 0 && u.soldier > 0 && u.role != enums.ROLE_FREEMAN);
+            const users = Object.values(memo.userMap).filter(u => nearMaps.includes(u.mapNowId) && u.countryId != userinfo.countryId && u.mapTargetId == 0 && u.soldier > 0 && u.role == enums.ROLE_GENERMAN);
             if (users.length > 0) {
                 users.sort((a,b) => b.soldier - a.soldier);
                 const mostSoldierUser = users[Math.floor(Math.random() * (users.length-1))];
@@ -1179,7 +1196,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
             const timeMinutes = Math.floor(new Date().getTime() / 1000 / 60);
             const nearMaps = [userinfo.mapNowId].concat(memo.mapIdMap[userinfo.mapNowId].route).filter(mid => memo.mapIdMap[mid].adventureId > timeMinutes);
             if (nearMaps.length > 0) {
-                const users = Object.values(memo.userMap).filter(u => nearMaps.includes(u.mapNowId) && u.mapTargetId == 0 && u.role != enums.ROLE_FREEMAN);
+                const users = Object.values(memo.userMap).filter(u => nearMaps.includes(u.mapNowId) && u.mapTargetId == 0 && u.role == enums.ROLE_GENERMAN);
                 if (users.length > 1) {
                     const sumOfSoldier = users.reduce((a,b) => a + b.soldier, 0);
                     const avgSoldier = Math.floor(sumOfSoldier / users.length);
