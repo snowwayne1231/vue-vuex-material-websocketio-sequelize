@@ -1166,7 +1166,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
         } break;
         case '_STRATEGY_BITTER_': {
             const decreaseSoldier = userinfo.soldier;
-            const nearMaps = memo.mapIdMap[userinfo.mapNowId].route;
+            const nearMaps = memo.mapIdMap[userinfo.mapNowId].route.concat(userinfo.mapNowId);
             const users = Object.values(memo.userMap).filter(u => nearMaps.includes(u.mapNowId) && u.countryId != userinfo.countryId && u.mapTargetId == 0 && u.role == enums.ROLE_GENERMAN);
             if (decreaseSoldier > 0 && users.length > 0) {
                 for (let i = 0; i < users.length; i++) {
@@ -1179,7 +1179,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
             }
         } break;
         case '_STRATEGY_SOLDIER_STEAL_': {
-            const nearMaps = memo.mapIdMap[userinfo.mapNowId].route;
+            const nearMaps = memo.mapIdMap[userinfo.mapNowId].route.concat(userinfo.mapNowId);
             const users = Object.values(memo.userMap).filter(u => nearMaps.includes(u.mapNowId) && u.countryId != userinfo.countryId && u.mapTargetId == 0 && u.soldier > 0 && u.role == enums.ROLE_GENERMAN);
             if (users.length > 0) {
                 users.sort((a,b) => b.soldier - a.soldier);
