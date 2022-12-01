@@ -107,7 +107,7 @@ async function handleWarWinner(warModel, isAttackerWin = true, autoApply = false
         // 發生滅國
         if (isDestoried) {
 
-            updated.User = handleDestoried(warModel.winnerCountryId, warModel.defenceCountryId, atkUserIds, warModel.mapId);
+            updated.User = await handleDestoried(warModel.winnerCountryId, warModel.defenceCountryId, atkUserIds, warModel.mapId);
             
         } else {
             // 損兵

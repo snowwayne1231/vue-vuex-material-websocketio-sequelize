@@ -629,7 +629,9 @@ async function updateMapOwner(mapId, countryId, userinfo, memoController=null) {
     const now = new Date();
     now.setDate(now.getDate() + 1);
     const timeMinutes = Math.floor(now.getTime() / 1000 / 60);
-    const loseCountryId = memoController.mapIdMap[mapId].ownCountryId;
+    const thismap = memoController.mapIdMap[mapId];
+    const loseCountryId = thismap.ownCountryId;
+    const cityId = thismap.cityId;
     await models.Map.update({
         ownCountryId: countryId,
         adventureId: timeMinutes,
@@ -708,6 +710,14 @@ async function updateMapOwner(mapId, countryId, userinfo, memoController=null) {
             });
 
             broadcastSocket(memoController, {act: enums.ACT_GET_GLOBAL_CHANGE_DATA, payload: {dataset: globalChangeDataset}});
+        } else if (cityId) {
+            const country = await models.Country.findByPk(loseCountryId);
+            if (country.originCityId == cityId) {
+                country.originCityId = 0;
+                await country.save();
+                memoController.countryMap[loseCountryId].originCityId = 0;
+            }
+            broadcastSocket(memoController, {act: enums.ACT_GET_GLOBAL_CHANGE_DATA, payload: {dataset: [{ depth: ['countries', loseCountryId], update: {originCityId: 0} }]}});
         }
     }
     await models.RecordApi.create({
@@ -1132,6 +1142,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
         case '_STRATEGY_BEAUTY_': {
             const targetMapId = userinfo.mapNowId;
             const targetMap = memo.mapIdMap[targetMapId];
+            const gapHours = 1000*60*60*24;
             const now = new Date();
             if (targetMap && targetMap.route) {
                 const mapIds = [targetMapId].concat(targetMap.route);
@@ -1139,7 +1150,7 @@ async function asyncSwitchItemFunctions(itemId, itemPkId, mapId, userinfo, memo)
                 for (let i = 0; i < mapIds.length; i++) {
                     let mid = mapIds[i];
                     let battle = memo.battlefieldMap[mid];
-                    if (battle && now.getTime() < new Date(battle.timestamp).getTime()) {
+                    if (battle && (now.getTime() + gapHours) < new Date(battle.timestamp).getTime()) {
                         battleMapInRange.push(mid);
                     }
                 }
